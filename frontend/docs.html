@@ -482,6 +482,16 @@
         <span class="title">9. Master Editing Templates</span>
         <span class="desc">Shorts Viral, Documentary, Tech Explainer, Dark Stoic & Podcast Box.</span>
       </a>
+      <a href="#editing-effects" class="jump-card">
+        <span class="icon">✨</span>
+        <span class="title">10. Pro Editing Effects & AI Direction</span>
+        <span class="desc">Text Callouts, Transition SFX Sound Stings, Emphasis Punch Zoom & Editorial Direction.</span>
+      </a>
+      <a href="#faq" class="jump-card">
+        <span class="icon">❓</span>
+        <span class="title">11. FAQ & Troubleshooting</span>
+        <span class="desc">Common questions, output locations, offline fallback & CapCut draft integration.</span>
+      </a>
     </div>
 
     <!-- SECTION 1: QUICK START -->
@@ -930,10 +940,66 @@
       </div>
     </section>
 
-    <!-- SECTION 10: FAQ & TROUBLESHOOTING -->
+    <!-- SECTION 10: PRO EDITING EFFECTS & AI EDITORIAL DIRECTION -->
+    <section class="docs-section" id="editing-effects">
+      <span class="section-tag">Pro Visual Effects</span>
+      <h2>10. Pro Editing Effects & AI Editorial Direction</h2>
+      <p class="lead">Elevate your video production quality with three automated editing effects and script-level editorial intelligence.</p>
+
+      <div class="feature-grid">
+        <div class="feature-box">
+          <h4>🏷️ Phase 1 — Dynamic Text Callout Badges</h4>
+          <p><strong>Highlight Key Takeaways:</strong> The AI automatically detects sentences with powerful statistics (e.g. <em>"90% of startups fail"</em>), key takeaways, or list items and creates a 3–5 word callout badge.</p>
+          <ul style="margin: 8px 0 0 16px; font-size: 13px; color: var(--text-secondary);">
+            <li><strong>Rate-Limited:</strong> Strictly limited to ~1 in every 4–5 scenes to maintain maximum visual punch without clutter.</li>
+            <li><strong>Climax Prioritized:</strong> The script's climactic sentence is automatically prioritized for badge injection.</li>
+            <li><strong>Top-Third Safe Placement:</strong> Positioned in the upper third of the screen with smooth ASS pop and fade animations, ensuring zero overlap with bottom subtitles.</li>
+            <li><strong>Visual Themes:</strong> <code>badge_yellow</code> (Viral Gold), <code>badge_cyan</code> (Electric Cyber), and <code>badge_dark</code> (Midnight Glass).</li>
+          </ul>
+        </div>
+
+        <div class="feature-box">
+          <h4>🔊 Phase 2 — Transition Sound Stings (SFX)</h4>
+          <p><strong>Auditory Impact on Every Cut:</strong> Transitions feel flat without sound. VideoGen Studio automatically mixes sound stings at exact scene cut boundaries.</p>
+          <ul style="margin: 8px 0 0 16px; font-size: 13px; color: var(--text-secondary);">
+            <li><strong>Microsecond Alignment:</strong> Powered by FFmpeg's <code>adelay</code> filter, each sting is precision-shifted to the exact millisecond of the scene transition.</li>
+            <li><strong>SFX Library:</strong> Built-in royalty-free sound effects in <code>data/sfx/</code> (<code>whoosh_soft.mp3</code>, <code>pop_punch.mp3</code>, <code>click_modern.mp3</code>, <code>ding_bell.mp3</code>).</li>
+            <li><strong>Native 3-Track Mix:</strong> Blends voiceover (100%), background music (ducked to 10%), and transition SFX (configurable volume, default 40%).</li>
+            <li><strong>Fully Optional:</strong> Set <code>transition_sfx: null</code> to disable cleanly without any audio filter overhead.</li>
+          </ul>
+        </div>
+
+        <div class="feature-box">
+          <h4>🔍 Phase 3 — Emphasis Punch Zoom</h4>
+          <p><strong>Dramatic Micro Keyframing:</strong> On the most impactful words in a sentence, the camera performs a quick, sharp punch-zoom to command viewer attention.</p>
+          <ul style="margin: 8px 0 0 16px; font-size: 13px; color: var(--text-secondary);">
+            <li><strong>Single-Pass AI Word Selection:</strong> Extracts key superlatives ("never", "biggest", "critical") and numbers in the same LLM pass.</li>
+            <li><strong>Whisper Micro-Timing:</strong> Maps the target word to Whisper's exact word timestamp relative to the scene clip timeline.</li>
+            <li><strong>Sharp Punch Profile:</strong> Fast 0.15s zoom-in rise, 0.25s peak hold, and 0.20s smooth return, seamlessly layered with Ken Burns motion.</li>
+            <li><strong>Boundary Conflict Guard:</strong> Skips zoom if the emphasis word falls within 0.3s of scene boundaries to prevent collision with transition crossfades.</li>
+          </ul>
+        </div>
+
+        <div class="feature-box">
+          <h4>🧠 Script-Level Editorial Direction</h4>
+          <p><strong>Holistic Script Intelligence:</strong> Rather than treating each scene in isolation, the AI evaluates the entire voiceover script in one fast call.</p>
+          <ul style="margin: 8px 0 0 16px; font-size: 13px; color: var(--text-secondary);">
+            <li><strong>Energy & Tone Analysis:</strong> Categorizes scripts as <em>high</em>, <em>medium</em>, or <em>calm</em>.</li>
+            <li><strong>Dynamic Pacing Multiplier (0.8x - 1.3x):</strong> Automatically speeds up scene cuts for energetic viral scripts or lengthens holds for calm documentaries.</li>
+            <li><strong>Climax Line Tagging:</strong> Flags the single most dramatic sentence in the script (<code>is_climax = True</code>) to guide visual selection and callout placement.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="urdu-callout">
+        <strong>🇵🇰 Pro Editing Effects ka Asal Maqsad:</strong> Professional editors sirf video cut nahi karte — wo important words par punch-zoom lagate hain, key points par badge cards display karte hain, aur cuts par whoosh sound effects add karte hain. VideoGen Studio yeh teeno effects automatically timestamps k mutabiq video me render kar deta hy!
+      </div>
+    </section>
+
+    <!-- SECTION 11: FAQ & TROUBLESHOOTING -->
     <section class="docs-section" id="faq">
       <span class="section-tag">Help & Support</span>
-      <h2>10. FAQ & Troubleshooting</h2>
+      <h2>11. FAQ & Troubleshooting</h2>
 
       <div class="feature-grid">
         <div class="feature-box">
