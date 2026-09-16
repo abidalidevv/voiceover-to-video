@@ -1,7 +1,7 @@
 import re
 import json
 import requests
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from .config import load_settings
 
 
@@ -52,13 +52,23 @@ KEYWORD_MAP = {
 }
 
 
-def build_scenes(transcription: Dict[str, Any], niche: str = "General") -> List[Dict[str, Any]]:
+def build_scenes(
+    transcription: Dict[str, Any],
+    niche: str = "General",
+    editorial_direction: Optional[Dict[str, Any]] = None,
+    max_scene_duration: Optional[float] = None
+) -> List[Dict[str, Any]]:
     """
     Takes transcription data and builds structured sentence-level scene objects.
     Each scene corresponds to a single spoken sentence or natural 3-5s visual thought,
     preventing multi-sentence spillage and ensuring 1-to-1 visual-caption harmony.
+    Applies editorial direction (pacing multiplier and climax scene tagging).
     """
     settings = load_settings()
+    editorial = editorial_direction or {}
+    pacing_mult = float(editorial.get("pacing_multiplier", 1.0))
+    climax_idx = editorial.get("climax_scene_index")
+
     total_dur = float(transcription.get("duration", 30.0))
     segments = transcription.get("segments", [])
 
@@ -106,10 +116,12 @@ def build_scenes(transcription: Dict[str, Any], niche: str = "General") -> List[
 
             group_duration = w["end"] - current_group[0]["start"]
 
-            # Dynamic pacing: split long sentences (>= 5.2s) at natural commas or pauses
+            # Dynamic pacing: split long sentences (>= 5.2s scaled by pacing_multiplier) at natural commas or pauses
             has_comma = bool(re.search(r'[,]$', word_text))
-            is_pacing_split = (group_duration >= 5.2 and (has_comma or has_pause))
-            is_overlong = (group_duration >= 7.0 and len(current_group) >= 5)
+            split_threshold = max(3.0, 5.2 * pacing_mult)
+            is_pacing_split = (group_duration >= split_threshold and (has_comma or has_pause))
+            overlong_threshold = max(4.5, 7.0 * pacing_mult)
+            is_overlong = (group_duration >= overlong_threshold and len(current_group) >= 5)
             is_last_word = (i == len(all_words) - 1)
 
             if has_period or has_semicolon or has_pause or is_pacing_split or is_overlong or is_last_word:
@@ -168,7 +180,8 @@ def build_scenes(transcription: Dict[str, Any], niche: str = "General") -> List[
                 "search_tags": tags,
                 "selected_tag": tags[0] if tags else f"{niche} cinematic",
                 "video_clip": None,
-                "status": "pending"
+                "status": "pending",
+                "is_climax": (climax_idx is not None and idx == climax_idx)
             })
     else:
         # Fallback if words array was empty: split segments by sentence regex
@@ -190,8 +203,26 @@ def build_scenes(transcription: Dict[str, Any], niche: str = "General") -> List[
                 "search_tags": tags,
                 "selected_tag": tags[0] if tags else f"{niche} cinematic",
                 "video_clip": None,
-                "status": "pending"
+                "status": "pending",
+                "is_climax": (climax_idx is not None and i == climax_idx)
             })
+
+    # Validate climax scene flag
+    if climax_idx is not None and scenes:
+        valid_climax = max(0, min(int(climax_idx), len(scenes) - 1))
+        for i, sc in enumerate(scenes):
+            sc["is_climax"] = (i == valid_climax)
+    else:
+        for sc in scenes:
+            if "is_climax" not in sc:
+                sc["is_climax"] = False
+
+    # Apply pacing multiplier to max scene duration cap if specified
+    if max_scene_duration is not None:
+        effective_max = round(float(max_scene_duration) * pacing_mult, 2)
+        for sc in scenes:
+            if sc.get("duration", 0) > effective_max:
+                sc["duration"] = effective_max
 
     # AI Enhancement if API key is provided
     groq_key = settings.get("groq_api_key", "").strip()
@@ -330,3 +361,147 @@ Sentences:
     if isinstance(parsed, list):
         return parsed
     return []
+
+
+def analyze_script_editorial_direction(
+    full_transcript_text: str,
+    niche: str = "General",
+    groq_key: str = "",
+    openai_key: str = ""
+) -> Dict[str, Any]:
+    """
+    Analyzes the full voiceover transcript with a single LLM call to establish
+    overall editorial direction: energy level, pacing multiplier, climax scene, and tone.
+
+    Returns:
+        {
+            "energy": "high" | "medium" | "calm",
+            "pacing_multiplier": float (0.8 to 1.3),
+            "climax_scene_index": int (0-based) or None,
+            "tone": str
+        }
+    Falls back safely to neutral defaults on any failure or invalid response.
+    """
+    default_editorial = {
+        "energy": "medium",
+        "pacing_multiplier": 1.0,
+        "climax_scene_index": None,
+        "tone": "neutral"
+    }
+
+    if not full_transcript_text or not full_transcript_text.strip():
+        return default_editorial
+
+    # Automatically load API keys from config if not explicitly provided
+    if not groq_key and not openai_key:
+        try:
+            settings = load_settings()
+            groq_key = settings.get("groq_api_key", "").strip()
+            openai_key = settings.get("openai_api_key", "").strip()
+        except Exception:
+            pass
+
+    if not groq_key and not openai_key:
+        return default_editorial
+
+    # Number sentences for 0-based climax sentence identification
+    raw_sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', full_transcript_text.strip()) if s.strip()]
+    if not raw_sentences:
+        raw_sentences = [full_transcript_text.strip()]
+
+    numbered_script = "\n".join(f"[{i}] {s}" for i, s in enumerate(raw_sentences))
+
+    prompt = f"""You are a master video director and pacing editor.
+For the niche: "{niche}", analyze the voiceover script below.
+Sentences with 0-based indices:
+{numbered_script}
+
+Evaluate the script's overall pacing, energy, and climax:
+1. "energy": Must be exactly "high", "medium", or "calm".
+2. "pacing_multiplier": Float from 0.8 to 1.3 (0.8 = fast-paced rapid cuts/high excitement, 1.0 = standard tempo, 1.3 = slow/calm holds).
+3. "climax_scene_index": 0-based integer index of the single most emphatic/important/climactic sentence.
+4. "tone": One or two words describing the overall tone (e.g., "inspiring", "urgent", "dark mystery", "educational").
+
+Respond ONLY with a STRICT JSON object in this exact format. No markdown code blocks, no commentary:
+{{"energy": "high", "pacing_multiplier": 0.9, "climax_scene_index": 0, "tone": "inspiring"}}
+"""
+
+    content = None
+    try:
+        if groq_key:
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+            for model_id in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]:
+                try:
+                    payload = {
+                        "model": model_id,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.3
+                    }
+                    res = requests.post(url, headers=headers, json=payload, timeout=20)
+                    if res.status_code == 200:
+                        content = res.json()["choices"][0]["message"]["content"]
+                        break
+                except Exception:
+                    continue
+            if not content:
+                return default_editorial
+        elif openai_key:
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
+            payload = {
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3
+            }
+            res = requests.post(url, headers=headers, json=payload, timeout=20)
+            if res.status_code == 200:
+                content = res.json()["choices"][0]["message"]["content"]
+            else:
+                return default_editorial
+        else:
+            return default_editorial
+
+        if not content:
+            return default_editorial
+
+        clean_json = re.sub(r'```(?:json)?\s*', '', content)
+        clean_json = re.sub(r'```\s*', '', clean_json).strip()
+        parsed = json.loads(clean_json)
+        if not isinstance(parsed, dict):
+            return default_editorial
+
+        # Validate energy
+        energy = str(parsed.get("energy", "medium")).strip().lower()
+        if energy not in ("high", "medium", "calm"):
+            energy = "medium"
+
+        # Validate & clamp pacing_multiplier
+        try:
+            pacing_mult = float(parsed.get("pacing_multiplier", 1.0))
+            pacing_mult = max(0.8, min(1.3, round(pacing_mult, 2)))
+        except (ValueError, TypeError):
+            pacing_mult = 1.0
+
+        # Validate climax_scene_index
+        climax_idx = parsed.get("climax_scene_index")
+        if climax_idx is not None:
+            try:
+                climax_idx = int(climax_idx)
+                if climax_idx < 0 or climax_idx >= len(raw_sentences):
+                    climax_idx = max(0, min(climax_idx, len(raw_sentences) - 1))
+            except (ValueError, TypeError):
+                climax_idx = None
+
+        tone = str(parsed.get("tone", "neutral")).strip() or "neutral"
+
+        return {
+            "energy": energy,
+            "pacing_multiplier": pacing_mult,
+            "climax_scene_index": climax_idx,
+            "tone": tone
+        }
+    except Exception as e:
+        print(f"[SceneAnalyzer] Editorial direction fallback notice: {e}")
+        return default_editorial
+

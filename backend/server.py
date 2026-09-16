@@ -18,7 +18,7 @@ from .config import (
     load_settings, save_settings, find_ffmpeg
 )
 from .transcriber import transcribe_audio, get_audio_duration
-from .scene_analyzer import build_scenes
+from .scene_analyzer import build_scenes, analyze_script_editorial_direction
 from .stock_downloader import download_scenes_concurrently, search_alternative_clips
 from .subtitle_generator import generate_ass_subtitles, PRESET_STYLES
 from .video_renderer import render_final_video
@@ -274,13 +274,17 @@ def start_generation_job(req: GenerateRequest):
 
             transcription = transcribe_audio(str(audio_path), niche=req.niche)
             
-            # 2. Scene Analysis
+            # 2. Editorial Direction & Scene Analysis
             ACTIVE_JOBS[job_id]["stage"] = "analyzing"
-            ACTIVE_JOBS[job_id]["stage_title"] = "Semantic Scene & Visual Query Tagging..."
-            ACTIVE_JOBS[job_id]["stage_desc"] = "Contextual visual search tags matching what is being spoken..."
+            ACTIVE_JOBS[job_id]["stage_title"] = "Editorial Direction & Scene Analysis..."
+            ACTIVE_JOBS[job_id]["stage_desc"] = "Analyzing script pacing, climax emphasis, and visual tags..."
             ACTIVE_JOBS[job_id]["percent"] = 25
 
-            scenes = build_scenes(transcription, niche=req.niche)
+            editorial_dir = analyze_script_editorial_direction(
+                full_transcript_text=transcription.get("text", ""),
+                niche=req.niche
+            )
+            scenes = build_scenes(transcription, niche=req.niche, editorial_direction=editorial_dir)
             total_scenes = len(scenes)
             ACTIVE_JOBS[job_id]["total_scenes"] = total_scenes
 
@@ -316,6 +320,7 @@ def start_generation_job(req: GenerateRequest):
                 "audio_url": f"/media/temp/{req.audio_filename}",
                 "duration": transcription.get("duration", 30.0),
                 "scenes": processed_scenes,
+                "editorial_direction": editorial_dir,
                 "created_at": time.strftime("%b %d, %Y %I:%M %p"),
                 "status": "ready_for_preview"
             }
@@ -357,7 +362,11 @@ def generate_project(req: GenerateRequest):
 
     project_id = f"proj_{int(time.time())}"
     transcription = transcribe_audio(str(audio_path), niche=req.niche)
-    scenes = build_scenes(transcription, niche=req.niche)
+    editorial_dir = analyze_script_editorial_direction(
+        full_transcript_text=transcription.get("text", ""),
+        niche=req.niche
+    )
+    scenes = build_scenes(transcription, niche=req.niche, editorial_direction=editorial_dir)
     processed_scenes = download_scenes_concurrently(scenes)
 
     for sc in processed_scenes:
@@ -374,6 +383,7 @@ def generate_project(req: GenerateRequest):
         "audio_url": f"/media/temp/{req.audio_filename}",
         "duration": transcription.get("duration", 30.0),
         "scenes": processed_scenes,
+        "editorial_direction": editorial_dir,
         "created_at": time.strftime("%b %d, %Y %I:%M %p"),
         "status": "ready_for_preview"
     }
@@ -752,14 +762,22 @@ def start_batch_generation(req: BatchGenerateRequest):
                         return
 
                     item["percent"] = 25
-                    item["stage_desc"] = "Building sentence scenes..."
+                    item["stage_desc"] = "Building sentence scenes with editorial direction..."
 
-                    # 2. Scene analysis with template max duration
+                    # 2. Editorial & Scene analysis with template max duration
+                    editorial_dir = analyze_script_editorial_direction(
+                        full_transcript_text=transcription.get("text", ""),
+                        niche=niche
+                    )
+                    item["editorial_direction"] = editorial_dir
+
                     max_dur = item_tmpl.get("max_scene_duration", 3.5)
-                    scenes = build_scenes(transcription, niche=niche)
-                    for sc in scenes:
-                        if sc.get("duration", 0) > max_dur:
-                            sc["duration"] = round(min(sc["duration"], max_dur), 2)
+                    scenes = build_scenes(
+                        transcription,
+                        niche=niche,
+                        editorial_direction=editorial_dir,
+                        max_scene_duration=max_dur
+                    )
                     
                     if batch.get("cancel_requested"):
                         item["status"] = "cancelled"
@@ -803,6 +821,7 @@ def start_batch_generation(req: BatchGenerateRequest):
                         "audio_url": f"/media/temp/{audio_fn}",
                         "duration": transcription.get("duration", 30.0),
                         "scenes": processed_scenes,
+                        "editorial_direction": editorial_dir,
                         "fallback_scenes_count": fallback_count,
                         "created_at": time.strftime("%b %d, %Y %I:%M %p"),
                         "status": "ready_for_preview",
