@@ -229,13 +229,27 @@ def build_scenes(
     openai_key = settings.get("openai_api_key", "").strip()
     if (groq_key or openai_key) and scenes:
         try:
-            enhanced_tags = _enhance_tags_with_ai(scenes, niche, groq_key, openai_key)
-            for sc, new_tags in zip(scenes, enhanced_tags):
-                if new_tags:
-                    sc["search_tags"] = new_tags
-                    sc["selected_tag"] = new_tags[0]
+            enhanced_data = _enhance_tags_with_ai(scenes, niche, groq_key, openai_key)
+            for sc, item in zip(scenes, enhanced_data):
+                if isinstance(item, list):
+                    sc["search_tags"] = item
+                    if item:
+                        sc["selected_tag"] = item[0]
+                elif isinstance(item, dict):
+                    tags = item.get("search_tags", [])
+                    if tags:
+                        sc["search_tags"] = tags
+                        sc["selected_tag"] = tags[0]
+                    sc["raw_callout_text"] = item.get("callout_text")
+                    sc["emphasis_word"] = item.get("emphasis_word")
         except Exception as e:
             print(f"[SceneAnalyzer] AI tag enhancement notice: {e}")
+
+    # Prioritize & Rate-Limit Callouts (~1 in every 4-5 scenes, prioritizing is_climax)
+    _apply_callouts_prioritization(scenes)
+
+    # Match emphasis words with Whisper word timestamps and check boundary distances
+    _match_emphasis_words_with_timestamps(scenes)
 
     return scenes
 
@@ -309,23 +323,36 @@ def _extract_tags_rulebased(text: str, niche: str) -> List[str]:
     return unique_tags[:5]
 
 
-def _enhance_tags_with_ai(scenes: List[Dict[str, Any]], niche: str, groq_key: str, openai_key: str) -> List[List[str]]:
-    """Calls Groq or OpenAI LLM to generate professional b-roll stock video search queries."""
-    prompt = f"""You are a master YouTube video editor and B-roll visual director.
+def _enhance_tags_with_ai(scenes: List[Dict[str, Any]], niche: str, groq_key: str = "", openai_key: str = "") -> List[Dict[str, Any]]:
+    """
+    Calls Groq or OpenAI LLM once for the script to generate:
+    1. Search tags (visual B-roll queries)
+    2. Callout text (3-5 words for strong claims, statistics, or key takeaways, else null)
+    3. Emphasis word (single most important/punchy word for emphasis zoom timing, else null)
+    """
+    prompt = f"""You are a master YouTube video editor, B-roll visual director, and motion graphic designer.
 For the niche: "{niche}", analyze each sentence from the voiceover script below.
-For EACH sentence, provide 3 to 4 specific, cinematic, highly searchable stock footage queries that depict what is being said or the mood.
-Respond ONLY with a JSON array of arrays of strings. No markdown, no commentary.
-Example: [["person looking into distance", "longing expression", "motivated man standing cliff"], ["crowd walking city subway", "tired worker rainy evening", "monotonous commute"]]
+For EACH sentence provide:
+1. "search_tags": 3 to 4 specific, cinematic, highly searchable stock footage queries depicting what is being spoken or the mood.
+2. "callout_text": If this sentence contains a strong claim, key statistic, notable fact, or list-point worth a visual text callout badge, return a concise 3-5 word callout (e.g., "93% OF USERS AGREE", "KEY TAKEAWAY: PERSISTENCE", "RULE #1: FOCUS FIRST"). Otherwise, return null.
+3. "emphasis_word": The single most emphatic, high-impact word in that sentence (numbers, superlatives like "best", "never", "biggest", "critical", or key nouns) for emphasis timing, or null.
+
+Respond ONLY with a STRICT JSON array of objects, one object per sentence in exact order. No markdown code blocks, no commentary.
+Example:
+[
+  {{"search_tags": ["person looking into distance", "longing expression", "motivated man standing cliff"], "callout_text": "PERSISTENCE IS EVERYTHING", "emphasis_word": "everything"}},
+  {{"search_tags": ["crowd walking city subway", "tired worker rainy evening"], "callout_text": null, "emphasis_word": "never"}}
+]
 
 Sentences:
 """
     for i, s in enumerate(scenes):
         prompt += f"{i+1}. {s['text']}\n"
 
+    content = None
     if groq_key:
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
-        content = None
         for model_id in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]:
             try:
                 payload = {
@@ -339,28 +366,194 @@ Sentences:
                     break
             except Exception:
                 continue
-        if not content:
-            return []
     elif openai_key:
-        url = "https://api.openai.com/v1/chat/completions"
-        headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
-        payload = {
-            "model": "gpt-4o-mini",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.3
-        }
-        res = requests.post(url, headers=headers, json=payload, timeout=20)
-        res.raise_for_status()
-        content = res.json()["choices"][0]["message"]["content"]
-    else:
+        try:
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
+            payload = {
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3
+            }
+            res = requests.post(url, headers=headers, json=payload, timeout=20)
+            if res.status_code == 200:
+                content = res.json()["choices"][0]["message"]["content"]
+        except Exception:
+            pass
+
+    if not content:
         return []
 
-    content = re.sub(r'```json\s*', '', content)
-    content = re.sub(r'```\s*', '', content)
-    parsed = json.loads(content.strip())
-    if isinstance(parsed, list):
-        return parsed
-    return []
+    try:
+        clean_json = re.sub(r'```(?:json)?\s*', '', content)
+        clean_json = re.sub(r'```\s*', '', clean_json).strip()
+        parsed = json.loads(clean_json)
+        if not isinstance(parsed, list):
+            return []
+
+        results = []
+        for item in parsed:
+            if isinstance(item, list):
+                # Legacy format: array of strings
+                results.append({
+                    "search_tags": [str(t).strip() for t in item if t],
+                    "callout_text": None,
+                    "emphasis_word": None
+                })
+            elif isinstance(item, dict):
+                tags = item.get("search_tags", [])
+                if not isinstance(tags, list):
+                    tags = []
+                callout = item.get("callout_text")
+                if callout and isinstance(callout, str):
+                    callout = callout.strip()
+                    if len(callout.split()) > 7:
+                        callout = " ".join(callout.split()[:5])
+                else:
+                    callout = None
+
+                emp_word = item.get("emphasis_word")
+                if emp_word and isinstance(emp_word, str):
+                    emp_word = re.sub(r'[^a-zA-Z0-9]', '', emp_word.strip().lower())
+                else:
+                    emp_word = None
+
+                results.append({
+                    "search_tags": [str(t).strip() for t in tags if t],
+                    "callout_text": callout,
+                    "emphasis_word": emp_word
+                })
+            else:
+                results.append({"search_tags": [], "callout_text": None, "emphasis_word": None})
+        return results
+    except Exception as e:
+        print(f"[SceneAnalyzer] AI response parsing notice: {e}")
+        return []
+
+
+def _apply_callouts_prioritization(scenes: List[Dict[str, Any]]):
+    """
+    Limits callouts to roughly 1 out of every 4-5 scenes.
+    Prioritizes any scene marked is_climax == True, strong statistics/claims,
+    and spaces callouts out so they don't appear in adjacent scenes.
+    """
+    # Initialize all scenes with callout_text = None
+    for sc in scenes:
+        sc["callout_text"] = None
+
+    if not scenes:
+        return
+
+    candidates = []
+    for idx, sc in enumerate(scenes):
+        raw_text = sc.get("raw_callout_text")
+        if raw_text and isinstance(raw_text, str) and raw_text.strip():
+            cleaned = raw_text.strip()
+            # Calculate priority score
+            score = 10
+            if sc.get("is_climax"):
+                score += 100
+            # Boost if contains digits or percentages (stat/fact)
+            if re.search(r'\d', cleaned):
+                score += 25
+            # Boost if contains high-impact markers
+            if re.search(r'\b(key|rule|truth|secret|fact|never|always)\b', cleaned, re.IGNORECASE):
+                score += 15
+            # Prefer 3-5 words
+            word_count = len(cleaned.split())
+            if 3 <= word_count <= 5:
+                score += 10
+
+            candidates.append({
+                "index": idx,
+                "score": score,
+                "text": cleaned
+            })
+
+    if not candidates:
+        return
+
+    # Max callouts allowed: roughly 1 out of every 4-5 scenes
+    max_callouts = max(1, len(scenes) // 4)
+
+    # Sort candidates by score descending
+    candidates.sort(key=lambda c: c["score"], reverse=True)
+
+    # Select candidates ensuring minimum distance of 2 scenes between callouts
+    selected_indices = []
+    for cand in candidates:
+        if len(selected_indices) >= max_callouts:
+            break
+        cand_idx = cand["index"]
+        # Check if adjacent to already selected
+        if any(abs(cand_idx - s) <= 1 for s in selected_indices):
+            continue
+        selected_indices.append(cand_idx)
+
+    # If climax was a candidate and didn't get selected due to spacing, force climax
+    climax_candidates = [c for c in candidates if scenes[c["index"]].get("is_climax")]
+    if climax_candidates:
+        climax_idx = climax_candidates[0]["index"]
+        if climax_idx not in selected_indices:
+            if selected_indices:
+                selected_indices.pop()
+            selected_indices.append(climax_idx)
+
+    for cand in candidates:
+        if cand["index"] in selected_indices:
+            scenes[cand["index"]]["callout_text"] = cand["text"]
+
+
+def _match_emphasis_words_with_timestamps(scenes: List[Dict[str, Any]]):
+    """
+    Matches LLM-identified emphasis_word with Whisper word-level timestamps.
+    Calculates relative timestamps within the scene clip timeline.
+    Marks skip_emphasis_zoom = True if within 0.3s of scene boundaries.
+    """
+    for sc in scenes:
+        sc.setdefault("emphasis_word", None)
+        sc["emphasis_start"] = None
+        sc["emphasis_end"] = None
+        sc["emphasis_rel_start"] = None
+        sc["emphasis_rel_end"] = None
+        sc["skip_emphasis_zoom"] = True
+
+        emp_word = sc.get("emphasis_word")
+        words = sc.get("words", [])
+        if not emp_word or not words:
+            continue
+
+        clean_target = re.sub(r'[^a-zA-Z0-9]', '', str(emp_word)).lower()
+        if not clean_target:
+            continue
+
+        matched_w = None
+        for w in words:
+            clean_w = re.sub(r'[^a-zA-Z0-9]', '', str(w.get("word", ""))).lower()
+            if clean_w == clean_target:
+                matched_w = w
+                break
+
+        if matched_w:
+            w_start = float(matched_w.get("start", 0))
+            w_end = float(matched_w.get("end", 0))
+            sc["emphasis_start"] = w_start
+            sc["emphasis_end"] = w_end
+
+            rel_start = round(w_start - float(sc.get("start", 0)), 2)
+            rel_end = round(w_end - float(sc.get("start", 0)), 2)
+            sc["emphasis_rel_start"] = rel_start
+            sc["emphasis_rel_end"] = rel_end
+
+            # Boundary conflict check: skip if within 0.3s of scene start or scene end
+            dur = float(sc.get("duration", max(0.5, float(sc.get("end", 0)) - float(sc.get("start", 0)))))
+            time_from_start = rel_start
+            time_from_end = dur - rel_end
+
+            if time_from_start >= 0.3 and time_from_end >= 0.3:
+                sc["skip_emphasis_zoom"] = False
+            else:
+                sc["skip_emphasis_zoom"] = True
 
 
 def analyze_script_editorial_direction(

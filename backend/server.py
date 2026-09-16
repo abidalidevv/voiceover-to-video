@@ -465,11 +465,19 @@ def render_video(req: RenderRequest):
 
     # 1. Generate ASS Subtitles
     ass_path = str(TEMP_DIR / f"{req.project_id}_subtitles.ass")
+    custom_opts = req.custom_options or {}
+    callouts_on = custom_opts.get("callouts_enabled", project.get("callouts_enabled", False))
+    callout_st = custom_opts.get("callout_style", project.get("callout_style", "badge_yellow"))
+    render_custom_options = {
+        **custom_opts,
+        "callouts_enabled": callouts_on,
+        "callout_style": callout_st
+    }
     generate_ass_subtitles(
         scenes=scenes,
         output_path=ass_path,
         preset_key=req.preset_key,
-        custom_options=req.custom_options
+        custom_options=render_custom_options
     )
 
     # 2. Render Full HD MP4 Video with BGM, Ken Burns FX, Modern Transitions, and Audio Muxing
@@ -483,6 +491,10 @@ def render_video(req: RenderRequest):
         "color_grade": req.custom_options.get("color_grade", project.get("color_grade", "clean")),
         "transition": req.custom_options.get("transition", project.get("transition", "none")),
         "transition_mode": req.custom_options.get("transition_mode", project.get("transition_mode", "fixed")),
+        "transition_sfx": req.custom_options.get("transition_sfx", project.get("transition_sfx", None)),
+        "transition_sfx_volume": float(req.custom_options.get("transition_sfx_volume", project.get("transition_sfx_volume", 0.40))),
+        "emphasis_zoom_enabled": bool(req.custom_options.get("emphasis_zoom_enabled", project.get("emphasis_zoom_enabled", False))),
+        "emphasis_zoom_intensity": float(req.custom_options.get("emphasis_zoom_intensity", project.get("emphasis_zoom_intensity", 1.15))),
         "mute_stock_audio": bool(req.custom_options.get("mute_stock_audio", True)),
         **req.custom_options
     }
@@ -831,7 +843,13 @@ def start_batch_generation(req: BatchGenerateRequest):
                         "transition_duration": item_tmpl.get("transition_duration", 0.30),
                         "bgm_track": item_tmpl.get("bgm_track", "lofi_chill.mp3"),
                         "bgm_volume": item_tmpl.get("bgm_volume", 0.10),
-                        "caption_style": item_tmpl.get("caption_style", "capcut-yellow")
+                        "caption_style": item_tmpl.get("caption_style", "capcut-yellow"),
+                        "callouts_enabled": item_tmpl.get("callouts_enabled", False),
+                        "callout_style": item_tmpl.get("callout_style", "badge_yellow"),
+                        "transition_sfx": item_tmpl.get("transition_sfx", None),
+                        "transition_sfx_volume": item_tmpl.get("transition_sfx_volume", 0.40),
+                        "emphasis_zoom_enabled": item_tmpl.get("emphasis_zoom_enabled", False),
+                        "emphasis_zoom_intensity": item_tmpl.get("emphasis_zoom_intensity", 1.15)
                     }
                     ACTIVE_PROJECTS[proj_id] = project_data
                     save_project_to_history(project_data)
@@ -852,7 +870,11 @@ def start_batch_generation(req: BatchGenerateRequest):
                             scenes=processed_scenes,
                             output_path=ass_path,
                             preset_key=item_tmpl.get("caption_style", "capcut_yellow"),
-                            custom_options={"aspect_ratio": item_tmpl.get("aspect_ratio", "16:9")}
+                            custom_options={
+                                "aspect_ratio": item_tmpl.get("aspect_ratio", "16:9"),
+                                "callouts_enabled": item_tmpl.get("callouts_enabled", False),
+                                "callout_style": item_tmpl.get("callout_style", "badge_yellow")
+                            }
                         )
 
                         out_filename = f"{proj_name}_1080p_{item_tmpl['id']}_{int(time.time())}.mp4"
@@ -864,6 +886,10 @@ def start_batch_generation(req: BatchGenerateRequest):
                             "transition": item_tmpl.get("transition", "smoothleft"),
                             "transition_mode": item_tmpl.get("transition_mode", "fixed"),
                             "transition_duration": item_tmpl.get("transition_duration", 0.30),
+                            "transition_sfx": item_tmpl.get("transition_sfx", None),
+                            "transition_sfx_volume": item_tmpl.get("transition_sfx_volume", 0.40),
+                            "emphasis_zoom_enabled": item_tmpl.get("emphasis_zoom_enabled", False),
+                            "emphasis_zoom_intensity": item_tmpl.get("emphasis_zoom_intensity", 1.15),
                             "enable_motion": True,
                             "mute_stock_audio": True
                         }

@@ -209,6 +209,54 @@ PRESET_STYLES = {
     }
 }
 
+CALLOUT_STYLES = {
+    "badge_yellow": {
+        "name": "Badge Viral Yellow",
+        "font_name": "Montserrat",
+        "font_size": 28,
+        "primary_color": "&H0010E0FF",     # Warm Gold/Yellow (#FFE010)
+        "secondary_color": "&H000000FF",
+        "outline_color": "&H00050508",     # Deep black edge
+        "back_color": "&HA00E0E14",        # Translucent dark charcoal box
+        "bold": 1,
+        "border_style": 3,                 # Opaque background box
+        "outline_width": 6.0,
+        "shadow_dist": 0.0,
+        "alignment": 8,                    # Top Center
+        "margin_v": 75
+    },
+    "badge_cyan": {
+        "name": "Badge Electric Cyan",
+        "font_name": "Montserrat",
+        "font_size": 28,
+        "primary_color": "&H00FFFF00",     # Electric Cyan (#00FFFF)
+        "secondary_color": "&H000000FF",
+        "outline_color": "&H000F0500",
+        "back_color": "&HA0150A05",        # Deep navy box
+        "bold": 1,
+        "border_style": 3,
+        "outline_width": 6.0,
+        "shadow_dist": 0.0,
+        "alignment": 8,
+        "margin_v": 75
+    },
+    "badge_dark": {
+        "name": "Badge Minimal Dark",
+        "font_name": "Inter",
+        "font_size": 26,
+        "primary_color": "&H00FFFFFF",     # Crisp White
+        "secondary_color": "&H000000FF",
+        "outline_color": "&H002A2A2A",
+        "back_color": "&HB008080C",        # Midnight glass box
+        "bold": 1,
+        "border_style": 3,
+        "outline_width": 5.5,
+        "shadow_dist": 0.0,
+        "alignment": 8,
+        "margin_v": 75
+    }
+}
+
 
 def hex_to_ass_color(hex_str: str, alpha: int = 0) -> str:
     """Converts #RRGGBB hex string to ASS &HAABBGGRR format."""
@@ -237,7 +285,8 @@ def generate_ass_subtitles(
     custom_options: Dict[str, Any] = None
 ) -> str:
     """
-    Generates a stylized .ass subtitle file with CapCut kinetic active-word highlighting.
+    Generates a stylized .ass subtitle file with CapCut kinetic active-word highlighting
+    and optional top-third callout badge cards.
     """
     norm_key = str(preset_key or "capcut_yellow").lower().replace("-", "_")
     preset = PRESET_STYLES.get(norm_key, PRESET_STYLES.get(preset_key, PRESET_STYLES["capcut_yellow"])).copy()
@@ -274,6 +323,20 @@ def generate_ass_subtitles(
     letter_spacing = float(custom_options.get("letter_spacing", 1.0) if custom_options else 1.0)
     word_spacing = float(custom_options.get("word_spacing", 6.0) if custom_options else 6.0)
 
+    # Callout badge settings
+    callouts_enabled = bool(custom_options.get("callouts_enabled", False) if custom_options else False)
+    callout_style_key = str(custom_options.get("callout_style", "badge_yellow") if custom_options else "badge_yellow").lower().replace("-", "_")
+    callout_preset = CALLOUT_STYLES.get(callout_style_key, CALLOUT_STYLES["badge_yellow"])
+
+    c_font = callout_preset["font_name"]
+    c_size = callout_preset["font_size"] * 2.0
+    c_primary = callout_preset["primary_color"]
+    c_outline = callout_preset["outline_color"]
+    c_back = callout_preset["back_color"]
+    c_border_style = callout_preset["border_style"]
+    c_outline_w = callout_preset["outline_width"]
+    c_margin_v = callout_preset["margin_v"]
+
     # Word separator based on word_spacing parameter
     if word_spacing >= 16:
         word_separator = " \\h\\h "
@@ -292,12 +355,24 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Default,{font_family},{font_size * 2.2:.0f},{primary_c},&H000000FF,{outline_c},{shadow_c},{bold},0,0,0,100,100,{letter_spacing * 2:.1f},0,1,{outline_w * 2:.1f},{shadow_d * 2:.1f},{align},50,50,{margin_v * 2},1
+Style: Callout,{c_font},{c_size:.0f},{c_primary},&H000000FF,{c_outline},{c_back},1,0,0,0,100,100,1.2,0,{c_border_style},{c_outline_w:.1f},0,8,60,60,{c_margin_v * 2},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
     dialogue_lines = []
+
+    # Inject Callout Dialogue lines if callouts enabled
+    if callouts_enabled:
+        for scene in scenes:
+            callout = scene.get("callout_text")
+            if callout and str(callout).strip():
+                c_start = format_ass_time(float(scene.get("start", 0)))
+                c_end = format_ass_time(float(scene.get("end", 0)))
+                c_clean = str(callout).strip().upper()
+                anim = r"{\fad(180,180)\t(0,120,\fscx106\fscy106)\t(120,240,\fscx100\fscy100)}"
+                dialogue_lines.append(f"Dialogue: 1,{c_start},{c_end},Callout,,0,0,0,,{anim}{c_clean}")
 
     for scene in scenes:
         words = scene.get("words", [])

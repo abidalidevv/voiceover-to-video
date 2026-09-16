@@ -9,9 +9,18 @@ SETTINGS_FILE = DATA_DIR / "settings.json"
 CACHE_DIR = DATA_DIR / "cache"
 OUTPUT_DIR = DATA_DIR / "output"
 TEMP_DIR = DATA_DIR / "temp"
+SFX_DIR = DATA_DIR / "sfx"
 
-for d in [DATA_DIR, CACHE_DIR, OUTPUT_DIR, TEMP_DIR]:
+for d in [DATA_DIR, CACHE_DIR, OUTPUT_DIR, TEMP_DIR, SFX_DIR]:
     d.mkdir(parents=True, exist_ok=True)
+
+
+def list_sfx_files() -> list:
+    """Lists available sound effect audio files in data/sfx/."""
+    if not SFX_DIR.exists():
+        return []
+    return [f.name for f in SFX_DIR.glob("*.*") if f.suffix.lower() in (".mp3", ".wav", ".aac", ".ogg")]
+
 
 DEFAULT_SETTINGS = {
     # Stock Video APIs (10+ Providers & Endpoints)

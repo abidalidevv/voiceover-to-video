@@ -81,6 +81,27 @@ def _resolve_bgm_path(bgm_key_or_path: Optional[str]) -> Optional[str]:
     return None
 
 
+def _resolve_sfx_path(sfx_key_or_path: Optional[str]) -> Optional[str]:
+    """Resolves built-in preset or custom SFX audio file in data/sfx/."""
+    if not sfx_key_or_path or sfx_key_or_path in ("none", "off", "None", ""):
+        return None
+    p = Path(sfx_key_or_path)
+    if p.is_absolute() and p.exists():
+        return str(p.resolve())
+    # Check in data/sfx with .mp3 extension
+    sfx_path = DATA_DIR / "sfx" / f"{sfx_key_or_path}.mp3"
+    if sfx_path.exists():
+        return str(sfx_path.resolve())
+    # Check in data/sfx directly
+    sfx_path_direct = DATA_DIR / "sfx" / sfx_key_or_path
+    if sfx_path_direct.exists():
+        return str(sfx_path_direct.resolve())
+    # Check relative to BASE_DIR
+    if (BASE_DIR / sfx_key_or_path).exists():
+        return str((BASE_DIR / sfx_key_or_path).resolve())
+    return None
+
+
 def render_final_video(
     audio_path: str,
     scenes: List[Dict[str, Any]],
@@ -125,6 +146,10 @@ def render_final_video(
     mute_stock_audio = bool(custom_options.get("mute_stock_audio", True))
     bgm_track = custom_options.get("bgm_track", settings.get("default_bgm", "cinematic_ambient"))
     bgm_volume = float(custom_options.get("bgm_volume", 0.10)) # default 10%
+    transition_sfx = custom_options.get("transition_sfx", settings.get("default_transition_sfx", None))
+    transition_sfx_volume = float(custom_options.get("transition_sfx_volume", 0.40))
+    emphasis_zoom_enabled = bool(custom_options.get("emphasis_zoom_enabled", False))
+    emphasis_zoom_intensity = float(custom_options.get("emphasis_zoom_intensity", 1.15))
 
     # Verify input voiceover audio
     resolved_audio_path = _resolve_audio_path(audio_path)
@@ -144,7 +169,7 @@ def render_final_video(
         fpath = clip.get("file_path") if clip else None
         dur = float(sc.get("duration", 4.0))
         if fpath and os.path.exists(fpath):
-            valid_clips.append((sc.get("id", len(valid_clips)), fpath, dur))
+            valid_clips.append((sc.get("id", len(valid_clips)), fpath, dur, sc))
         else:
             print(f"[Renderer] Warning: Clip missing for scene {sc.get('id')}")
 
@@ -171,7 +196,7 @@ def render_final_video(
     seg_files = [None] * len(valid_clips)
     num_workers = min(8, max(2, (os.cpu_count() or 4)))
 
-    def normalize_clip(item_idx, sc_id, fpath, dur):
+    def normalize_clip(item_idx, sc_id, fpath, dur, sc):
         # File extension
         seg_ext = "mp4" if has_transition else "ts"
         seg_out = seg_dir / f"seg_{item_idx:04d}.{seg_ext}"
@@ -184,12 +209,20 @@ def render_final_video(
             else:
                 clip_target_dur = dur + trans_dur
 
+        # Emphasis punch zoom check
+        has_punch_zoom = (
+            emphasis_zoom_enabled
+            and emphasis_zoom_intensity > 1.01
+            and not sc.get("skip_emphasis_zoom", True)
+            and sc.get("emphasis_rel_start") is not None
+        )
+
         # OPTIMIZATION: Skip heavy re-encoding if clip was already pre-processed
         # by trim_and_fit_clip (filename starts with 'sc_'). Only apply motion/FX
         # if those features are actually enabled, otherwise just re-trim duration.
         fname = Path(fpath).name
         is_pretrimmed = fname.startswith("sc_")
-        needs_fx = enable_motion or enable_vignette or color_grade != "clean"
+        needs_fx = enable_motion or enable_vignette or color_grade != "clean" or has_punch_zoom
 
         if is_pretrimmed and not needs_fx and not has_transition:
             # Fast path: clip is already 1920x1080@30fps, just re-mux to .ts with stream copy
@@ -207,14 +240,29 @@ def render_final_video(
             except subprocess.CalledProcessError:
                 pass  # Fall through to full re-encode
 
+        # Construct punch zoom expression if active
+        zoom_term = ""
+        if has_punch_zoom:
+            t0 = float(sc["emphasis_rel_start"])
+            t1 = round(t0 + 0.15, 2)
+            t2 = round(t1 + 0.25, 2)
+            t3 = round(t2 + 0.20, 2)
+            dz = round(emphasis_zoom_intensity - 1.0, 3)
+            zoom_term = f"if(between(t,{t0:.2f},{t1:.2f}),{dz:.3f}*(t-{t0:.2f})/0.15,if(between(t,{t1:.2f},{t2:.2f}),{dz:.3f},if(between(t,{t2:.2f},{t3:.2f}),{dz:.3f}*(1-(t-{t2:.2f})/0.20),0)))"
+
         # Build filter pipeline:
         if enable_motion:
-            if item_idx % 2 == 0:
+            if has_punch_zoom:
+                vf_scale = f"scale=2208:1242:force_original_aspect_ratio=increase,crop=w='1920/(1+{zoom_term})':h='1080/(1+{zoom_term})':x='(in_w-out_w)/2+(in_w-out_w)/6*sin(2*PI*t/{max(0.5, dur)})':y='(in_h-out_h)/2+(in_h-out_h)/6*cos(2*PI*t/{max(0.5, dur)})',scale=1920:1080"
+            elif item_idx % 2 == 0:
                 vf_scale = f"scale=2048:1152:force_original_aspect_ratio=increase,crop=1920:1080:(in_w-out_w)/2+(in_w-out_w)/4*sin(2*PI*t/{max(0.5, dur)}):(in_h-out_h)/2+(in_h-out_h)/4*cos(2*PI*t/{max(0.5, dur)})"
             else:
                 vf_scale = f"scale=2048:1152:force_original_aspect_ratio=increase,crop=1920:1080:(in_w-out_w)*(t/{max(0.5, dur)}):(in_h-out_h)/2"
         else:
-            vf_scale = "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080"
+            if has_punch_zoom:
+                vf_scale = f"scale=2208:1242:force_original_aspect_ratio=increase,crop=w='1920/(1+{zoom_term})':h='1080/(1+{zoom_term})':x='(in_w-out_w)/2':y='(in_h-out_h)/2',scale=1920:1080"
+            else:
+                vf_scale = "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080"
 
         vf_parts = [vf_scale, "setsar=1", f"fps={fps}"]
         
@@ -265,8 +313,8 @@ def render_final_video(
 
     with ThreadPoolExecutor(max_workers=num_workers) as executor:
         futures = {
-            executor.submit(normalize_clip, i, sc_id, fpath, dur): i
-            for i, (sc_id, fpath, dur) in enumerate(valid_clips)
+            executor.submit(normalize_clip, i, sc_id, fpath, dur, sc): i
+            for i, (sc_id, fpath, dur, sc) in enumerate(valid_clips)
         }
         done_count = 0
         for fut in as_completed(futures):
@@ -352,6 +400,10 @@ def render_final_video(
     resolved_bgm_path = _resolve_bgm_path(bgm_track)
     has_bgm = bool(resolved_bgm_path and os.path.exists(resolved_bgm_path))
 
+    # Check for Transition Sound Stings (SFX)
+    resolved_sfx_path = _resolve_sfx_path(transition_sfx)
+    has_sfx = bool(resolved_sfx_path and os.path.exists(resolved_sfx_path) and len(valid_clips) > 1)
+
     # Construct FFmpeg inputs
     # Input 0: Stitched video
     # Input 1: Voiceover audio (guaranteed mapped)
@@ -361,12 +413,21 @@ def render_final_video(
         "-i", str(resolved_audio_path)
     ]
 
+    sfx_in_idx = None
     if has_bgm:
-        # Input 2: Background music
         final_cmd.extend(["-i", str(resolved_bgm_path)])
         print(f"[Renderer] Mixing BGM track: {resolved_bgm_path} at volume {bgm_volume:.2f}")
+        if has_sfx:
+            sfx_in_idx = 3
+            final_cmd.extend(["-i", str(resolved_sfx_path)])
+            print(f"[Renderer] Mixing transition SFX: {resolved_sfx_path} at volume {transition_sfx_volume:.2f}")
+    else:
+        if has_sfx:
+            sfx_in_idx = 2
+            final_cmd.extend(["-i", str(resolved_sfx_path)])
+            print(f"[Renderer] Mixing transition SFX: {resolved_sfx_path} at volume {transition_sfx_volume:.2f}")
 
-    # Build filter_complex for Video (ASS Subtitles) + Audio (Voiceover + BGM mix)
+    # Build filter_complex for Video (ASS Subtitles) + Audio (Voiceover + BGM + SFX mix)
     filter_complex_parts = []
     
     # 1. Video Filter: ASS subtitles if present
@@ -377,13 +438,50 @@ def render_final_video(
     else:
         video_map_label = "0:v:0"
 
-    # 2. Audio Filter: Mix voiceover (100%) + BGM (10%)
-    if has_bgm:
-        # Loop BGM seamlessly, duck to bgm_volume (10%), mix with voiceover
+    # 2. Audio Filter: Sound Stings (SFX) with adelay + Voiceover (100%) + BGM (ducked)
+    transition_timestamps = []
+    curr_t = 0.0
+    for i in range(len(valid_clips) - 1):
+        curr_t += float(valid_clips[i][2])
+        transition_timestamps.append(round(curr_t, 2))
+
+    if has_sfx and transition_timestamps and sfx_in_idx is not None:
+        k_sfx = len(transition_timestamps)
+        sfx_splits = "".join(f"[sfx_{k}]" for k in range(k_sfx))
+        sfx_filter_lines = [f"[{sfx_in_idx}:a]asplit={k_sfx}{sfx_splits}"]
+        for k, t_trans in enumerate(transition_timestamps):
+            delay_ms = max(0, int(round(t_trans * 1000)))
+            sfx_filter_lines.append(
+                f"[sfx_{k}]adelay={delay_ms}|{delay_ms},volume={transition_sfx_volume:.2f}[sfx_d{k}]"
+            )
+        if k_sfx == 1:
+            sfx_filter_lines.append("[sfx_d0]anull[sfx_all]")
+        else:
+            delayed_inputs = "".join(f"[sfx_d{k}]" for k in range(k_sfx))
+            sfx_filter_lines.append(f"{delayed_inputs}amix=inputs={k_sfx}:dropout_transition=0:normalize=0[sfx_all]")
+
+        filter_complex_parts.append(";".join(sfx_filter_lines))
+
+    if has_bgm and has_sfx:
+        audio_filter = (
+            f"[1:a]volume=1.0[vo];"
+            f"[2:a]aloop=loop=-1:size=2e+09,volume={bgm_volume:.2f}[bgm];"
+            f"[vo][bgm][sfx_all]amix=inputs=3:duration=first:dropout_transition=2[aout]"
+        )
+        filter_complex_parts.append(audio_filter)
+        audio_map_label = "[aout]"
+    elif has_bgm and not has_sfx:
         audio_filter = (
             f"[1:a]volume=1.0[vo];"
             f"[2:a]aloop=loop=-1:size=2e+09,volume={bgm_volume:.2f}[bgm];"
             f"[vo][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        )
+        filter_complex_parts.append(audio_filter)
+        audio_map_label = "[aout]"
+    elif not has_bgm and has_sfx:
+        audio_filter = (
+            f"[1:a]volume=1.0[vo];"
+            f"[vo][sfx_all]amix=inputs=2:duration=first:dropout_transition=2[aout]"
         )
         filter_complex_parts.append(audio_filter)
         audio_map_label = "[aout]"
@@ -418,6 +516,8 @@ def render_final_video(
         ]
         if has_bgm:
             cpu_cmd.extend(["-i", str(resolved_bgm_path)])
+        if has_sfx:
+            cpu_cmd.extend(["-i", str(resolved_sfx_path)])
         if filter_complex_parts:
             cpu_cmd.extend(["-filter_complex", ";".join(filter_complex_parts)])
             cpu_cmd.extend(["-map", video_map_label, "-map", audio_map_label])
