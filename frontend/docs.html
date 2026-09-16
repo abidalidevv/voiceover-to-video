@@ -472,6 +472,16 @@
         <span class="title">7. Transitions & BGM</span>
         <span class="desc">Modern whip pans, zoom punches, sentence-level trimming, and ambient BGM.</span>
       </a>
+      <a href="#bulk-batch" class="jump-card">
+        <span class="icon">⚡</span>
+        <span class="title">8. Bulk Batch & Multi-Threading</span>
+        <span class="desc">Drop 2, 5, 10+ audios at once. Parallel downloads & bounded concurrency.</span>
+      </a>
+      <a href="#templates" class="jump-card">
+        <span class="icon">📱</span>
+        <span class="title">9. Master Editing Templates</span>
+        <span class="desc">Shorts Viral, Documentary, Tech Explainer, Dark Stoic & Podcast Box.</span>
+      </a>
     </div>
 
     <!-- SECTION 1: QUICK START -->
@@ -801,10 +811,129 @@
       </div>
     </section>
 
-    <!-- SECTION 8: FAQ & TROUBLESHOOTING -->
+    <!-- SECTION 8: BULK BATCH GENERATION & MULTI-THREADING -->
+    <section class="docs-section" id="bulk-batch">
+      <span class="section-tag">Multi-Threaded Architecture</span>
+      <h2>8. Bulk Batch Video Generation & Multi-Threading Engine</h2>
+      <p class="lead">Eliminate workflow bottlenecks: drop 2, 5, 10, or 20+ voiceover audio files at once and let parallel workers download, edit, and render videos hands-free.</p>
+
+      <div class="feature-grid">
+        <div class="feature-box">
+          <h4>⚡ What Do Multi-Worker Threads Actually Do?</h4>
+          <p>In standard video tools, downloads and edits happen <strong>sequentially (1 by 1)</strong>: clip 1 takes 5s, clip 2 takes 5s, clip 10 takes 5s = 50 seconds wasted waiting.
+          <br><br>
+          VideoGen Studio uses a <strong>Concurrent Multi-Worker Thread Pool (6-8 threads)</strong>. When a voiceover is transcribed into 10 scenes, all 10 stock video clips are queried and downloaded <strong>simultaneously</strong> across the network, reducing download time from 50s down to <strong>under 8 seconds (500%+ speedup)</strong>.</p>
+        </div>
+
+        <div class="feature-box">
+          <h4>🛡️ Bounded 2-Stream Concurrency (Zero CPU Choke)</h4>
+          <p>Rendering multiple Full HD 1080p videos simultaneously can easily peg CPU and GPU usage to 100% and freeze your computer or crash stock APIs (Pexels limits you to 200 requests/hour).
+          <br><br>
+          VideoGen Studio solves this with <strong>Bounded 2-Stream Concurrency</strong>: 2 video projects are transcribed and downloaded in parallel, while FFmpeg rendering is throttled and serialized. Your PC stays completely responsive while churning out dozens of videos!</p>
+        </div>
+
+        <div class="feature-box">
+          <h4>📁 Multi-Audio Dropzone (Batch Upload)</h4>
+          <p>Switch from <strong>Single Video Studio</strong> to <strong>⚡ Bulk Batch Queue</strong> with 1 click. Drag and drop 5, 10, or 20 audio files (MP3, WAV, M4A). The engine automatically checks duration, file size, and prepares them in an interactive queue.</p>
+        </div>
+
+        <div class="feature-box">
+          <h4>📊 Real-Time Multi-Item Progress Dashboard</h4>
+          <p>Track your entire batch in real time:
+            <br>• <strong>Overall Batch Progress Bar:</strong> Shows completed vs total videos.
+            <br>• <strong>Per-Video Status Cards:</strong> Tracks transcription, scene downloading, kinetic caption generation, and MP4 rendering.
+            <br>• <strong>Instant Action Buttons:</strong> Once completed, open directly in Preview Studio, generate CapCut draft, or download MP4 with 1 click.
+          </p>
+        </div>
+      </div>
+
+      <div class="urdu-callout">
+        <strong>🇵🇰 Threads aur Bulk Batch kia hy?</strong> Agar aap 1, 1 video banaein tu ghanton lag jatay hain. Multi-threading ka matlab hy k 6 se 8 downloads aik sath (parallel) chalte hain. Aur Bulk Batch Mode me aap 10 se 20 audios aik sath daal dein, AI automatically voice transribe kare ga, matching Full HD footage download kare ga, transitions aur CapCut kinetic captions laga kar complete MP4 export kar de ga!
+      </div>
+    </section>
+
+    <!-- SECTION 9: MASTER VIDEO EDITING TEMPLATES -->
+    <section class="docs-section" id="templates">
+      <span class="section-tag">Production Presets</span>
+      <h2>9. Master Video Editing Templates & Transitions</h2>
+      <p class="lead">1-click presets that automatically bundle aspect ratio, cut pacing, transitions, kinetic caption styling, and ambient background music.</p>
+
+      <table class="docs-table">
+        <thead>
+          <tr>
+            <th>Template Name</th>
+            <th>Aspect Ratio</th>
+            <th>Scene Cut Pacing</th>
+            <th>Transition & Speed</th>
+            <th>Kinetic Captions</th>
+            <th>Ambient BGM</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>📱 YouTube Shorts & TikTok Viral</strong></td>
+            <td><span class="badge-pill badge-yellow">9:16 Vertical</span></td>
+            <td>Snappy 3.2s</td>
+            <td>⚡ Smooth Whip Pan (0.30s)</td>
+            <td>CapCut Viral Yellow (Montserrat)</td>
+            <td>☕ Lofi Chill Beats</td>
+          </tr>
+          <tr>
+            <td><strong>🎬 Long-Form Documentary</strong></td>
+            <td><span class="badge-pill badge-blue">16:9 1080p</span></td>
+            <td>Cinematic 5.0s</td>
+            <td>🌫️ Cinematic Crossfade (0.40s)</td>
+            <td>Iman Gadzhi Luxury Serif (Cinzel)</td>
+            <td>🧘 Deep Focus Drone</td>
+          </tr>
+          <tr>
+            <td><strong>⚡ Tech, AI & SaaS Explainer</strong></td>
+            <td><span class="badge-pill badge-cyan">16:9 1080p</span></td>
+            <td>Punchy 3.5s</td>
+            <td>🔍 Dynamic Zoom Punch (0.32s)</td>
+            <td>Neon Cyber Glow (Montserrat)</td>
+            <td>✨ Cinematic Ambient Pad</td>
+          </tr>
+          <tr>
+            <td><strong>🏛️ Dark Stoic Motivation</strong></td>
+            <td><span class="badge-pill badge-yellow">9:16 or 16:9</span></td>
+            <td>Snappy 3.2s</td>
+            <td>⚡ Fast Flash Fade (0.22s)</td>
+            <td>Dark Stoic Slate (Oswald)</td>
+            <td>🧘 Deep Focus Drone</td>
+          </tr>
+          <tr>
+            <td><strong>🎙️ Podcast & Interview Explainer</strong></td>
+            <td><span class="badge-pill badge-green">16:9 1080p</span></td>
+            <td>Natural 4.2s</td>
+            <td>✂️ Clean Jump Cut (0.00s)</td>
+            <td>Vox Rounded Pill Box (Outfit)</td>
+            <td>☕ Lofi Chill Beats</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="feature-grid mt-20">
+        <div class="feature-box">
+          <h4>🎚️ Transition Speed Slider (0.15s - 0.60s)</h4>
+          <p>Inside the <strong>Preview & CapCut Editor</strong> panel under <em>Video Polish & Cinematic FX</em>, you can now freely adjust the transition speed slider. Set <code>0.20s</code> for high-tempo viral reels or <code>0.45s</code> for emotional, atmospheric dissolves.</p>
+        </div>
+
+        <div class="feature-box">
+          <h4>⚡ 1-Click Master Template Quick Switcher</h4>
+          <p>Need to turn a 16:9 documentary into a 9:16 viral short? Simply pick any template from the dropdown at the top of the inspector. The aspect ratio, transition, caption font, and music immediately re-configure in real time.</p>
+        </div>
+      </div>
+
+      <div class="urdu-callout">
+        <strong>🇵🇰 Master Templates ka Faida:</strong> Har video style (Shorts, Documentary, Tech, Stoic, Podcast) ki settings pehlay se tuned hain. Aapko manually font ya transition adjust karnay ki zaroorat nahi — bas 1 click me complete professional editing style apply ho jata hy.
+      </div>
+    </section>
+
+    <!-- SECTION 10: FAQ & TROUBLESHOOTING -->
     <section class="docs-section" id="faq">
       <span class="section-tag">Help & Support</span>
-      <h2>8. FAQ & Troubleshooting</h2>
+      <h2>10. FAQ & Troubleshooting</h2>
 
       <div class="feature-grid">
         <div class="feature-box">

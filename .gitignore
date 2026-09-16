@@ -1,0 +1,35 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary, Caches & Generated Media
+data/cache/
+data/temp/
+data/output/
+data/exports/
+data/projects/
+*.db
+*.db-wal
+*.db-shm
+
+# Secrets & Local Credentials
+api.txt
+.env
+
+# Dependencies & Build
+node_modules/
+dist/
+build/
+
+# Test generated binary outputs
+test/*.mp4
+test/*.ass
+test/*.jpg
+test/*.png
+
+# System & Editor
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

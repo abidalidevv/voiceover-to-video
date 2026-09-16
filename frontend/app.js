@@ -16,11 +16,20 @@ let playbackTimer = null;
 let currentSceneIdx = -1;
 let swapTargetSceneId = null;
 
+// Bulk / Batch & Templates System State
+let studioMode = 'single';
+let allEditingTemplates = {};
+let selectedBulkTemplateId = 'shorts_viral';
+let batchFilesData = [];
+let activeBatchPollInterval = null;
+
 document.addEventListener('DOMContentLoaded', async () => {
   captionEngine = new CaptionEngine('subtitle-overlay', 'subtitle-text');
   captionEngine.applyContainerStyles();
 
   setupDropzone();
+  setupBatchDropzone();
+  await loadEditingTemplates();
   await loadSettings();
   await checkApiStatus();
   await loadProjectsLibrary();
@@ -48,6 +57,26 @@ function switchTab(tabId) {
 
   if (tabId === 'library') {
     loadProjectsLibrary();
+  }
+}
+
+function switchStudioMode(mode) {
+  studioMode = mode;
+  const singleGrid = document.getElementById('single-studio-grid');
+  const bulkGrid = document.getElementById('bulk-studio-grid');
+  const singleBtn = document.getElementById('mode-single-btn');
+  const bulkBtn = document.getElementById('mode-bulk-btn');
+
+  if (mode === 'single') {
+    if (singleGrid) singleGrid.classList.remove('hidden');
+    if (bulkGrid) bulkGrid.classList.add('hidden');
+    if (singleBtn) singleBtn.classList.add('active');
+    if (bulkBtn) bulkBtn.classList.remove('active');
+  } else {
+    if (singleGrid) singleGrid.classList.add('hidden');
+    if (bulkGrid) bulkGrid.classList.remove('hidden');
+    if (singleBtn) singleBtn.classList.remove('active');
+    if (bulkBtn) bulkBtn.classList.add('active');
   }
 }
 
@@ -1022,7 +1051,8 @@ async function startExportRender() {
     enable_vignette: document.getElementById('vignette-checkbox')?.checked ?? false,
     mute_stock_audio: document.getElementById('mute-stock-checkbox')?.checked ?? true,
     color_grade: document.getElementById('color-grade-select')?.value || 'clean',
-    transition: document.getElementById('transition-select')?.value || 'none'
+    transition: document.getElementById('transition-select')?.value || 'none',
+    transition_duration: parseFloat(document.getElementById('transition-speed-slider')?.value || '0.30')
   };
 
   const modal = document.getElementById('processing-modal');
@@ -1239,4 +1269,350 @@ function updateBgmVolume(val) {
 function updateBgmSelection() {
   const sel = document.getElementById('bgm-track-select');
   console.log('BGM track selected:', sel ? sel.value : '');
+}
+
+// ==================== EDITING TEMPLATES & PRESETS ====================
+async function loadEditingTemplates() {
+  try {
+    const res = await fetch('/api/templates');
+    if (!res.ok) return;
+    const list = await res.json();
+    allEditingTemplates = {};
+    list.forEach(t => { allEditingTemplates[t.id] = t; });
+  } catch (e) {
+    console.error('Failed to load editing templates:', e);
+  }
+}
+
+function selectBulkTemplate(tmplId) {
+  selectedBulkTemplateId = tmplId;
+  document.querySelectorAll('.template-card').forEach(c => c.classList.remove('active'));
+  const card = document.getElementById(`tmpl-card-${tmplId}`);
+  if (card) card.classList.add('active');
+
+  const tmpl = allEditingTemplates[tmplId];
+  if (tmpl && tmpl.niche) {
+    const nicheSel = document.getElementById('batch-niche-select');
+    if (nicheSel) {
+      for (let i = 0; i < nicheSel.options.length; i++) {
+        if (nicheSel.options[i].value === tmpl.niche || nicheSel.options[i].text.includes(tmpl.niche)) {
+          nicheSel.selectedIndex = i;
+          break;
+        }
+      }
+    }
+  }
+  showToast(`⚡ Selected Template: <strong>${tmpl ? tmpl.name : tmplId}</strong>`);
+}
+
+function onSingleTemplateChange(tmplId) {
+  const tmpl = allEditingTemplates[tmplId];
+  if (!tmpl) return;
+  const nicheSel = document.getElementById('niche-select');
+  if (nicheSel && tmpl.niche) {
+    for (let i = 0; i < nicheSel.options.length; i++) {
+      if (nicheSel.options[i].value === tmpl.niche || nicheSel.options[i].text.includes(tmpl.niche)) {
+        nicheSel.selectedIndex = i;
+        break;
+      }
+    }
+  }
+  showToast(`📱 Set Template: <strong>${tmpl.name}</strong>`);
+}
+
+function applyEditingTemplate(tmplId) {
+  const tmpl = allEditingTemplates[tmplId];
+  if (!tmpl) return;
+
+  // 1. Transition & Speed
+  if (tmpl.transition && document.getElementById('transition-select')) {
+    document.getElementById('transition-select').value = tmpl.transition;
+  }
+  if (tmpl.transition_duration !== undefined && document.getElementById('transition-speed-slider')) {
+    document.getElementById('transition-speed-slider').value = tmpl.transition_duration;
+    const speedLbl = document.getElementById('transition-speed-val');
+    if (speedLbl) speedLbl.textContent = parseFloat(tmpl.transition_duration).toFixed(2);
+  }
+
+  // 2. BGM
+  if (tmpl.bgm_track && document.getElementById('bgm-track-select')) {
+    const key = tmpl.bgm_track.replace('.mp3', '');
+    document.getElementById('bgm-track-select').value = key;
+  }
+  if (tmpl.bgm_volume !== undefined && document.getElementById('bgm-volume-slider')) {
+    const volPct = Math.round(tmpl.bgm_volume * 100);
+    document.getElementById('bgm-volume-slider').value = volPct;
+    const volLbl = document.getElementById('bgm-volume-val');
+    if (volLbl) volLbl.textContent = volPct;
+  }
+
+  // 3. Kinetic Caption Style
+  if (tmpl.caption_style) {
+    const presetKey = tmpl.caption_style.replace('-', '_');
+    applyPreset(presetKey);
+  }
+
+  // 4. Aspect Ratio visual
+  const container = document.getElementById('video-container');
+  if (container) {
+    if (tmpl.aspect_ratio === '9:16') {
+      container.classList.add('aspect-9-16');
+    } else {
+      container.classList.remove('aspect-9-16');
+    }
+  }
+
+  showToast(`✨ Applied Master Template: <strong>${tmpl.name}</strong>`);
+}
+
+function updateTransitionSpeed(val) {
+  const lbl = document.getElementById('transition-speed-val');
+  if (lbl) lbl.textContent = parseFloat(val).toFixed(2);
+}
+
+// ==================== BATCH MULTI-AUDIO UPLOAD & QUEUE ====================
+function setupBatchDropzone() {
+  const dropzone = document.getElementById('batch-dropzone');
+  if (!dropzone) return;
+
+  ['dragenter', 'dragover'].forEach(name => {
+    dropzone.addEventListener(name, (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(name => {
+    dropzone.addEventListener(name, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+    });
+  });
+
+  dropzone.addEventListener('drop', (e) => {
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      uploadBatchFiles(Array.from(files));
+    }
+  });
+}
+
+function handleBatchAudioSelect(event) {
+  const files = event.target.files;
+  if (files.length > 0) {
+    uploadBatchFiles(Array.from(files));
+  }
+}
+
+async function uploadBatchFiles(files) {
+  const promptEl = document.getElementById('batch-dropzone-prompt');
+  promptEl.innerHTML = '<div class="modal-spinner" style="width:28px;height:28px;margin-bottom:8px;"></div><h3>Uploading and analyzing audio clips in parallel...</h3>';
+
+  const formData = new FormData();
+  files.forEach(f => formData.append('files', f));
+
+  try {
+    const res = await fetch('/api/batch-upload-audio', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.files && data.files.length > 0) {
+      batchFilesData.push(...data.files);
+    }
+    renderBatchFilesPreview();
+    showToast(`🎵 Added <strong>${data.files.length}</strong> audio files to queue!`);
+  } catch (err) {
+    alert('Failed to upload audio files: ' + err.message);
+  } finally {
+    promptEl.innerHTML = `
+      <div class="dropzone-icon">📁⚡</div>
+      <h3>Drop multiple voiceover audio files here or click to browse</h3>
+      <p>Select 2, 5, 10 or more MP3/WAV files to process in parallel</p>
+    `;
+    const inp = document.getElementById('batch-audio-input');
+    if (inp) inp.value = '';
+  }
+}
+
+function renderBatchFilesPreview() {
+  const box = document.getElementById('batch-files-preview-box');
+  const listEl = document.getElementById('batch-files-list');
+  const countNum = document.getElementById('batch-count-num');
+  const btnCount = document.getElementById('batch-btn-count');
+  const startBtn = document.getElementById('batch-start-btn');
+
+  if (batchFilesData.length === 0) {
+    box.classList.add('hidden');
+    startBtn.disabled = true;
+    if (countNum) countNum.textContent = '0';
+    if (btnCount) btnCount.textContent = '0';
+    return;
+  }
+
+  box.classList.remove('hidden');
+  startBtn.disabled = false;
+  if (countNum) countNum.textContent = batchFilesData.length;
+  if (btnCount) btnCount.textContent = batchFilesData.length;
+
+  listEl.innerHTML = '';
+  batchFilesData.forEach((f, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'batch-file-chip';
+    const mins = Math.floor(f.duration / 60);
+    const secs = Math.floor(f.duration % 60);
+    chip.innerHTML = `
+      <div class="batch-file-chip-info">
+        <span class="batch-file-chip-name">${f.original_name}</span>
+        <span class="batch-file-chip-meta">⏱ ${mins}:${secs < 10 ? '0' : ''}${secs}</span>
+      </div>
+      <button class="batch-file-remove-btn" onclick="removeBatchFile(${idx})" title="Remove">✕</button>
+    `;
+    listEl.appendChild(chip);
+  });
+}
+
+function removeBatchFile(idx) {
+  batchFilesData.splice(idx, 1);
+  renderBatchFilesPreview();
+}
+
+function resetBatchUpload() {
+  batchFilesData = [];
+  renderBatchFilesPreview();
+}
+
+// ==================== BATCH GENERATION EXECUTION & POLLING ====================
+async function startBatchGeneration() {
+  if (batchFilesData.length === 0) {
+    alert('Please upload voiceover audio files first!');
+    return;
+  }
+
+  const niche = document.getElementById('batch-niche-select').value;
+  const autoRender = document.getElementById('batch-autorender-checkbox').checked;
+  const filenames = batchFilesData.map(f => f.filename);
+
+  const dashCard = document.getElementById('batch-dashboard-card');
+  dashCard.classList.remove('hidden');
+  dashCard.scrollIntoView({ behavior: 'smooth' });
+
+  document.getElementById('batch-start-btn').disabled = true;
+  document.getElementById('batch-overall-status').textContent = 'Starting multi-worker batch pipeline...';
+  document.getElementById('batch-overall-progress-bar').style.width = '2%';
+  document.getElementById('batch-overall-pct').textContent = '2%';
+  document.getElementById('batch-completed-counter').textContent = `0 / ${filenames.length} Completed`;
+
+  const container = document.getElementById('batch-items-container');
+  container.innerHTML = '';
+  batchFilesData.forEach((f, idx) => {
+    const card = document.createElement('div');
+    card.className = 'batch-item-card';
+    card.id = `batch-item-card-${idx}`;
+    card.innerHTML = `
+      <div class="batch-item-top">
+        <span class="batch-item-title">${f.original_name}</span>
+        <span class="batch-item-status-badge queued" id="batch-item-badge-${idx}">Queued</span>
+      </div>
+      <div class="progress-bar-wrap" style="height:6px;">
+        <div class="progress-bar" id="batch-item-bar-${idx}" style="width: 0%;"></div>
+      </div>
+      <div class="batch-item-desc" id="batch-item-desc-${idx}">Waiting in worker queue...</div>
+      <div class="batch-item-actions hidden" id="batch-item-actions-${idx}"></div>
+    `;
+    container.appendChild(card);
+  });
+
+  try {
+    const res = await fetch('/api/start-batch-generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        audio_filenames: filenames,
+        template_id: selectedBulkTemplateId,
+        niche: niche,
+        pipeline: activePipeline,
+        auto_render: autoRender
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to start batch');
+    }
+
+    const { batch_id } = await res.json();
+
+    if (activeBatchPollInterval) clearInterval(activeBatchPollInterval);
+
+    activeBatchPollInterval = setInterval(async () => {
+      try {
+        const pRes = await fetch(`/api/batch-progress/${batch_id}`);
+        if (!pRes.ok) return;
+        const job = await pRes.json();
+
+        // Update overall batch bar
+        const total = job.total || filenames.length;
+        const completed = job.completed || 0;
+        const overallPct = job.percent || Math.round((completed / total) * 100);
+
+        document.getElementById('batch-overall-progress-bar').style.width = `${overallPct}%`;
+        document.getElementById('batch-overall-pct').textContent = `${overallPct}%`;
+        document.getElementById('batch-completed-counter').textContent = `${completed} / ${total} Completed`;
+        document.getElementById('batch-overall-status').textContent = 
+          job.status === 'completed' 
+            ? '✅ All batch videos finished successfully!' 
+            : `Processing ${total - completed} videos concurrently across 6-8 worker threads...`;
+
+        // Update individual cards
+        if (job.items) {
+          job.items.forEach((item, i) => {
+            const badge = document.getElementById(`batch-item-badge-${i}`);
+            const bar = document.getElementById(`batch-item-bar-${i}`);
+            const desc = document.getElementById(`batch-item-desc-${i}`);
+            const act = document.getElementById(`batch-item-actions-${i}`);
+            const card = document.getElementById(`batch-item-card-${i}`);
+
+            if (badge) {
+              badge.className = `batch-item-status-badge ${item.status}`;
+              badge.textContent = item.status.toUpperCase();
+            }
+            if (bar) {
+              bar.style.width = `${item.percent || 0}%`;
+            }
+            if (desc) {
+              desc.textContent = item.error ? `❌ Error: ${item.error}` : (item.stage_desc || 'Processing...');
+            }
+            if (card) {
+              if (item.status === 'completed') card.className = 'batch-item-card completed';
+              if (item.status === 'error') card.className = 'batch-item-card error';
+            }
+
+            if (item.status === 'completed' && act && act.classList.contains('hidden')) {
+              act.classList.remove('hidden');
+              act.innerHTML = `
+                ${item.project_id ? `<button class="btn btn-secondary btn-sm" onclick="openProjectInPreview('${item.project_id}')">🎬 Studio</button>` : ''}
+                ${item.project_id ? `<button class="btn btn-capcut btn-sm" onclick="exportProjectCardToCapCut('${item.project_id}')">✂️ CapCut</button>` : ''}
+                ${item.rendered_url ? `<a href="${item.rendered_url}" download class="btn btn-success btn-sm">💾 MP4</a>` : ''}
+              `;
+            }
+          });
+        }
+
+        if (job.status === 'completed') {
+          clearInterval(activeBatchPollInterval);
+          activeBatchPollInterval = null;
+          document.getElementById('batch-start-btn').disabled = false;
+          showToast('🎉 All batch videos processed & rendered successfully!');
+          loadProjectsLibrary();
+        }
+      } catch (err) {
+        console.error('Error polling batch progress:', err);
+      }
+    }, 600);
+
+  } catch (err) {
+    alert('Failed to start batch generation: ' + err.message);
+    document.getElementById('batch-start-btn').disabled = false;
+  }
 }

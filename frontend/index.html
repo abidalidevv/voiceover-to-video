@@ -216,11 +216,27 @@
     <section class="tab-pane active" id="tab-studio">
       <div class="studio-card">
         <div class="studio-card-header">
-          <h2>Create New YouTube Video</h2>
-          <p class="subtitle">Upload your voiceover audio and choose a niche. The AI engine will transcribe, segment scenes, download matched Full HD stock videos with multi-worker concurrency, and apply CapCut kinetic captions.</p>
+          <div class="studio-header-row">
+            <div>
+              <h2>Create YouTube Videos & Shorts</h2>
+              <p class="subtitle">Transcribe audio, auto-segment scenes, grab 1080p stock footage with concurrent threads, and apply CapCut kinetic captions, transitions & BGM.</p>
+            </div>
+            <!-- Studio Mode Toggle: Single vs Bulk -->
+            <div class="studio-mode-toggle-wrap">
+              <div class="studio-mode-switch">
+                <button class="mode-tab active" id="mode-single-btn" onclick="switchStudioMode('single')">
+                  <span>🎙️ Single Video Studio</span>
+                </button>
+                <button class="mode-tab" id="mode-bulk-btn" onclick="switchStudioMode('bulk')">
+                  <span>⚡ Bulk Batch Queue <span class="badge badge-accent">Multi-Video</span></span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="studio-grid">
+        <!-- ==================== MODE 1: SINGLE VIDEO STUDIO ==================== -->
+        <div class="studio-grid" id="single-studio-grid">
           <!-- Left: Audio Upload Zone -->
           <div class="upload-section">
             <label class="form-label">Voiceover Audio File</label>
@@ -229,7 +245,7 @@
               <div class="dropzone-content" id="dropzone-prompt">
                 <div class="dropzone-icon">🎵</div>
                 <h3>Drop voiceover audio here or click to browse</h3>
-                <p>Supports MP3, WAV, M4A, AAC (YouTube Full HD 16:9 output)</p>
+                <p>Supports MP3, WAV, M4A, AAC (YouTube Full HD 16:9 or 9:16 Shorts)</p>
               </div>
               <div class="dropzone-content hidden" id="dropzone-fileinfo">
                 <div class="dropzone-icon success">✅</div>
@@ -239,6 +255,21 @@
                 </div>
                 <button class="btn btn-xs btn-outline" onclick="event.stopPropagation(); resetAudioUpload()">Change File</button>
               </div>
+            </div>
+
+            <!-- Master Editing Template Selection -->
+            <div class="form-group mt-20">
+              <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
+                <span>Master Video Editing Template</span>
+                <span style="font-size:11px;color:var(--accent-cyan);font-weight:600;">1-Click Pacing, Transitions & FX</span>
+              </label>
+              <select id="single-template-select" class="form-select" onchange="onSingleTemplateChange(this.value)">
+                <option value="shorts_viral" selected>📱 YouTube Shorts & TikTok Viral (9:16 • Whip Pan • CapCut Yellow • 3.2s Cuts)</option>
+                <option value="documentary_cinematic">🎬 YouTube Long-Form Documentary (16:9 • Crossfade • Luxury Serif • 5.0s Cuts)</option>
+                <option value="tech_explainer">⚡ Tech, AI & Explainer (16:9 • Zoom Punch • Neon Cyber • 3.5s Cuts)</option>
+                <option value="stoic_motivation">🏛️ Dark Stoic Motivation (9:16 • Flash Fade • Bold Slate • 3.2s Cuts)</option>
+                <option value="podcast_pill">🎙️ Podcast & Interview Explainer (16:9 • Clean Jump • Pill Box • 4.2s Cuts)</option>
+              </select>
             </div>
 
             <!-- Pipeline Selection -->
@@ -297,7 +328,7 @@
           <!-- Right: Workflow Guidance & Live Status -->
           <div class="info-sidebar">
             <div class="sidebar-box">
-              <h3>⚡ How It Works</h3>
+              <h3>⚡ Multi-Threaded Engine</h3>
               <ul class="feature-checklist">
                 <li>
                   <span class="step-num">1</span>
@@ -317,7 +348,7 @@
                   <span class="step-num">3</span>
                   <div>
                     <strong>Multi-Worker Concurrent Downloader</strong>
-                    <p>Pexels & Pixabay APIs are queried in parallel across multiple worker threads.</p>
+                    <p>Stock APIs are queried in parallel across 6-8 worker threads for 500% faster fetch.</p>
                   </div>
                 </li>
                 <li>
@@ -347,6 +378,175 @@
               <button class="btn btn-outline btn-xs mt-12 btn-block" onclick="switchTab('settings')">
                 Configure Keys in Settings
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== MODE 2: BULK BATCH VIDEO STUDIO ==================== -->
+        <div class="bulk-studio-grid hidden" id="bulk-studio-grid">
+          <!-- Step 1: Visual Editing Templates Grid -->
+          <div class="bulk-section-card">
+            <div class="bulk-section-header">
+              <div class="bulk-step-badge">PRESET</div>
+              <div>
+                <h3>Select Master Production Editing Template</h3>
+                <p>Each template bundles pre-tuned cut pacing, transitions, kinetic caption styling, aspect ratio, and ambient background music.</p>
+              </div>
+            </div>
+
+            <div class="template-cards-grid" id="template-cards-grid">
+              <!-- Template cards dynamically injected or fallback rendered -->
+              <div class="template-card active" onclick="selectBulkTemplate('shorts_viral')" id="tmpl-card-shorts_viral">
+                <div class="template-card-badge">9:16 Vertical</div>
+                <div class="template-card-icon">📱</div>
+                <h4 class="template-card-title">YouTube Shorts & TikTok Viral</h4>
+                <p class="template-card-desc">Fast 3.2s visual cuts, dynamic whip pan slides, CapCut viral yellow captions, and upbeat chill beats.</p>
+                <div class="template-card-specs">
+                  <span>⚡ 3.2s Cuts</span>
+                  <span>🔄 Whip Pan</span>
+                  <span>🎵 Lofi Chill</span>
+                </div>
+              </div>
+
+              <div class="template-card" onclick="selectBulkTemplate('documentary_cinematic')" id="tmpl-card-documentary_cinematic">
+                <div class="template-card-badge">16:9 Cinematic</div>
+                <div class="template-card-icon">🎬</div>
+                <h4 class="template-card-title">Long-Form Documentary</h4>
+                <p class="template-card-desc">Elegant 5.0s documentary pacing, smooth cinematic crossfades, Iman Gadzhi serif captions, and deep focus ambient.</p>
+                <div class="template-card-specs">
+                  <span>⏳ 5.0s Pacing</span>
+                  <span>🌫️ Crossfade</span>
+                  <span>🧘 Deep Focus</span>
+                </div>
+              </div>
+
+              <div class="template-card" onclick="selectBulkTemplate('tech_explainer')" id="tmpl-card-tech_explainer">
+                <div class="template-card-badge">16:9 High-Tech</div>
+                <div class="template-card-icon">⚡</div>
+                <h4 class="template-card-title">Tech, AI & Explainer</h4>
+                <p class="template-card-desc">Punchy 3.5s cuts with dynamic zoom punch transitions, glowing neon cyber captions, and cinematic ambient synth.</p>
+                <div class="template-card-specs">
+                  <span>🔍 Zoom Punch</span>
+                  <span>✨ Neon Cyber</span>
+                  <span>🌌 Ambient Pad</span>
+                </div>
+              </div>
+
+              <div class="template-card" onclick="selectBulkTemplate('stoic_motivation')" id="tmpl-card-stoic_motivation">
+                <div class="template-card-badge">9:16 / 16:9</div>
+                <div class="template-card-icon">🏛️</div>
+                <h4 class="template-card-title">Dark Stoic Motivation</h4>
+                <p class="template-card-desc">High-contrast visuals, fast flash cuts, bold dark stoic captions, and deep atmospheric drone soundscapes.</p>
+                <div class="template-card-specs">
+                  <span>⚡ Flash Fade</span>
+                  <span>🗿 Dark Stoic</span>
+                  <span>🧘 Deep Focus</span>
+                </div>
+              </div>
+
+              <div class="template-card" onclick="selectBulkTemplate('podcast_pill')" id="tmpl-card-podcast_pill">
+                <div class="template-card-badge">16:9 Creator</div>
+                <div class="template-card-icon">🎙️</div>
+                <h4 class="template-card-title">Podcast & Interview Explainer</h4>
+                <p class="template-card-desc">Clean jump cuts on natural sentence boundaries, pill-box captions with yellow highlights, and gentle background lofi.</p>
+                <div class="template-card-specs">
+                  <span>✂️ Clean Jump</span>
+                  <span>📦 Pill Box</span>
+                  <span>☕ Lofi Beats</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Multi-Audio Dropzone & Controls -->
+          <div class="bulk-section-card mt-20">
+            <div class="bulk-section-header">
+              <div class="bulk-step-badge">BATCH</div>
+              <div>
+                <h3>Upload Voiceover Audio Clips for Bulk Queue</h3>
+                <p>Select multiple audio files (MP3, WAV, M4A). The engine transcribes, fetches footage, and renders all videos automatically.</p>
+              </div>
+            </div>
+
+            <div class="dropzone batch-dropzone" id="batch-dropzone" onclick="document.getElementById('batch-audio-input').click()">
+              <input type="file" id="batch-audio-input" multiple accept="audio/*,.mp3,.wav,.m4a,.aac" style="display:none" onchange="handleBatchAudioSelect(event)">
+              <div class="dropzone-content" id="batch-dropzone-prompt">
+                <div class="dropzone-icon">📁⚡</div>
+                <h3>Drop multiple voiceover audio files here or click to browse</h3>
+                <p>Select 2, 5, 10 or more MP3/WAV files to process in parallel</p>
+              </div>
+            </div>
+
+            <!-- Uploaded Files Preview Chips -->
+            <div class="batch-files-preview-box hidden mt-16" id="batch-files-preview-box">
+              <div class="batch-preview-header">
+                <strong>Queued Audio Files (<span id="batch-count-num">0</span>)</strong>
+                <button class="btn btn-outline btn-xs" onclick="resetBatchUpload()">Clear All</button>
+              </div>
+              <div class="batch-files-list" id="batch-files-list"></div>
+            </div>
+
+            <div class="bulk-controls-bar mt-16">
+              <div class="form-group" style="flex: 1.2;">
+                <label class="form-label">Visual Niche / Theme</label>
+                <select id="batch-niche-select" class="form-select">
+                  <option value="Motivation Psychology" selected>🔥 Motivation Psychology (Dark / Stoic / High Energy)</option>
+                  <option value="Nature & Wildlife">🌿 Nature & Wildlife (Scenic 4K Landscapes / Relaxing)</option>
+                  <option value="Tech & AI">🤖 Tech & AI (Futuristic / Coding / Cyberpunk / Robotics)</option>
+                  <option value="Finance & Wealth">💰 Finance & Wealth (Stock Market / Crypto / Business / Cash)</option>
+                  <option value="Luxury & Lifestyle">🏎️ Luxury & Lifestyle (Supercars / Penthouses / Yachts)</option>
+                  <option value="Fitness & Health">💪 Fitness & Health (Gym Training / Athletes / Wellness)</option>
+                  <option value="Stoicism & Philosophy">🏛️ Stoicism & Philosophy (Statues / Deep Thought / Moody)</option>
+                  <option value="Sci-Fi & Space">🛸 Sci-Fi & Space (Cosmos / Galaxies / Astrophotography / NASA)</option>
+                  <option value="Crime & Mystery">🕵️ Crime & Mystery (Dark Noir / True Crime / Suspense)</option>
+                  <option value="General">✨ General Inspiring / Dynamic B-Roll</option>
+                </select>
+              </div>
+
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Auto-Render Output</label>
+                <div style="display:flex;align-items:center;height:42px;">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="batch-autorender-checkbox" checked>
+                    <span>Auto-render 1080p MP4 + CapCut Draft</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group" style="flex: 1.2; display:flex; align-items:flex-end;">
+                <button class="btn btn-primary btn-block btn-lg" id="batch-start-btn" onclick="startBatchGeneration()" disabled>
+                  🚀 Start Batch Generation (<span id="batch-btn-count">0</span> Videos)
+                </button>
+              </div>
+            </div>
+
+            <div class="concurrency-guard-pill mt-12">
+              <span>🛡️ <strong>Multi-Worker Pipeline:</strong> 6-8 parallel network threads for stock video downloads + bounded 2-stream rendering queue. Maximizes throughput while protecting your CPU and preventing stock API rate limits.</span>
+            </div>
+          </div>
+
+          <!-- Step 3: Batch Live Progress Dashboard -->
+          <div class="bulk-section-card mt-20 hidden" id="batch-dashboard-card">
+            <div class="batch-overall-header">
+              <div>
+                <h3 style="display:flex;align-items:center;gap:8px;">
+                  <span class="modal-spinner" style="width:18px;height:18px;border-width:2px;"></span>
+                  <span>Batch Generation In Progress</span>
+                </h3>
+                <p id="batch-overall-status">Processing videos in queue...</p>
+              </div>
+              <div class="batch-overall-counter">
+                <span id="batch-completed-counter">0 / 0 Completed</span>
+                <span class="badge badge-accent" id="batch-overall-pct">0%</span>
+              </div>
+            </div>
+
+            <div class="progress-bar-wrap mt-10">
+              <div class="progress-bar" id="batch-overall-progress-bar" style="width: 0%;"></div>
+            </div>
+
+            <div class="batch-items-grid mt-20" id="batch-items-container">
+              <!-- Cards rendered per audio file in batch -->
             </div>
           </div>
         </div>
@@ -412,7 +612,22 @@
             <p>Customize kinetic animated subtitles live before final export.</p>
           </div>
 
-          <!-- Style Presets (Aa Templates) -->
+          <!-- Master Editing Template Quick Selector -->
+          <div class="inspector-section" style="background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.22); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 12px;">
+            <label class="section-title" style="color: var(--accent-cyan); display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span>⚡ Master Editing Template</span>
+              <span style="font-size: 10px; font-weight: 600; text-transform: none; color: #94a3b8;">1-Click Pacing & FX</span>
+            </label>
+            <select id="quick-template-select" class="form-select" onchange="applyEditingTemplate(this.value)">
+              <option value="" disabled selected>Quick Apply Master Template...</option>
+              <option value="shorts_viral">📱 YouTube Shorts & TikTok Viral (9:16 • Whip Pan • Yellow)</option>
+              <option value="documentary_cinematic">🎬 Long-Form Documentary (16:9 • Crossfade • Luxury Serif)</option>
+              <option value="tech_explainer">⚡ Tech, AI & Explainer (16:9 • Zoom Punch • Neon Cyber)</option>
+              <option value="stoic_motivation">🏛️ Dark Stoic Motivation (9:16 • Flash Fade • Dark Slate)</option>
+              <option value="podcast_pill">🎙️ Podcast & Interview (16:9 • Clean Jump • Pill Box)</option>
+            </select>
+          </div>
+
           <!-- Style Presets (Aa Templates) -->
           <div class="inspector-section">
             <label class="section-title">Preset Style Templates</label>
@@ -629,6 +844,12 @@
                 <option value="fadefast">⚡ Fast Flash Fade (0.25s)</option>
                 <option value="circlecrop">🎯 Focus Iris / Circle Open</option>
               </select>
+            </div>
+            <div class="form-row mt-8" id="transition-speed-row">
+              <div class="form-group flex-1">
+                <label class="sub-label">Transition Speed (<span id="transition-speed-val">0.30</span>s)</label>
+                <input type="range" id="transition-speed-slider" min="0.15" max="0.60" step="0.05" value="0.30" oninput="updateTransitionSpeed(this.value)">
+              </div>
             </div>
           </div>
 <!-- Final Export Bar -->

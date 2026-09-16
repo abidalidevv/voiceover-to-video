@@ -1,0 +1,17 @@
+{
+  "name": "videogen-studio",
+  "version": "1.0.0",
+  "description": "AI-Powered YouTube Full HD Video Generator Desktop Application",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "backend": "python backend/main.py",
+    "build": "electron-builder"
+  },
+  "keywords": ["video", "youtube", "ai", "generator", "captions", "groq", "pexels", "pixabay"],
+  "author": "VideoGen Team",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^34.2.0"
+  }
+}
