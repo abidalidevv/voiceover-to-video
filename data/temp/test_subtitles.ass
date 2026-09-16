@@ -1,0 +1,50 @@
+[Script Info]
+Title: VideoGen CapCut Subtitles
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Montserrat,53,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,1,0,0,0,100,100,1,0,1,8.0,4.0,2,50,50,140,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:00.52,Default,,0,0,0,,{\c&H0010E0FF\fscx108\fscy108\b1}YOU{\c&H00FFFFFF\fscx100\fscy100\b1} ARE NOT TIRED.
+Dialogue: 0,0:00:00.56,0:00:01.08,Default,,0,0,0,,YOU {\c&H0010E0FF\fscx108\fscy108\b1}ARE{\c&H00FFFFFF\fscx100\fscy100\b1} NOT TIRED.
+Dialogue: 0,0:00:01.13,0:00:01.65,Default,,0,0,0,,YOU ARE {\c&H0010E0FF\fscx108\fscy108\b1}NOT{\c&H00FFFFFF\fscx100\fscy100\b1} TIRED.
+Dialogue: 0,0:00:01.69,0:00:02.21,Default,,0,0,0,,YOU ARE NOT {\c&H0010E0FF\fscx108\fscy108\b1}TIRED.{\c&H00FFFFFF\fscx100\fscy100\b1}
+Dialogue: 0,0:00:02.26,0:00:02.78,Default,,0,0,0,,{\c&H0010E0FF\fscx108\fscy108\b1}YOU{\c&H00FFFFFF\fscx100\fscy100\b1} ARE JUST UNINSPIRED.
+Dialogue: 0,0:00:02.82,0:00:03.34,Default,,0,0,0,,YOU {\c&H0010E0FF\fscx108\fscy108\b1}ARE{\c&H00FFFFFF\fscx100\fscy100\b1} JUST UNINSPIRED.
+Dialogue: 0,0:00:03.39,0:00:03.91,Default,,0,0,0,,YOU ARE {\c&H0010E0FF\fscx108\fscy108\b1}JUST{\c&H00FFFFFF\fscx100\fscy100\b1} UNINSPIRED.
+Dialogue: 0,0:00:03.95,0:00:04.47,Default,,0,0,0,,YOU ARE JUST {\c&H0010E0FF\fscx108\fscy108\b1}UNINSPIRED.{\c&H00FFFFFF\fscx100\fscy100\b1}
+Dialogue: 0,0:00:04.52,0:00:04.94,Default,,0,0,0,,{\c&H0010E0FF\fscx108\fscy108\b1}THE{\c&H00FFFFFF\fscx100\fscy100\b1} DISTANCE BETWEEN YOUR DREAMS
+Dialogue: 0,0:00:04.97,0:00:05.39,Default,,0,0,0,,THE {\c&H0010E0FF\fscx108\fscy108\b1}DISTANCE{\c&H00FFFFFF\fscx100\fscy100\b1} BETWEEN YOUR DREAMS
+Dialogue: 0,0:00:05.42,0:00:05.84,Default,,0,0,0,,THE DISTANCE {\c&H0010E0FF\fscx108\fscy108\b1}BETWEEN{\c&H00FFFFFF\fscx100\fscy100\b1} YOUR DREAMS
+Dialogue: 0,0:00:05.88,0:00:06.30,Default,,0,0,0,,THE DISTANCE BETWEEN {\c&H0010E0FF\fscx108\fscy108\b1}YOUR{\c&H00FFFFFF\fscx100\fscy100\b1} DREAMS
+Dialogue: 0,0:00:06.33,0:00:06.75,Default,,0,0,0,,THE DISTANCE BETWEEN YOUR {\c&H0010E0FF\fscx108\fscy108\b1}DREAMS{\c&H00FFFFFF\fscx100\fscy100\b1}
+Dialogue: 0,0:00:06.78,0:00:07.20,Default,,0,0,0,,{\c&H0010E0FF\fscx108\fscy108\b1}AND{\c&H00FFFFFF\fscx100\fscy100\b1} REALITY IS CALLED DISCIPLINE.
+Dialogue: 0,0:00:07.23,0:00:07.65,Default,,0,0,0,,AND {\c&H0010E0FF\fscx108\fscy108\b1}REALITY{\c&H00FFFFFF\fscx100\fscy100\b1} IS CALLED DISCIPLINE.
+Dialogue: 0,0:00:07.68,0:00:08.10,Default,,0,0,0,,AND REALITY {\c&H0010E0FF\fscx108\fscy108\b1}IS{\c&H00FFFFFF\fscx100\fscy100\b1} CALLED DISCIPLINE.
+Dialogue: 0,0:00:08.14,0:00:08.56,Default,,0,0,0,,AND REALITY IS {\c&H0010E0FF\fscx108\fscy108\b1}CALLED{\c&H00FFFFFF\fscx100\fscy100\b1} DISCIPLINE.
+Dialogue: 0,0:00:08.59,0:00:09.01,Default,,0,0,0,,AND REALITY IS CALLED {\c&H0010E0FF\fscx108\fscy108\b1}DISCIPLINE.{\c&H00FFFFFF\fscx100\fscy100\b1}
+Dialogue: 0,0:00:09.04,0:00:09.26,Default,,0,0,0,,{\c&H0010E0FF\fscx108\fscy108\b1}EVERY{\c&H00FFFFFF\fscx100\fscy100\b1} SINGLE MORNING YOU HAVE
+Dialogue: 0,0:00:09.28,0:00:09.50,Default,,0,0,0,,EVERY {\c&H0010E0FF\fscx108\fscy108\b1}SINGLE{\c&H00FFFFFF\fscx100\fscy100\b1} MORNING YOU HAVE
+Dialogue: 0,0:00:09.52,0:00:09.74,Default,,0,0,0,,EVERY SINGLE {\c&H0010E0FF\fscx108\fscy108\b1}MORNING{\c&H00FFFFFF\fscx100\fscy100\b1} YOU HAVE
+Dialogue: 0,0:00:09.75,0:00:09.97,Default,,0,0,0,,EVERY SINGLE MORNING {\c&H0010E0FF\fscx108\fscy108\b1}YOU{\c&H00FFFFFF\fscx100\fscy100\b1} HAVE
+Dialogue: 0,0:00:09.99,0:00:10.21,Default,,0,0,0,,EVERY SINGLE MORNING YOU {\c&H0010E0FF\fscx108\fscy108\b1}HAVE{\c&H00FFFFFF\fscx100\fscy100\b1}
+Dialogue: 0,0:00:10.23,0:00:10.45,Default,,0,0,0,,{\c&H0010E0FF\fscx108\fscy108\b1}TWO{\c&H00FFFFFF\fscx100\fscy100\b1} CHOICES: CONTINUE TO SLEEP
+Dialogue: 0,0:00:10.47,0:00:10.69,Default,,0,0,0,,TWO {\c&H0010E0FF\fscx108\fscy108\b1}CHOICES:{\c&H00FFFFFF\fscx100\fscy100\b1} CONTINUE TO SLEEP
+Dialogue: 0,0:00:10.71,0:00:10.93,Default,,0,0,0,,TWO CHOICES: {\c&H0010E0FF\fscx108\fscy108\b1}CONTINUE{\c&H00FFFFFF\fscx100\fscy100\b1} TO SLEEP
+Dialogue: 0,0:00:10.94,0:00:11.16,Default,,0,0,0,,TWO CHOICES: CONTINUE {\c&H0010E0FF\fscx108\fscy108\b1}TO{\c&H00FFFFFF\fscx100\fscy100\b1} SLEEP
+Dialogue: 0,0:00:11.18,0:00:11.40,Default,,0,0,0,,TWO CHOICES: CONTINUE TO {\c&H0010E0FF\fscx108\fscy108\b1}SLEEP{\c&H00FFFFFF\fscx100\fscy100\b1}
+Dialogue: 0,0:00:11.42,0:00:11.64,Default,,0,0,0,,{\c&H0010E0FF\fscx108\fscy108\b1}WITH{\c&H00FFFFFF\fscx100\fscy100\b1} YOUR DREAMS,
+Dialogue: 0,0:00:11.66,0:00:11.88,Default,,0,0,0,,WITH {\c&H0010E0FF\fscx108\fscy108\b1}YOUR{\c&H00FFFFFF\fscx100\fscy100\b1} DREAMS,
+Dialogue: 0,0:00:11.89,0:00:12.11,Default,,0,0,0,,WITH YOUR {\c&H0010E0FF\fscx108\fscy108\b1}DREAMS,{\c&H00FFFFFF\fscx100\fscy100\b1}
+Dialogue: 0,0:00:12.13,0:00:12.35,Default,,0,0,0,,{\c&H0010E0FF\fscx108\fscy108\b1}OR{\c&H00FFFFFF\fscx100\fscy100\b1} WAKE UP AND CHASE
+Dialogue: 0,0:00:12.37,0:00:12.59,Default,,0,0,0,,OR {\c&H0010E0FF\fscx108\fscy108\b1}WAKE{\c&H00FFFFFF\fscx100\fscy100\b1} UP AND CHASE
+Dialogue: 0,0:00:12.61,0:00:12.83,Default,,0,0,0,,OR WAKE {\c&H0010E0FF\fscx108\fscy108\b1}UP{\c&H00FFFFFF\fscx100\fscy100\b1} AND CHASE
+Dialogue: 0,0:00:12.85,0:00:13.07,Default,,0,0,0,,OR WAKE UP {\c&H0010E0FF\fscx108\fscy108\b1}AND{\c&H00FFFFFF\fscx100\fscy100\b1} CHASE
+Dialogue: 0,0:00:13.08,0:00:13.30,Default,,0,0,0,,OR WAKE UP AND {\c&H0010E0FF\fscx108\fscy108\b1}CHASE{\c&H00FFFFFF\fscx100\fscy100\b1}
+Dialogue: 0,0:00:13.32,0:00:13.54,Default,,0,0,0,,{\c&H0010E0FF\fscx108\fscy108\b1}THEM.{\c&H00FFFFFF\fscx100\fscy100\b1}

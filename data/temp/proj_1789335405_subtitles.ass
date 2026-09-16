@@ -1,0 +1,646 @@
+[Script Info]
+Title: VideoGen CapCut Subtitles
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Montserrat,53,&H00ffffff,&H000000FF,&H00000000,&H80000000,1,0,0,0,100,100,4.0,0,1,8.0,4.0,2,50,50,150,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:02.34,0:00:02.62,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}POSITIVE{\c&H00ffffff\fscx100\fscy100\b1} PSYCHOLOGY IS THE SCIENTIFIC
+Dialogue: 0,0:00:02.62,0:00:03.18,Default,,0,0,0,,POSITIVE {\c&H0010e0ff\fscx108\fscy108\b1}PSYCHOLOGY{\c&H00ffffff\fscx100\fscy100\b1} IS THE SCIENTIFIC
+Dialogue: 0,0:00:03.18,0:00:03.86,Default,,0,0,0,,POSITIVE PSYCHOLOGY {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} THE SCIENTIFIC
+Dialogue: 0,0:00:03.86,0:00:04.02,Default,,0,0,0,,POSITIVE PSYCHOLOGY IS {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} SCIENTIFIC
+Dialogue: 0,0:00:04.02,0:00:04.54,Default,,0,0,0,,POSITIVE PSYCHOLOGY IS THE {\c&H0010e0ff\fscx108\fscy108\b1}SCIENTIFIC{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:04.54,0:00:05.06,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}STUDY{\c&H00ffffff\fscx100\fscy100\b1} OF WHAT MAKES LIFE
+Dialogue: 0,0:00:05.06,0:00:05.58,Default,,0,0,0,,STUDY {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} WHAT MAKES LIFE
+Dialogue: 0,0:00:05.58,0:00:05.82,Default,,0,0,0,,STUDY OF {\c&H0010e0ff\fscx108\fscy108\b1}WHAT{\c&H00ffffff\fscx100\fscy100\b1} MAKES LIFE
+Dialogue: 0,0:00:05.82,0:00:06.20,Default,,0,0,0,,STUDY OF WHAT {\c&H0010e0ff\fscx108\fscy108\b1}MAKES{\c&H00ffffff\fscx100\fscy100\b1} LIFE
+Dialogue: 0,0:00:06.20,0:00:06.66,Default,,0,0,0,,STUDY OF WHAT MAKES {\c&H0010e0ff\fscx108\fscy108\b1}LIFE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:06.66,0:00:07.38,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}MOST{\c&H00ffffff\fscx100\fscy100\b1} WORTH LIVING.
+Dialogue: 0,0:00:07.38,0:00:07.84,Default,,0,0,0,,MOST {\c&H0010e0ff\fscx108\fscy108\b1}WORTH{\c&H00ffffff\fscx100\fscy100\b1} LIVING.
+Dialogue: 0,0:00:07.84,0:00:08.78,Default,,0,0,0,,MOST WORTH {\c&H0010e0ff\fscx108\fscy108\b1}LIVING.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:09.06,0:00:09.20,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IT{\c&H00ffffff\fscx100\fscy100\b1} IS A SCIENCE,
+Dialogue: 0,0:00:09.20,0:00:09.48,Default,,0,0,0,,IT {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} A SCIENCE,
+Dialogue: 0,0:00:09.48,0:00:09.60,Default,,0,0,0,,IT IS {\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} SCIENCE,
+Dialogue: 0,0:00:09.60,0:00:10.66,Default,,0,0,0,,IT IS A {\c&H0010e0ff\fscx108\fscy108\b1}SCIENCE,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:10.66,0:00:10.76,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} SCIENCE REQUIRES TESTING THEORIES
+Dialogue: 0,0:00:10.76,0:00:11.36,Default,,0,0,0,,AND {\c&H0010e0ff\fscx108\fscy108\b1}SCIENCE{\c&H00ffffff\fscx100\fscy100\b1} REQUIRES TESTING THEORIES
+Dialogue: 0,0:00:11.36,0:00:11.94,Default,,0,0,0,,AND SCIENCE {\c&H0010e0ff\fscx108\fscy108\b1}REQUIRES{\c&H00ffffff\fscx100\fscy100\b1} TESTING THEORIES
+Dialogue: 0,0:00:11.94,0:00:12.44,Default,,0,0,0,,AND SCIENCE REQUIRES {\c&H0010e0ff\fscx108\fscy108\b1}TESTING{\c&H00ffffff\fscx100\fscy100\b1} THEORIES
+Dialogue: 0,0:00:12.44,0:00:13.02,Default,,0,0,0,,AND SCIENCE REQUIRES TESTING {\c&H0010e0ff\fscx108\fscy108\b1}THEORIES{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:13.02,0:00:13.56,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AGAINST{\c&H00ffffff\fscx100\fscy100\b1} EVIDENCE.
+Dialogue: 0,0:00:13.56,0:00:14.62,Default,,0,0,0,,AGAINST {\c&H0010e0ff\fscx108\fscy108\b1}EVIDENCE.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:15.50,0:00:15.66,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IT{\c&H00ffffff\fscx100\fscy100\b1} IS NOT A SEQUEL
+Dialogue: 0,0:00:15.66,0:00:15.88,Default,,0,0,0,,IT {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} NOT A SEQUEL
+Dialogue: 0,0:00:15.88,0:00:16.22,Default,,0,0,0,,IT IS {\c&H0010e0ff\fscx108\fscy108\b1}NOT{\c&H00ffffff\fscx100\fscy100\b1} A SEQUEL
+Dialogue: 0,0:00:16.22,0:00:16.40,Default,,0,0,0,,IT IS NOT {\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} SEQUEL
+Dialogue: 0,0:00:16.40,0:00:16.70,Default,,0,0,0,,IT IS NOT A {\c&H0010e0ff\fscx108\fscy108\b1}SEQUEL{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:16.70,0:00:17.04,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} THE SECRET,
+Dialogue: 0,0:00:17.04,0:00:17.34,Default,,0,0,0,,TO {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} SECRET,
+Dialogue: 0,0:00:17.34,0:00:18.56,Default,,0,0,0,,TO THE {\c&H0010e0ff\fscx108\fscy108\b1}SECRET,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:18.56,0:00:18.62,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} SHOULD NOT BE CONFUSED
+Dialogue: 0,0:00:18.62,0:00:18.84,Default,,0,0,0,,AND {\c&H0010e0ff\fscx108\fscy108\b1}SHOULD{\c&H00ffffff\fscx100\fscy100\b1} NOT BE CONFUSED
+Dialogue: 0,0:00:18.84,0:00:19.24,Default,,0,0,0,,AND SHOULD {\c&H0010e0ff\fscx108\fscy108\b1}NOT{\c&H00ffffff\fscx100\fscy100\b1} BE CONFUSED
+Dialogue: 0,0:00:19.24,0:00:19.46,Default,,0,0,0,,AND SHOULD NOT {\c&H0010e0ff\fscx108\fscy108\b1}BE{\c&H00ffffff\fscx100\fscy100\b1} CONFUSED
+Dialogue: 0,0:00:19.46,0:00:19.86,Default,,0,0,0,,AND SHOULD NOT BE {\c&H0010e0ff\fscx108\fscy108\b1}CONFUSED{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:19.86,0:00:20.42,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}WITH{\c&H00ffffff\fscx100\fscy100\b1} UNTESTED SELF-HELP,
+Dialogue: 0,0:00:20.42,0:00:21.06,Default,,0,0,0,,WITH {\c&H0010e0ff\fscx108\fscy108\b1}UNTESTED{\c&H00ffffff\fscx100\fscy100\b1} SELF-HELP,
+Dialogue: 0,0:00:21.06,0:00:22.34,Default,,0,0,0,,WITH UNTESTED {\c&H0010e0ff\fscx108\fscy108\b1}SELF-HELP,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:22.44,0:00:23.14,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}FLY-BY-NIGHT{\c&H00ffffff\fscx100\fscy100\b1} MOTIVATIONAL SPEAKERS,
+Dialogue: 0,0:00:23.14,0:00:23.70,Default,,0,0,0,,FLY-BY-NIGHT {\c&H0010e0ff\fscx108\fscy108\b1}MOTIVATIONAL{\c&H00ffffff\fscx100\fscy100\b1} SPEAKERS,
+Dialogue: 0,0:00:23.70,0:00:24.70,Default,,0,0,0,,FLY-BY-NIGHT MOTIVATIONAL {\c&H0010e0ff\fscx108\fscy108\b1}SPEAKERS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:24.70,0:00:24.88,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}OR{\c&H00ffffff\fscx100\fscy100\b1} NEW-AGE PHILOSOPHY.
+Dialogue: 0,0:00:24.88,0:00:25.56,Default,,0,0,0,,OR {\c&H0010e0ff\fscx108\fscy108\b1}NEW-AGE{\c&H00ffffff\fscx100\fscy100\b1} PHILOSOPHY.
+Dialogue: 0,0:00:25.56,0:00:26.06,Default,,0,0,0,,OR NEW-AGE {\c&H0010e0ff\fscx108\fscy108\b1}PHILOSOPHY.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:26.78,0:00:26.82,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}MUCH{\c&H00ffffff\fscx100\fscy100\b1} OF PSYCHOLOGY HAS BEEN
+Dialogue: 0,0:00:26.82,0:00:27.04,Default,,0,0,0,,MUCH {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} PSYCHOLOGY HAS BEEN
+Dialogue: 0,0:00:27.04,0:00:27.52,Default,,0,0,0,,MUCH OF {\c&H0010e0ff\fscx108\fscy108\b1}PSYCHOLOGY{\c&H00ffffff\fscx100\fscy100\b1} HAS BEEN
+Dialogue: 0,0:00:27.52,0:00:27.98,Default,,0,0,0,,MUCH OF PSYCHOLOGY {\c&H0010e0ff\fscx108\fscy108\b1}HAS{\c&H00ffffff\fscx100\fscy100\b1} BEEN
+Dialogue: 0,0:00:27.98,0:00:28.14,Default,,0,0,0,,MUCH OF PSYCHOLOGY HAS {\c&H0010e0ff\fscx108\fscy108\b1}BEEN{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:28.14,0:00:28.58,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}CONCERNED{\c&H00ffffff\fscx100\fscy100\b1} WITH ANSWERING THE QUESTION,
+Dialogue: 0,0:00:28.58,0:00:28.84,Default,,0,0,0,,CONCERNED {\c&H0010e0ff\fscx108\fscy108\b1}WITH{\c&H00ffffff\fscx100\fscy100\b1} ANSWERING THE QUESTION,
+Dialogue: 0,0:00:28.84,0:00:29.12,Default,,0,0,0,,CONCERNED WITH {\c&H0010e0ff\fscx108\fscy108\b1}ANSWERING{\c&H00ffffff\fscx100\fscy100\b1} THE QUESTION,
+Dialogue: 0,0:00:29.12,0:00:29.32,Default,,0,0,0,,CONCERNED WITH ANSWERING {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} QUESTION,
+Dialogue: 0,0:00:29.32,0:00:30.22,Default,,0,0,0,,CONCERNED WITH ANSWERING THE {\c&H0010e0ff\fscx108\fscy108\b1}QUESTION,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:30.26,0:00:30.32,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}WHAT{\c&H00ffffff\fscx100\fscy100\b1} IS WRONG WITH YOU?
+Dialogue: 0,0:00:30.32,0:00:30.52,Default,,0,0,0,,WHAT {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} WRONG WITH YOU?
+Dialogue: 0,0:00:30.52,0:00:30.90,Default,,0,0,0,,WHAT IS {\c&H0010e0ff\fscx108\fscy108\b1}WRONG{\c&H00ffffff\fscx100\fscy100\b1} WITH YOU?
+Dialogue: 0,0:00:30.90,0:00:31.12,Default,,0,0,0,,WHAT IS WRONG {\c&H0010e0ff\fscx108\fscy108\b1}WITH{\c&H00ffffff\fscx100\fscy100\b1} YOU?
+Dialogue: 0,0:00:31.12,0:00:31.34,Default,,0,0,0,,WHAT IS WRONG WITH {\c&H0010e0ff\fscx108\fscy108\b1}YOU?{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:32.18,0:00:32.34,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IT{\c&H00ffffff\fscx100\fscy100\b1} HAS SOUGHT TO MAKE
+Dialogue: 0,0:00:32.34,0:00:32.50,Default,,0,0,0,,IT {\c&H0010e0ff\fscx108\fscy108\b1}HAS{\c&H00ffffff\fscx100\fscy100\b1} SOUGHT TO MAKE
+Dialogue: 0,0:00:32.50,0:00:32.72,Default,,0,0,0,,IT HAS {\c&H0010e0ff\fscx108\fscy108\b1}SOUGHT{\c&H00ffffff\fscx100\fscy100\b1} TO MAKE
+Dialogue: 0,0:00:32.72,0:00:32.88,Default,,0,0,0,,IT HAS SOUGHT {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} MAKE
+Dialogue: 0,0:00:32.88,0:00:33.02,Default,,0,0,0,,IT HAS SOUGHT TO {\c&H0010e0ff\fscx108\fscy108\b1}MAKE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:33.02,0:00:33.56,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}INDIVIDUALS{\c&H00ffffff\fscx100\fscy100\b1} LESS MISERABLE,
+Dialogue: 0,0:00:33.56,0:00:34.06,Default,,0,0,0,,INDIVIDUALS {\c&H0010e0ff\fscx108\fscy108\b1}LESS{\c&H00ffffff\fscx100\fscy100\b1} MISERABLE,
+Dialogue: 0,0:00:34.06,0:00:35.02,Default,,0,0,0,,INDIVIDUALS LESS {\c&H0010e0ff\fscx108\fscy108\b1}MISERABLE,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:35.02,0:00:35.16,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} TREAT PATHOLOGY AND MENTAL
+Dialogue: 0,0:00:35.16,0:00:35.42,Default,,0,0,0,,TO {\c&H0010e0ff\fscx108\fscy108\b1}TREAT{\c&H00ffffff\fscx100\fscy100\b1} PATHOLOGY AND MENTAL
+Dialogue: 0,0:00:35.42,0:00:36.02,Default,,0,0,0,,TO TREAT {\c&H0010e0ff\fscx108\fscy108\b1}PATHOLOGY{\c&H00ffffff\fscx100\fscy100\b1} AND MENTAL
+Dialogue: 0,0:00:36.02,0:00:36.28,Default,,0,0,0,,TO TREAT PATHOLOGY {\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} MENTAL
+Dialogue: 0,0:00:36.28,0:00:36.50,Default,,0,0,0,,TO TREAT PATHOLOGY AND {\c&H0010e0ff\fscx108\fscy108\b1}MENTAL{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:36.50,0:00:37.46,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}ILLNESS.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:37.98,0:00:38.10,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} GOAL OF THE POSITIVE
+Dialogue: 0,0:00:38.10,0:00:38.52,Default,,0,0,0,,THE {\c&H0010e0ff\fscx108\fscy108\b1}GOAL{\c&H00ffffff\fscx100\fscy100\b1} OF THE POSITIVE
+Dialogue: 0,0:00:38.52,0:00:38.74,Default,,0,0,0,,THE GOAL {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} THE POSITIVE
+Dialogue: 0,0:00:38.74,0:00:38.88,Default,,0,0,0,,THE GOAL OF {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} POSITIVE
+Dialogue: 0,0:00:38.88,0:00:39.30,Default,,0,0,0,,THE GOAL OF THE {\c&H0010e0ff\fscx108\fscy108\b1}POSITIVE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:39.30,0:00:39.86,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}PSYCHOLOGY{\c&H00ffffff\fscx100\fscy100\b1} MOVEMENT IS
+Dialogue: 0,0:00:39.86,0:00:40.12,Default,,0,0,0,,PSYCHOLOGY {\c&H0010e0ff\fscx108\fscy108\b1}MOVEMENT{\c&H00ffffff\fscx100\fscy100\b1} IS
+Dialogue: 0,0:00:39.66,0:00:40.72,Default,,0,0,0,,PSYCHOLOGY MOVEMENT {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:40.72,0:00:40.86,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} MAKE NORMAL LIFE MORE
+Dialogue: 0,0:00:40.86,0:00:41.08,Default,,0,0,0,,TO {\c&H0010e0ff\fscx108\fscy108\b1}MAKE{\c&H00ffffff\fscx100\fscy100\b1} NORMAL LIFE MORE
+Dialogue: 0,0:00:41.08,0:00:41.58,Default,,0,0,0,,TO MAKE {\c&H0010e0ff\fscx108\fscy108\b1}NORMAL{\c&H00ffffff\fscx100\fscy100\b1} LIFE MORE
+Dialogue: 0,0:00:41.58,0:00:41.98,Default,,0,0,0,,TO MAKE NORMAL {\c&H0010e0ff\fscx108\fscy108\b1}LIFE{\c&H00ffffff\fscx100\fscy100\b1} MORE
+Dialogue: 0,0:00:41.98,0:00:42.36,Default,,0,0,0,,TO MAKE NORMAL LIFE {\c&H0010e0ff\fscx108\fscy108\b1}MORE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:42.36,0:00:43.34,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}FULFILLING.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:43.86,0:00:44.04,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IT{\c&H00ffffff\fscx100\fscy100\b1} ASKS THE QUESTION,
+Dialogue: 0,0:00:44.04,0:00:44.46,Default,,0,0,0,,IT {\c&H0010e0ff\fscx108\fscy108\b1}ASKS{\c&H00ffffff\fscx100\fscy100\b1} THE QUESTION,
+Dialogue: 0,0:00:44.46,0:00:44.60,Default,,0,0,0,,IT ASKS {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} QUESTION,
+Dialogue: 0,0:00:44.60,0:00:45.62,Default,,0,0,0,,IT ASKS THE {\c&H0010e0ff\fscx108\fscy108\b1}QUESTION,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:45.62,0:00:45.74,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}WHAT{\c&H00ffffff\fscx100\fscy100\b1} IS RIGHT WITH YOU?
+Dialogue: 0,0:00:45.74,0:00:45.94,Default,,0,0,0,,WHAT {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} RIGHT WITH YOU?
+Dialogue: 0,0:00:45.94,0:00:46.28,Default,,0,0,0,,WHAT IS {\c&H0010e0ff\fscx108\fscy108\b1}RIGHT{\c&H00ffffff\fscx100\fscy100\b1} WITH YOU?
+Dialogue: 0,0:00:46.28,0:00:46.54,Default,,0,0,0,,WHAT IS RIGHT {\c&H0010e0ff\fscx108\fscy108\b1}WITH{\c&H00ffffff\fscx100\fscy100\b1} YOU?
+Dialogue: 0,0:00:46.54,0:00:46.76,Default,,0,0,0,,WHAT IS RIGHT WITH {\c&H0010e0ff\fscx108\fscy108\b1}YOU?{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:47.92,0:00:48.20,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}INSTEAD{\c&H00ffffff\fscx100\fscy100\b1} OF TRYING TO HELP
+Dialogue: 0,0:00:48.20,0:00:48.42,Default,,0,0,0,,INSTEAD {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} TRYING TO HELP
+Dialogue: 0,0:00:48.42,0:00:48.60,Default,,0,0,0,,INSTEAD OF {\c&H0010e0ff\fscx108\fscy108\b1}TRYING{\c&H00ffffff\fscx100\fscy100\b1} TO HELP
+Dialogue: 0,0:00:48.60,0:00:48.72,Default,,0,0,0,,INSTEAD OF TRYING {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} HELP
+Dialogue: 0,0:00:48.72,0:00:48.86,Default,,0,0,0,,INSTEAD OF TRYING TO {\c&H0010e0ff\fscx108\fscy108\b1}HELP{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:48.86,0:00:48.96,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} PATIENT GO FROM MINUS
+Dialogue: 0,0:00:48.96,0:00:49.22,Default,,0,0,0,,A {\c&H0010e0ff\fscx108\fscy108\b1}PATIENT{\c&H00ffffff\fscx100\fscy100\b1} GO FROM MINUS
+Dialogue: 0,0:00:49.22,0:00:49.46,Default,,0,0,0,,A PATIENT {\c&H0010e0ff\fscx108\fscy108\b1}GO{\c&H00ffffff\fscx100\fscy100\b1} FROM MINUS
+Dialogue: 0,0:00:49.46,0:00:49.78,Default,,0,0,0,,A PATIENT GO {\c&H0010e0ff\fscx108\fscy108\b1}FROM{\c&H00ffffff\fscx100\fscy100\b1} MINUS
+Dialogue: 0,0:00:49.78,0:00:50.34,Default,,0,0,0,,A PATIENT GO FROM {\c&H0010e0ff\fscx108\fscy108\b1}MINUS{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:50.34,0:00:50.64,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}EIGHT{\c&H00ffffff\fscx100\fscy100\b1} BACK TO ZERO,
+Dialogue: 0,0:00:50.64,0:00:50.92,Default,,0,0,0,,EIGHT {\c&H0010e0ff\fscx108\fscy108\b1}BACK{\c&H00ffffff\fscx100\fscy100\b1} TO ZERO,
+Dialogue: 0,0:00:50.92,0:00:51.18,Default,,0,0,0,,EIGHT BACK {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} ZERO,
+Dialogue: 0,0:00:51.18,0:00:51.46,Default,,0,0,0,,EIGHT BACK TO {\c&H0010e0ff\fscx108\fscy108\b1}ZERO,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:52.22,0:00:52.36,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} GOAL IS TO HELP
+Dialogue: 0,0:00:52.36,0:00:52.64,Default,,0,0,0,,THE {\c&H0010e0ff\fscx108\fscy108\b1}GOAL{\c&H00ffffff\fscx100\fscy100\b1} IS TO HELP
+Dialogue: 0,0:00:52.64,0:00:52.82,Default,,0,0,0,,THE GOAL {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} TO HELP
+Dialogue: 0,0:00:52.82,0:00:52.96,Default,,0,0,0,,THE GOAL IS {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} HELP
+Dialogue: 0,0:00:52.96,0:00:53.14,Default,,0,0,0,,THE GOAL IS TO {\c&H0010e0ff\fscx108\fscy108\b1}HELP{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:53.14,0:00:53.60,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}INDIVIDUALS{\c&H00ffffff\fscx100\fscy100\b1} MOVE UP THE OTHER
+Dialogue: 0,0:00:53.60,0:00:54.12,Default,,0,0,0,,INDIVIDUALS {\c&H0010e0ff\fscx108\fscy108\b1}MOVE{\c&H00ffffff\fscx100\fscy100\b1} UP THE OTHER
+Dialogue: 0,0:00:54.12,0:00:54.28,Default,,0,0,0,,INDIVIDUALS MOVE {\c&H0010e0ff\fscx108\fscy108\b1}UP{\c&H00ffffff\fscx100\fscy100\b1} THE OTHER
+Dialogue: 0,0:00:54.28,0:00:54.46,Default,,0,0,0,,INDIVIDUALS MOVE UP {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} OTHER
+Dialogue: 0,0:00:54.46,0:00:54.88,Default,,0,0,0,,INDIVIDUALS MOVE UP THE {\c&H0010e0ff\fscx108\fscy108\b1}OTHER{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:54.88,0:00:55.12,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}SIDE{\c&H00ffffff\fscx100\fscy100\b1} OF THE SCALE.
+Dialogue: 0,0:00:55.12,0:00:55.24,Default,,0,0,0,,SIDE {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} THE SCALE.
+Dialogue: 0,0:00:55.24,0:00:55.38,Default,,0,0,0,,SIDE OF {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} SCALE.
+Dialogue: 0,0:00:55.38,0:00:55.68,Default,,0,0,0,,SIDE OF THE {\c&H0010e0ff\fscx108\fscy108\b1}SCALE.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:00:58.86,0:00:58.94,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} FIELD IS INTENDED TO
+Dialogue: 0,0:00:58.94,0:00:59.28,Default,,0,0,0,,THE {\c&H0010e0ff\fscx108\fscy108\b1}FIELD{\c&H00ffffff\fscx100\fscy100\b1} IS INTENDED TO
+Dialogue: 0,0:00:59.28,0:00:59.48,Default,,0,0,0,,THE FIELD {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} INTENDED TO
+Dialogue: 0,0:00:59.48,0:00:59.80,Default,,0,0,0,,THE FIELD IS {\c&H0010e0ff\fscx108\fscy108\b1}INTENDED{\c&H00ffffff\fscx100\fscy100\b1} TO
+Dialogue: 0,0:00:59.80,0:01:00.02,Default,,0,0,0,,THE FIELD IS INTENDED {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:00.02,0:01:00.96,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}COMPLEMENT,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:00.96,0:01:01.14,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}NOT{\c&H00ffffff\fscx100\fscy100\b1} REPLACE,
+Dialogue: 0,0:01:01.14,0:01:01.82,Default,,0,0,0,,NOT {\c&H0010e0ff\fscx108\fscy108\b1}REPLACE,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:01.82,0:01:02.26,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}TRADITIONAL{\c&H00ffffff\fscx100\fscy100\b1} PSYCHOLOGY.
+Dialogue: 0,0:01:02.26,0:01:03.36,Default,,0,0,0,,TRADITIONAL {\c&H0010e0ff\fscx108\fscy108\b1}PSYCHOLOGY.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:03.28,0:01:03.80,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IT{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:03.80,0:01:04.02,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}DOES{\c&H00ffffff\fscx100\fscy100\b1} NOT SEEK TO DENY
+Dialogue: 0,0:01:04.02,0:01:04.26,Default,,0,0,0,,DOES {\c&H0010e0ff\fscx108\fscy108\b1}NOT{\c&H00ffffff\fscx100\fscy100\b1} SEEK TO DENY
+Dialogue: 0,0:01:04.26,0:01:04.50,Default,,0,0,0,,DOES NOT {\c&H0010e0ff\fscx108\fscy108\b1}SEEK{\c&H00ffffff\fscx100\fscy100\b1} TO DENY
+Dialogue: 0,0:01:04.50,0:01:04.72,Default,,0,0,0,,DOES NOT SEEK {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} DENY
+Dialogue: 0,0:01:04.72,0:01:04.92,Default,,0,0,0,,DOES NOT SEEK TO {\c&H0010e0ff\fscx108\fscy108\b1}DENY{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:04.92,0:01:05.06,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} IMPORTANCE OF STUDYING HOW
+Dialogue: 0,0:01:05.06,0:01:05.54,Default,,0,0,0,,THE {\c&H0010e0ff\fscx108\fscy108\b1}IMPORTANCE{\c&H00ffffff\fscx100\fscy100\b1} OF STUDYING HOW
+Dialogue: 0,0:01:05.54,0:01:05.76,Default,,0,0,0,,THE IMPORTANCE {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} STUDYING HOW
+Dialogue: 0,0:01:05.76,0:01:06.06,Default,,0,0,0,,THE IMPORTANCE OF {\c&H0010e0ff\fscx108\fscy108\b1}STUDYING{\c&H00ffffff\fscx100\fscy100\b1} HOW
+Dialogue: 0,0:01:06.06,0:01:06.30,Default,,0,0,0,,THE IMPORTANCE OF STUDYING {\c&H0010e0ff\fscx108\fscy108\b1}HOW{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:06.30,0:01:06.56,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THINGS{\c&H00ffffff\fscx100\fscy100\b1} GO WRONG,
+Dialogue: 0,0:01:06.56,0:01:06.78,Default,,0,0,0,,THINGS {\c&H0010e0ff\fscx108\fscy108\b1}GO{\c&H00ffffff\fscx100\fscy100\b1} WRONG,
+Dialogue: 0,0:01:06.78,0:01:07.32,Default,,0,0,0,,THINGS GO {\c&H0010e0ff\fscx108\fscy108\b1}WRONG,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:07.32,0:01:08.14,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}BUT{\c&H00ffffff\fscx100\fscy100\b1} IT DOES ASSERT
+Dialogue: 0,0:01:08.14,0:01:08.24,Default,,0,0,0,,BUT {\c&H0010e0ff\fscx108\fscy108\b1}IT{\c&H00ffffff\fscx100\fscy100\b1} DOES ASSERT
+Dialogue: 0,0:01:08.24,0:01:08.58,Default,,0,0,0,,BUT IT {\c&H0010e0ff\fscx108\fscy108\b1}DOES{\c&H00ffffff\fscx100\fscy100\b1} ASSERT
+Dialogue: 0,0:01:08.34,0:01:09.00,Default,,0,0,0,,BUT IT DOES {\c&H0010e0ff\fscx108\fscy108\b1}ASSERT{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:09.00,0:01:09.40,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} STRENGTH IS AS IMPORTANT
+Dialogue: 0,0:01:09.40,0:01:09.96,Default,,0,0,0,,THAT {\c&H0010e0ff\fscx108\fscy108\b1}STRENGTH{\c&H00ffffff\fscx100\fscy100\b1} IS AS IMPORTANT
+Dialogue: 0,0:01:09.96,0:01:10.38,Default,,0,0,0,,THAT STRENGTH {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} AS IMPORTANT
+Dialogue: 0,0:01:10.38,0:01:10.50,Default,,0,0,0,,THAT STRENGTH IS {\c&H0010e0ff\fscx108\fscy108\b1}AS{\c&H00ffffff\fscx100\fscy100\b1} IMPORTANT
+Dialogue: 0,0:01:10.50,0:01:10.90,Default,,0,0,0,,THAT STRENGTH IS AS {\c&H0010e0ff\fscx108\fscy108\b1}IMPORTANT{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:10.90,0:01:11.12,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AS{\c&H00ffffff\fscx100\fscy100\b1} WEAKNESS,
+Dialogue: 0,0:01:11.12,0:01:11.74,Default,,0,0,0,,AS {\c&H0010e0ff\fscx108\fscy108\b1}WEAKNESS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:11.74,0:01:12.46,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} THAT IT IS JUST
+Dialogue: 0,0:01:12.46,0:01:12.62,Default,,0,0,0,,AND {\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} IT IS JUST
+Dialogue: 0,0:01:12.62,0:01:12.72,Default,,0,0,0,,AND THAT {\c&H0010e0ff\fscx108\fscy108\b1}IT{\c&H00ffffff\fscx100\fscy100\b1} IS JUST
+Dialogue: 0,0:01:12.72,0:01:12.88,Default,,0,0,0,,AND THAT IT {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} JUST
+Dialogue: 0,0:01:12.88,0:01:13.20,Default,,0,0,0,,AND THAT IT IS {\c&H0010e0ff\fscx108\fscy108\b1}JUST{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:13.20,0:01:13.34,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AS{\c&H00ffffff\fscx100\fscy100\b1} IMPORTANT TO BUILD ON
+Dialogue: 0,0:01:13.34,0:01:13.72,Default,,0,0,0,,AS {\c&H0010e0ff\fscx108\fscy108\b1}IMPORTANT{\c&H00ffffff\fscx100\fscy100\b1} TO BUILD ON
+Dialogue: 0,0:01:13.65,0:01:13.89,Default,,0,0,0,,AS IMPORTANT {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} BUILD ON
+Dialogue: 0,0:01:13.89,0:01:14.17,Default,,0,0,0,,AS IMPORTANT TO {\c&H0010e0ff\fscx108\fscy108\b1}BUILD{\c&H00ffffff\fscx100\fscy100\b1} ON
+Dialogue: 0,0:01:14.17,0:01:14.35,Default,,0,0,0,,AS IMPORTANT TO BUILD {\c&H0010e0ff\fscx108\fscy108\b1}ON{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:14.35,0:01:14.49,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} BEST THINGS IN LIFE
+Dialogue: 0,0:01:14.49,0:01:14.83,Default,,0,0,0,,THE {\c&H0010e0ff\fscx108\fscy108\b1}BEST{\c&H00ffffff\fscx100\fscy100\b1} THINGS IN LIFE
+Dialogue: 0,0:01:14.83,0:01:15.15,Default,,0,0,0,,THE BEST {\c&H0010e0ff\fscx108\fscy108\b1}THINGS{\c&H00ffffff\fscx100\fscy100\b1} IN LIFE
+Dialogue: 0,0:01:14.71,0:01:15.39,Default,,0,0,0,,THE BEST THINGS {\c&H0010e0ff\fscx108\fscy108\b1}IN{\c&H00ffffff\fscx100\fscy100\b1} LIFE
+Dialogue: 0,0:01:15.39,0:01:15.83,Default,,0,0,0,,THE BEST THINGS IN {\c&H0010e0ff\fscx108\fscy108\b1}LIFE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:15.83,0:01:16.33,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AS{\c&H00ffffff\fscx100\fscy100\b1} TO REPAIR THE WORST.
+Dialogue: 0,0:01:16.33,0:01:16.61,Default,,0,0,0,,AS {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} REPAIR THE WORST.
+Dialogue: 0,0:01:16.61,0:01:17.17,Default,,0,0,0,,AS TO {\c&H0010e0ff\fscx108\fscy108\b1}REPAIR{\c&H00ffffff\fscx100\fscy100\b1} THE WORST.
+Dialogue: 0,0:01:17.17,0:01:17.41,Default,,0,0,0,,AS TO REPAIR {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} WORST.
+Dialogue: 0,0:01:17.41,0:01:18.81,Default,,0,0,0,,AS TO REPAIR THE {\c&H0010e0ff\fscx108\fscy108\b1}WORST.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:18.81,0:01:19.19,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}POSITIVE{\c&H00ffffff\fscx100\fscy100\b1} PSYCHOLOGY IS CONCERNED WITH
+Dialogue: 0,0:01:19.19,0:01:19.55,Default,,0,0,0,,POSITIVE {\c&H0010e0ff\fscx108\fscy108\b1}PSYCHOLOGY{\c&H00ffffff\fscx100\fscy100\b1} IS CONCERNED WITH
+Dialogue: 0,0:01:19.55,0:01:20.29,Default,,0,0,0,,POSITIVE PSYCHOLOGY {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} CONCERNED WITH
+Dialogue: 0,0:01:20.29,0:01:20.65,Default,,0,0,0,,POSITIVE PSYCHOLOGY IS {\c&H0010e0ff\fscx108\fscy108\b1}CONCERNED{\c&H00ffffff\fscx100\fscy100\b1} WITH
+Dialogue: 0,0:01:20.65,0:01:21.05,Default,,0,0,0,,POSITIVE PSYCHOLOGY IS CONCERNED {\c&H0010e0ff\fscx108\fscy108\b1}WITH{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:21.05,0:01:21.75,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}INCREASING{\c&H00ffffff\fscx100\fscy100\b1} WELL-BEING.
+Dialogue: 0,0:01:21.75,0:01:23.23,Default,,0,0,0,,INCREASING {\c&H0010e0ff\fscx108\fscy108\b1}WELL-BEING.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:23.23,0:01:23.29,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} WELL-BEING
+Dialogue: 0,0:01:23.19,0:01:23.87,Default,,0,0,0,,IS {\c&H0010e0ff\fscx108\fscy108\b1}WELL-BEING{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:23.87,0:01:24.09,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} SAME THING AS HAPPINESS?
+Dialogue: 0,0:01:24.09,0:01:24.37,Default,,0,0,0,,THE {\c&H0010e0ff\fscx108\fscy108\b1}SAME{\c&H00ffffff\fscx100\fscy100\b1} THING AS HAPPINESS?
+Dialogue: 0,0:01:24.37,0:01:24.57,Default,,0,0,0,,THE SAME {\c&H0010e0ff\fscx108\fscy108\b1}THING{\c&H00ffffff\fscx100\fscy100\b1} AS HAPPINESS?
+Dialogue: 0,0:01:24.57,0:01:24.69,Default,,0,0,0,,THE SAME THING {\c&H0010e0ff\fscx108\fscy108\b1}AS{\c&H00ffffff\fscx100\fscy100\b1} HAPPINESS?
+Dialogue: 0,0:01:24.69,0:01:25.55,Default,,0,0,0,,THE SAME THING AS {\c&H0010e0ff\fscx108\fscy108\b1}HAPPINESS?{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:25.55,0:01:25.85,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}NOT{\c&H00ffffff\fscx100\fscy100\b1} EXACTLY.
+Dialogue: 0,0:01:25.85,0:01:27.15,Default,,0,0,0,,NOT {\c&H0010e0ff\fscx108\fscy108\b1}EXACTLY.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:27.15,0:01:27.45,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}MARTIN{\c&H00ffffff\fscx100\fscy100\b1} SELIGMAN,
+Dialogue: 0,0:01:27.45,0:01:28.25,Default,,0,0,0,,MARTIN {\c&H0010e0ff\fscx108\fscy108\b1}SELIGMAN,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:28.25,0:01:28.67,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}CO-FOUNDER{\c&H00ffffff\fscx100\fscy100\b1} OF THE POSITIVE
+Dialogue: 0,0:01:28.67,0:01:28.93,Default,,0,0,0,,CO-FOUNDER {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} THE POSITIVE
+Dialogue: 0,0:01:28.93,0:01:29.03,Default,,0,0,0,,CO-FOUNDER OF {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} POSITIVE
+Dialogue: 0,0:01:28.91,0:01:29.51,Default,,0,0,0,,CO-FOUNDER OF THE {\c&H0010e0ff\fscx108\fscy108\b1}POSITIVE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:29.51,0:01:30.07,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}PSYCHOLOGY{\c&H00ffffff\fscx100\fscy100\b1} MOVEMENT,
+Dialogue: 0,0:01:30.07,0:01:31.05,Default,,0,0,0,,PSYCHOLOGY {\c&H0010e0ff\fscx108\fscy108\b1}MOVEMENT,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:31.05,0:01:31.37,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}DESCRIBES{\c&H00ffffff\fscx100\fscy100\b1} WELL-BEING AS BEING MADE
+Dialogue: 0,0:01:31.37,0:01:31.93,Default,,0,0,0,,DESCRIBES {\c&H0010e0ff\fscx108\fscy108\b1}WELL-BEING{\c&H00ffffff\fscx100\fscy100\b1} AS BEING MADE
+Dialogue: 0,0:01:31.93,0:01:32.49,Default,,0,0,0,,DESCRIBES WELL-BEING {\c&H0010e0ff\fscx108\fscy108\b1}AS{\c&H00ffffff\fscx100\fscy100\b1} BEING MADE
+Dialogue: 0,0:01:32.49,0:01:32.71,Default,,0,0,0,,DESCRIBES WELL-BEING AS {\c&H0010e0ff\fscx108\fscy108\b1}BEING{\c&H00ffffff\fscx100\fscy100\b1} MADE
+Dialogue: 0,0:01:32.71,0:01:32.97,Default,,0,0,0,,DESCRIBES WELL-BEING AS BEING {\c&H0010e0ff\fscx108\fscy108\b1}MADE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:32.97,0:01:33.11,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}UP{\c&H00ffffff\fscx100\fscy100\b1} OF FIVE PILLARS,
+Dialogue: 0,0:01:33.11,0:01:33.25,Default,,0,0,0,,UP {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} FIVE PILLARS,
+Dialogue: 0,0:01:33.25,0:01:33.71,Default,,0,0,0,,UP OF {\c&H0010e0ff\fscx108\fscy108\b1}FIVE{\c&H00ffffff\fscx100\fscy100\b1} PILLARS,
+Dialogue: 0,0:01:33.71,0:01:35.21,Default,,0,0,0,,UP OF FIVE {\c&H0010e0ff\fscx108\fscy108\b1}PILLARS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:35.21,0:01:35.25,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}POSITIVE{\c&H00ffffff\fscx100\fscy100\b1} EMOTION,
+Dialogue: 0,0:01:35.25,0:01:36.27,Default,,0,0,0,,POSITIVE {\c&H0010e0ff\fscx108\fscy108\b1}EMOTION,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:36.47,0:01:37.69,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}ENGAGEMENT,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:37.69,0:01:38.87,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}RELATIONSHIPS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:38.87,0:01:39.69,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}MEANING,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:39.69,0:01:39.91,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} ACCOMPLISHMENT.
+Dialogue: 0,0:01:39.91,0:01:41.03,Default,,0,0,0,,AND {\c&H0010e0ff\fscx108\fscy108\b1}ACCOMPLISHMENT.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:41.81,0:01:42.19,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}BRANCHES{\c&H00ffffff\fscx100\fscy100\b1} OF EXPLORATION IN POSITIVE
+Dialogue: 0,0:01:42.19,0:01:42.39,Default,,0,0,0,,BRANCHES {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} EXPLORATION IN POSITIVE
+Dialogue: 0,0:01:42.39,0:01:43.01,Default,,0,0,0,,BRANCHES OF {\c&H0010e0ff\fscx108\fscy108\b1}EXPLORATION{\c&H00ffffff\fscx100\fscy100\b1} IN POSITIVE
+Dialogue: 0,0:01:43.01,0:01:43.47,Default,,0,0,0,,BRANCHES OF EXPLORATION {\c&H0010e0ff\fscx108\fscy108\b1}IN{\c&H00ffffff\fscx100\fscy100\b1} POSITIVE
+Dialogue: 0,0:01:43.47,0:01:43.81,Default,,0,0,0,,BRANCHES OF EXPLORATION IN {\c&H0010e0ff\fscx108\fscy108\b1}POSITIVE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:43.81,0:01:44.23,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}PSYCHOLOGY{\c&H00ffffff\fscx100\fscy100\b1} THE
+Dialogue: 0,0:01:43.91,0:01:44.87,Default,,0,0,0,,PSYCHOLOGY {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:44.87,0:01:45.29,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}TERM{\c&H00ffffff\fscx100\fscy100\b1} FLOW WAS COINED BY
+Dialogue: 0,0:01:45.29,0:01:45.63,Default,,0,0,0,,TERM {\c&H0010e0ff\fscx108\fscy108\b1}FLOW{\c&H00ffffff\fscx100\fscy100\b1} WAS COINED BY
+Dialogue: 0,0:01:45.63,0:01:46.17,Default,,0,0,0,,TERM FLOW {\c&H0010e0ff\fscx108\fscy108\b1}WAS{\c&H00ffffff\fscx100\fscy100\b1} COINED BY
+Dialogue: 0,0:01:46.17,0:01:46.51,Default,,0,0,0,,TERM FLOW WAS {\c&H0010e0ff\fscx108\fscy108\b1}COINED{\c&H00ffffff\fscx100\fscy100\b1} BY
+Dialogue: 0,0:01:46.51,0:01:46.79,Default,,0,0,0,,TERM FLOW WAS COINED {\c&H0010e0ff\fscx108\fscy108\b1}BY{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:46.79,0:01:47.19,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}MIKE{\c&H00ffffff\fscx100\fscy100\b1} CSIKSZENTMIHALYI,
+Dialogue: 0,0:01:47.19,0:01:48.49,Default,,0,0,0,,MIKE {\c&H0010e0ff\fscx108\fscy108\b1}CSIKSZENTMIHALYI,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:48.49,0:01:48.93,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}CO-FOUNDER{\c&H00ffffff\fscx100\fscy100\b1} OF THE POSITIVE PSYCHOLOGY
+Dialogue: 0,0:01:48.93,0:01:49.15,Default,,0,0,0,,CO-FOUNDER {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} THE POSITIVE PSYCHOLOGY
+Dialogue: 0,0:01:49.15,0:01:49.35,Default,,0,0,0,,CO-FOUNDER OF {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} POSITIVE PSYCHOLOGY
+Dialogue: 0,0:01:49.35,0:01:49.67,Default,,0,0,0,,CO-FOUNDER OF THE {\c&H0010e0ff\fscx108\fscy108\b1}POSITIVE{\c&H00ffffff\fscx100\fscy100\b1} PSYCHOLOGY
+Dialogue: 0,0:01:49.67,0:01:50.23,Default,,0,0,0,,CO-FOUNDER OF THE POSITIVE {\c&H0010e0ff\fscx108\fscy108\b1}PSYCHOLOGY{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:50.23,0:01:50.59,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}MOVEMENT.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:51.51,0:01:51.71,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}FLOW{\c&H00ffffff\fscx100\fscy100\b1} IS A STATE OF
+Dialogue: 0,0:01:51.71,0:01:52.09,Default,,0,0,0,,FLOW {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} A STATE OF
+Dialogue: 0,0:01:52.09,0:01:52.27,Default,,0,0,0,,FLOW IS {\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} STATE OF
+Dialogue: 0,0:01:52.27,0:01:52.45,Default,,0,0,0,,FLOW IS A {\c&H0010e0ff\fscx108\fscy108\b1}STATE{\c&H00ffffff\fscx100\fscy100\b1} OF
+Dialogue: 0,0:01:52.45,0:01:52.57,Default,,0,0,0,,FLOW IS A STATE {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:52.57,0:01:52.97,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}ABSORPTION{\c&H00ffffff\fscx100\fscy100\b1} IN ONE'S WORK.
+Dialogue: 0,0:01:52.97,0:01:53.29,Default,,0,0,0,,ABSORPTION {\c&H0010e0ff\fscx108\fscy108\b1}IN{\c&H00ffffff\fscx100\fscy100\b1} ONE'S WORK.
+Dialogue: 0,0:01:53.29,0:01:53.53,Default,,0,0,0,,ABSORPTION IN {\c&H0010e0ff\fscx108\fscy108\b1}ONE'S{\c&H00ffffff\fscx100\fscy100\b1} WORK.
+Dialogue: 0,0:01:53.53,0:01:53.89,Default,,0,0,0,,ABSORPTION IN ONE'S {\c&H0010e0ff\fscx108\fscy108\b1}WORK.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:54.67,0:01:54.77,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IT{\c&H00ffffff\fscx100\fscy100\b1} IS CHARACTERIZED BY INTENSE
+Dialogue: 0,0:01:54.77,0:01:54.91,Default,,0,0,0,,IT {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} CHARACTERIZED BY INTENSE
+Dialogue: 0,0:01:54.91,0:01:55.33,Default,,0,0,0,,IT IS {\c&H0010e0ff\fscx108\fscy108\b1}CHARACTERIZED{\c&H00ffffff\fscx100\fscy100\b1} BY INTENSE
+Dialogue: 0,0:01:55.33,0:01:55.83,Default,,0,0,0,,IT IS CHARACTERIZED {\c&H0010e0ff\fscx108\fscy108\b1}BY{\c&H00ffffff\fscx100\fscy100\b1} INTENSE
+Dialogue: 0,0:01:55.83,0:01:56.33,Default,,0,0,0,,IT IS CHARACTERIZED BY {\c&H0010e0ff\fscx108\fscy108\b1}INTENSE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:56.33,0:01:57.47,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}CONCENTRATION,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:57.77,0:01:58.15,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}LOSS{\c&H00ffffff\fscx100\fscy100\b1} OF SELF-AWARENESS,
+Dialogue: 0,0:01:58.15,0:01:58.29,Default,,0,0,0,,LOSS {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} SELF-AWARENESS,
+Dialogue: 0,0:01:58.29,0:01:59.57,Default,,0,0,0,,LOSS OF {\c&H0010e0ff\fscx108\fscy108\b1}SELF-AWARENESS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:01:59.65,0:01:59.81,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} FEELING OF BEING PERFECTLY
+Dialogue: 0,0:01:59.81,0:02:00.13,Default,,0,0,0,,A {\c&H0010e0ff\fscx108\fscy108\b1}FEELING{\c&H00ffffff\fscx100\fscy100\b1} OF BEING PERFECTLY
+Dialogue: 0,0:02:00.13,0:02:00.33,Default,,0,0,0,,A FEELING {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} BEING PERFECTLY
+Dialogue: 0,0:02:00.33,0:02:00.61,Default,,0,0,0,,A FEELING OF {\c&H0010e0ff\fscx108\fscy108\b1}BEING{\c&H00ffffff\fscx100\fscy100\b1} PERFECTLY
+Dialogue: 0,0:02:00.61,0:02:01.29,Default,,0,0,0,,A FEELING OF BEING {\c&H0010e0ff\fscx108\fscy108\b1}PERFECTLY{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:01.29,0:02:02.31,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}CHALLENGED,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:02.31,0:02:02.49,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}NEITHER{\c&H00ffffff\fscx100\fscy100\b1} BORED NOR OVERWHELMED,
+Dialogue: 0,0:02:02.49,0:02:02.91,Default,,0,0,0,,NEITHER {\c&H0010e0ff\fscx108\fscy108\b1}BORED{\c&H00ffffff\fscx100\fscy100\b1} NOR OVERWHELMED,
+Dialogue: 0,0:02:02.91,0:02:03.37,Default,,0,0,0,,NEITHER BORED {\c&H0010e0ff\fscx108\fscy108\b1}NOR{\c&H00ffffff\fscx100\fscy100\b1} OVERWHELMED,
+Dialogue: 0,0:02:03.37,0:02:04.39,Default,,0,0,0,,NEITHER BORED NOR {\c&H0010e0ff\fscx108\fscy108\b1}OVERWHELMED,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:03.91,0:02:04.79,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:03.91,0:02:04.79,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} A SENSE THAT TIME
+Dialogue: 0,0:02:04.79,0:02:04.99,Default,,0,0,0,,AND {\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} SENSE THAT TIME
+Dialogue: 0,0:02:04.99,0:02:05.23,Default,,0,0,0,,AND A {\c&H0010e0ff\fscx108\fscy108\b1}SENSE{\c&H00ffffff\fscx100\fscy100\b1} THAT TIME
+Dialogue: 0,0:02:05.23,0:02:05.45,Default,,0,0,0,,AND A SENSE {\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} TIME
+Dialogue: 0,0:02:05.45,0:02:05.95,Default,,0,0,0,,AND A SENSE THAT {\c&H0010e0ff\fscx108\fscy108\b1}TIME{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:05.95,0:02:06.23,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} FLYING.
+Dialogue: 0,0:02:06.23,0:02:07.15,Default,,0,0,0,,IS {\c&H0010e0ff\fscx108\fscy108\b1}FLYING.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:07.89,0:02:08.07,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}FLOW{\c&H00ffffff\fscx100\fscy100\b1} IS AN INTRINSICALLY REWARDING
+Dialogue: 0,0:02:08.07,0:02:08.47,Default,,0,0,0,,FLOW {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} AN INTRINSICALLY REWARDING
+Dialogue: 0,0:02:08.47,0:02:08.61,Default,,0,0,0,,FLOW IS {\c&H0010e0ff\fscx108\fscy108\b1}AN{\c&H00ffffff\fscx100\fscy100\b1} INTRINSICALLY REWARDING
+Dialogue: 0,0:02:08.61,0:02:09.21,Default,,0,0,0,,FLOW IS AN {\c&H0010e0ff\fscx108\fscy108\b1}INTRINSICALLY{\c&H00ffffff\fscx100\fscy100\b1} REWARDING
+Dialogue: 0,0:02:09.21,0:02:09.75,Default,,0,0,0,,FLOW IS AN INTRINSICALLY {\c&H0010e0ff\fscx108\fscy108\b1}REWARDING{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:09.75,0:02:10.89,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}EXPERIENCE.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:11.27,0:02:11.41,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}CAN{\c&H00ffffff\fscx100\fscy100\b1} ALSO HELP ONE ACHIEVE
+Dialogue: 0,0:02:11.41,0:02:11.63,Default,,0,0,0,,CAN {\c&H0010e0ff\fscx108\fscy108\b1}ALSO{\c&H00ffffff\fscx100\fscy100\b1} HELP ONE ACHIEVE
+Dialogue: 0,0:02:11.63,0:02:11.87,Default,,0,0,0,,CAN ALSO {\c&H0010e0ff\fscx108\fscy108\b1}HELP{\c&H00ffffff\fscx100\fscy100\b1} ONE ACHIEVE
+Dialogue: 0,0:02:11.87,0:02:12.01,Default,,0,0,0,,CAN ALSO HELP {\c&H0010e0ff\fscx108\fscy108\b1}ONE{\c&H00ffffff\fscx100\fscy100\b1} ACHIEVE
+Dialogue: 0,0:02:12.01,0:02:12.31,Default,,0,0,0,,CAN ALSO HELP ONE {\c&H0010e0ff\fscx108\fscy108\b1}ACHIEVE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:12.31,0:02:12.51,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} GOAL OR IMPROVE SKILLS
+Dialogue: 0,0:02:12.51,0:02:12.87,Default,,0,0,0,,A {\c&H0010e0ff\fscx108\fscy108\b1}GOAL{\c&H00ffffff\fscx100\fscy100\b1} OR IMPROVE SKILLS
+Dialogue: 0,0:02:12.87,0:02:13.57,Default,,0,0,0,,A GOAL {\c&H0010e0ff\fscx108\fscy108\b1}OR{\c&H00ffffff\fscx100\fscy100\b1} IMPROVE SKILLS
+Dialogue: 0,0:02:13.57,0:02:13.99,Default,,0,0,0,,A GOAL OR {\c&H0010e0ff\fscx108\fscy108\b1}IMPROVE{\c&H00ffffff\fscx100\fscy100\b1} SKILLS
+Dialogue: 0,0:02:13.99,0:02:14.47,Default,,0,0,0,,A GOAL OR IMPROVE {\c&H0010e0ff\fscx108\fscy108\b1}SKILLS{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:14.05,0:02:15.45,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:15.45,0:02:15.63,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} HIGHLY RELATED TO CREATIVE
+Dialogue: 0,0:02:15.63,0:02:15.97,Default,,0,0,0,,IS {\c&H0010e0ff\fscx108\fscy108\b1}HIGHLY{\c&H00ffffff\fscx100\fscy100\b1} RELATED TO CREATIVE
+Dialogue: 0,0:02:15.97,0:02:16.37,Default,,0,0,0,,IS HIGHLY {\c&H0010e0ff\fscx108\fscy108\b1}RELATED{\c&H00ffffff\fscx100\fscy100\b1} TO CREATIVE
+Dialogue: 0,0:02:16.37,0:02:16.63,Default,,0,0,0,,IS HIGHLY RELATED {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} CREATIVE
+Dialogue: 0,0:02:16.63,0:02:17.13,Default,,0,0,0,,IS HIGHLY RELATED TO {\c&H0010e0ff\fscx108\fscy108\b1}CREATIVE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:17.13,0:02:18.11,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}INSIGHT.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:19.07,0:02:19.55,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}MINDFULNESS{\c&H00ffffff\fscx100\fscy100\b1} IS INTENTIONALLY FOCUSED AWARENESS
+Dialogue: 0,0:02:19.55,0:02:20.05,Default,,0,0,0,,MINDFULNESS {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} INTENTIONALLY FOCUSED AWARENESS
+Dialogue: 0,0:02:20.05,0:02:20.69,Default,,0,0,0,,MINDFULNESS IS {\c&H0010e0ff\fscx108\fscy108\b1}INTENTIONALLY{\c&H00ffffff\fscx100\fscy100\b1} FOCUSED AWARENESS
+Dialogue: 0,0:02:20.69,0:02:21.19,Default,,0,0,0,,MINDFULNESS IS INTENTIONALLY {\c&H0010e0ff\fscx108\fscy108\b1}FOCUSED{\c&H00ffffff\fscx100\fscy100\b1} AWARENESS
+Dialogue: 0,0:02:21.19,0:02:21.61,Default,,0,0,0,,MINDFULNESS IS INTENTIONALLY FOCUSED {\c&H0010e0ff\fscx108\fscy108\b1}AWARENESS{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:21.61,0:02:21.97,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} ONE'S IMMEDIATE EXPERIENCE.
+Dialogue: 0,0:02:21.97,0:02:22.43,Default,,0,0,0,,OF {\c&H0010e0ff\fscx108\fscy108\b1}ONE'S{\c&H00ffffff\fscx100\fscy100\b1} IMMEDIATE EXPERIENCE.
+Dialogue: 0,0:02:22.43,0:02:22.95,Default,,0,0,0,,OF ONE'S {\c&H0010e0ff\fscx108\fscy108\b1}IMMEDIATE{\c&H00ffffff\fscx100\fscy100\b1} EXPERIENCE.
+Dialogue: 0,0:02:22.95,0:02:24.21,Default,,0,0,0,,OF ONE'S IMMEDIATE {\c&H0010e0ff\fscx108\fscy108\b1}EXPERIENCE.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:23.23,0:02:23.99,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:23.99,0:02:24.51,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}EXPERIENCE{\c&H00ffffff\fscx100\fscy100\b1} IS ONE OF MOMENT-BY-MOMENT
+Dialogue: 0,0:02:24.51,0:02:24.75,Default,,0,0,0,,EXPERIENCE {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} ONE OF MOMENT-BY-MOMENT
+Dialogue: 0,0:02:24.75,0:02:24.97,Default,,0,0,0,,EXPERIENCE IS {\c&H0010e0ff\fscx108\fscy108\b1}ONE{\c&H00ffffff\fscx100\fscy100\b1} OF MOMENT-BY-MOMENT
+Dialogue: 0,0:02:24.97,0:02:25.13,Default,,0,0,0,,EXPERIENCE IS ONE {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} MOMENT-BY-MOMENT
+Dialogue: 0,0:02:25.13,0:02:26.07,Default,,0,0,0,,EXPERIENCE IS ONE OF {\c&H0010e0ff\fscx108\fscy108\b1}MOMENT-BY-MOMENT{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:26.07,0:02:26.51,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}ATTENTION{\c&H00ffffff\fscx100\fscy100\b1} TO THOUGHTS,
+Dialogue: 0,0:02:26.51,0:02:26.95,Default,,0,0,0,,ATTENTION {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} THOUGHTS,
+Dialogue: 0,0:02:26.95,0:02:27.83,Default,,0,0,0,,ATTENTION TO {\c&H0010e0ff\fscx108\fscy108\b1}THOUGHTS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:27.83,0:02:28.77,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}EMOTIONS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:28.81,0:02:29.13,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}PHYSICAL{\c&H00ffffff\fscx100\fscy100\b1} SENSATIONS,
+Dialogue: 0,0:02:29.13,0:02:29.79,Default,,0,0,0,,PHYSICAL {\c&H0010e0ff\fscx108\fscy108\b1}SENSATIONS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:30.05,0:02:30.13,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} SURROUNDINGS.
+Dialogue: 0,0:02:30.13,0:02:31.19,Default,,0,0,0,,AND {\c&H0010e0ff\fscx108\fscy108\b1}SURROUNDINGS.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:31.15,0:02:31.25,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} PRACTICE MINDFULNESS IS TO
+Dialogue: 0,0:02:31.25,0:02:31.63,Default,,0,0,0,,TO {\c&H0010e0ff\fscx108\fscy108\b1}PRACTICE{\c&H00ffffff\fscx100\fscy100\b1} MINDFULNESS IS TO
+Dialogue: 0,0:02:31.63,0:02:32.15,Default,,0,0,0,,TO PRACTICE {\c&H0010e0ff\fscx108\fscy108\b1}MINDFULNESS{\c&H00ffffff\fscx100\fscy100\b1} IS TO
+Dialogue: 0,0:02:32.15,0:02:32.63,Default,,0,0,0,,TO PRACTICE MINDFULNESS {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} TO
+Dialogue: 0,0:02:32.63,0:02:32.73,Default,,0,0,0,,TO PRACTICE MINDFULNESS IS {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:32.73,0:02:33.09,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}BECOME{\c&H00ffffff\fscx100\fscy100\b1} GROUNDED IN THE PRESENT
+Dialogue: 0,0:02:33.09,0:02:33.63,Default,,0,0,0,,BECOME {\c&H0010e0ff\fscx108\fscy108\b1}GROUNDED{\c&H00ffffff\fscx100\fscy100\b1} IN THE PRESENT
+Dialogue: 0,0:02:33.63,0:02:33.87,Default,,0,0,0,,BECOME GROUNDED {\c&H0010e0ff\fscx108\fscy108\b1}IN{\c&H00ffffff\fscx100\fscy100\b1} THE PRESENT
+Dialogue: 0,0:02:33.87,0:02:34.01,Default,,0,0,0,,BECOME GROUNDED IN {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} PRESENT
+Dialogue: 0,0:02:34.01,0:02:34.39,Default,,0,0,0,,BECOME GROUNDED IN THE {\c&H0010e0ff\fscx108\fscy108\b1}PRESENT{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:34.39,0:02:35.31,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}MOMENT.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:35.29,0:02:35.47,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}BENEFITS{\c&H00ffffff\fscx100\fscy100\b1} INCLUDE REDUCTION OF STRESS,
+Dialogue: 0,0:02:35.47,0:02:35.95,Default,,0,0,0,,BENEFITS {\c&H0010e0ff\fscx108\fscy108\b1}INCLUDE{\c&H00ffffff\fscx100\fscy100\b1} REDUCTION OF STRESS,
+Dialogue: 0,0:02:35.95,0:02:36.55,Default,,0,0,0,,BENEFITS INCLUDE {\c&H0010e0ff\fscx108\fscy108\b1}REDUCTION{\c&H00ffffff\fscx100\fscy100\b1} OF STRESS,
+Dialogue: 0,0:02:36.55,0:02:36.75,Default,,0,0,0,,BENEFITS INCLUDE REDUCTION {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} STRESS,
+Dialogue: 0,0:02:36.75,0:02:37.49,Default,,0,0,0,,BENEFITS INCLUDE REDUCTION OF {\c&H0010e0ff\fscx108\fscy108\b1}STRESS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:37.49,0:02:38.49,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}ANXIETY,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:38.49,0:02:39.33,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}DEPRESSION,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:39.33,0:02:39.55,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} CHRONIC PAIN.
+Dialogue: 0,0:02:39.55,0:02:39.91,Default,,0,0,0,,AND {\c&H0010e0ff\fscx108\fscy108\b1}CHRONIC{\c&H00ffffff\fscx100\fscy100\b1} PAIN.
+Dialogue: 0,0:02:39.91,0:02:40.83,Default,,0,0,0,,AND CHRONIC {\c&H0010e0ff\fscx108\fscy108\b1}PAIN.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:40.77,0:02:41.21,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}LEARNED{\c&H00ffffff\fscx100\fscy100\b1} OPTIMISM IS THE IDEA
+Dialogue: 0,0:02:41.21,0:02:41.59,Default,,0,0,0,,LEARNED {\c&H0010e0ff\fscx108\fscy108\b1}OPTIMISM{\c&H00ffffff\fscx100\fscy100\b1} IS THE IDEA
+Dialogue: 0,0:02:41.59,0:02:42.11,Default,,0,0,0,,LEARNED OPTIMISM {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} THE IDEA
+Dialogue: 0,0:02:42.11,0:02:42.25,Default,,0,0,0,,LEARNED OPTIMISM IS {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} IDEA
+Dialogue: 0,0:02:42.25,0:02:42.61,Default,,0,0,0,,LEARNED OPTIMISM IS THE {\c&H0010e0ff\fscx108\fscy108\b1}IDEA{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:42.61,0:02:42.77,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} A TALENT FOR JOY
+Dialogue: 0,0:02:42.77,0:02:42.93,Default,,0,0,0,,THAT {\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} TALENT FOR JOY
+Dialogue: 0,0:02:42.93,0:02:43.27,Default,,0,0,0,,THAT A {\c&H0010e0ff\fscx108\fscy108\b1}TALENT{\c&H00ffffff\fscx100\fscy100\b1} FOR JOY
+Dialogue: 0,0:02:43.27,0:02:43.45,Default,,0,0,0,,THAT A TALENT {\c&H0010e0ff\fscx108\fscy108\b1}FOR{\c&H00ffffff\fscx100\fscy100\b1} JOY
+Dialogue: 0,0:02:43.45,0:02:43.91,Default,,0,0,0,,THAT A TALENT FOR {\c&H0010e0ff\fscx108\fscy108\b1}JOY{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:43.91,0:02:44.45,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}CAN{\c&H00ffffff\fscx100\fscy100\b1} BE CULTIVATED.
+Dialogue: 0,0:02:44.45,0:02:44.67,Default,,0,0,0,,CAN {\c&H0010e0ff\fscx108\fscy108\b1}BE{\c&H00ffffff\fscx100\fscy100\b1} CULTIVATED.
+Dialogue: 0,0:02:44.67,0:02:45.75,Default,,0,0,0,,CAN BE {\c&H0010e0ff\fscx108\fscy108\b1}CULTIVATED.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:45.99,0:02:46.19,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} SAID,
+Dialogue: 0,0:02:46.19,0:02:46.71,Default,,0,0,0,,THAT {\c&H0010e0ff\fscx108\fscy108\b1}SAID,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:46.71,0:02:46.89,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IT'S{\c&H00ffffff\fscx100\fscy100\b1} IMPORTANT TO NOTE THE
+Dialogue: 0,0:02:46.89,0:02:47.33,Default,,0,0,0,,IT'S {\c&H0010e0ff\fscx108\fscy108\b1}IMPORTANT{\c&H00ffffff\fscx100\fscy100\b1} TO NOTE THE
+Dialogue: 0,0:02:47.33,0:02:47.51,Default,,0,0,0,,IT'S IMPORTANT {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} NOTE THE
+Dialogue: 0,0:02:47.51,0:02:47.73,Default,,0,0,0,,IT'S IMPORTANT TO {\c&H0010e0ff\fscx108\fscy108\b1}NOTE{\c&H00ffffff\fscx100\fscy100\b1} THE
+Dialogue: 0,0:02:47.73,0:02:47.95,Default,,0,0,0,,IT'S IMPORTANT TO NOTE {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:47.95,0:02:48.37,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}RESEARCH{\c&H00ffffff\fscx100\fscy100\b1} TELLS US THAT THE
+Dialogue: 0,0:02:48.37,0:02:48.67,Default,,0,0,0,,RESEARCH {\c&H0010e0ff\fscx108\fscy108\b1}TELLS{\c&H00ffffff\fscx100\fscy100\b1} US THAT THE
+Dialogue: 0,0:02:48.67,0:02:48.85,Default,,0,0,0,,RESEARCH TELLS {\c&H0010e0ff\fscx108\fscy108\b1}US{\c&H00ffffff\fscx100\fscy100\b1} THAT THE
+Dialogue: 0,0:02:48.85,0:02:48.99,Default,,0,0,0,,RESEARCH TELLS US {\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} THE
+Dialogue: 0,0:02:48.99,0:02:49.17,Default,,0,0,0,,RESEARCH TELLS US THAT {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:49.17,0:02:49.45,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}PATH{\c&H00ffffff\fscx100\fscy100\b1} TO FULFILLMENT REQUIRES CONSIDERABLE
+Dialogue: 0,0:02:49.45,0:02:49.63,Default,,0,0,0,,PATH {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} FULFILLMENT REQUIRES CONSIDERABLE
+Dialogue: 0,0:02:49.63,0:02:50.09,Default,,0,0,0,,PATH TO {\c&H0010e0ff\fscx108\fscy108\b1}FULFILLMENT{\c&H00ffffff\fscx100\fscy100\b1} REQUIRES CONSIDERABLE
+Dialogue: 0,0:02:50.09,0:02:51.11,Default,,0,0,0,,PATH TO FULFILLMENT {\c&H0010e0ff\fscx108\fscy108\b1}REQUIRES{\c&H00ffffff\fscx100\fscy100\b1} CONSIDERABLE
+Dialogue: 0,0:02:51.11,0:02:51.87,Default,,0,0,0,,PATH TO FULFILLMENT REQUIRES {\c&H0010e0ff\fscx108\fscy108\b1}CONSIDERABLE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:51.87,0:02:52.37,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}HARD{\c&H00ffffff\fscx100\fscy100\b1} WORK.
+Dialogue: 0,0:02:52.37,0:02:53.31,Default,,0,0,0,,HARD {\c&H0010e0ff\fscx108\fscy108\b1}WORK.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:53.41,0:02:53.51,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THERE{\c&H00ffffff\fscx100\fscy100\b1} ARE FEW IF ANY
+Dialogue: 0,0:02:53.51,0:02:53.73,Default,,0,0,0,,THERE {\c&H0010e0ff\fscx108\fscy108\b1}ARE{\c&H00ffffff\fscx100\fscy100\b1} FEW IF ANY
+Dialogue: 0,0:02:53.73,0:02:54.01,Default,,0,0,0,,THERE ARE {\c&H0010e0ff\fscx108\fscy108\b1}FEW{\c&H00ffffff\fscx100\fscy100\b1} IF ANY
+Dialogue: 0,0:02:54.01,0:02:54.15,Default,,0,0,0,,THERE ARE FEW {\c&H0010e0ff\fscx108\fscy108\b1}IF{\c&H00ffffff\fscx100\fscy100\b1} ANY
+Dialogue: 0,0:02:54.15,0:02:54.33,Default,,0,0,0,,THERE ARE FEW IF {\c&H0010e0ff\fscx108\fscy108\b1}ANY{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:54.33,0:02:54.75,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}SHORTCUTS{\c&H00ffffff\fscx100\fscy100\b1} TO SUSTAINED HAPPINESS AND
+Dialogue: 0,0:02:54.75,0:02:55.07,Default,,0,0,0,,SHORTCUTS {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} SUSTAINED HAPPINESS AND
+Dialogue: 0,0:02:55.07,0:02:55.53,Default,,0,0,0,,SHORTCUTS TO {\c&H0010e0ff\fscx108\fscy108\b1}SUSTAINED{\c&H00ffffff\fscx100\fscy100\b1} HAPPINESS AND
+Dialogue: 0,0:02:55.53,0:02:55.87,Default,,0,0,0,,SHORTCUTS TO SUSTAINED {\c&H0010e0ff\fscx108\fscy108\b1}HAPPINESS{\c&H00ffffff\fscx100\fscy100\b1} AND
+Dialogue: 0,0:02:55.87,0:02:56.19,Default,,0,0,0,,SHORTCUTS TO SUSTAINED HAPPINESS {\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:56.19,0:02:57.11,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}WELL-BEING.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:57.59,0:02:57.75,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}ANYONE{\c&H00ffffff\fscx100\fscy100\b1} WHO SAYS OTHERWISE IS
+Dialogue: 0,0:02:57.75,0:02:57.99,Default,,0,0,0,,ANYONE {\c&H0010e0ff\fscx108\fscy108\b1}WHO{\c&H00ffffff\fscx100\fscy100\b1} SAYS OTHERWISE IS
+Dialogue: 0,0:02:57.99,0:02:58.19,Default,,0,0,0,,ANYONE WHO {\c&H0010e0ff\fscx108\fscy108\b1}SAYS{\c&H00ffffff\fscx100\fscy100\b1} OTHERWISE IS
+Dialogue: 0,0:02:58.19,0:02:58.55,Default,,0,0,0,,ANYONE WHO SAYS {\c&H0010e0ff\fscx108\fscy108\b1}OTHERWISE{\c&H00ffffff\fscx100\fscy100\b1} IS
+Dialogue: 0,0:02:58.55,0:02:59.03,Default,,0,0,0,,ANYONE WHO SAYS OTHERWISE {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:02:59.03,0:02:59.41,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}SELLING{\c&H00ffffff\fscx100\fscy100\b1} SOMETHING.
+Dialogue: 0,0:02:59.41,0:02:59.87,Default,,0,0,0,,SELLING {\c&H0010e0ff\fscx108\fscy108\b1}SOMETHING.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:00.93,0:03:01.03,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IT{\c&H00ffffff\fscx100\fscy100\b1} IS CONTRASTED WITH LEARNED
+Dialogue: 0,0:03:01.03,0:03:01.17,Default,,0,0,0,,IT {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} CONTRASTED WITH LEARNED
+Dialogue: 0,0:03:01.17,0:03:01.73,Default,,0,0,0,,IT IS {\c&H0010e0ff\fscx108\fscy108\b1}CONTRASTED{\c&H00ffffff\fscx100\fscy100\b1} WITH LEARNED
+Dialogue: 0,0:03:01.73,0:03:01.97,Default,,0,0,0,,IT IS CONTRASTED {\c&H0010e0ff\fscx108\fscy108\b1}WITH{\c&H00ffffff\fscx100\fscy100\b1} LEARNED
+Dialogue: 0,0:03:01.97,0:03:02.47,Default,,0,0,0,,IT IS CONTRASTED WITH {\c&H0010e0ff\fscx108\fscy108\b1}LEARNED{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:02.47,0:03:03.65,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}HELPLESSNESS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:03.57,0:03:03.67,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}WHICH{\c&H00ffffff\fscx100\fscy100\b1} IS WHEN ONE BELIEVES
+Dialogue: 0,0:03:03.67,0:03:03.79,Default,,0,0,0,,WHICH {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} WHEN ONE BELIEVES
+Dialogue: 0,0:03:03.79,0:03:04.03,Default,,0,0,0,,WHICH IS {\c&H0010e0ff\fscx108\fscy108\b1}WHEN{\c&H00ffffff\fscx100\fscy100\b1} ONE BELIEVES
+Dialogue: 0,0:03:04.03,0:03:04.25,Default,,0,0,0,,WHICH IS WHEN {\c&H0010e0ff\fscx108\fscy108\b1}ONE{\c&H00ffffff\fscx100\fscy100\b1} BELIEVES
+Dialogue: 0,0:03:04.25,0:03:04.63,Default,,0,0,0,,WHICH IS WHEN ONE {\c&H0010e0ff\fscx108\fscy108\b1}BELIEVES{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:04.63,0:03:04.85,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} HE OR SHE HAS
+Dialogue: 0,0:03:04.85,0:03:05.05,Default,,0,0,0,,THAT {\c&H0010e0ff\fscx108\fscy108\b1}HE{\c&H00ffffff\fscx100\fscy100\b1} OR SHE HAS
+Dialogue: 0,0:03:05.05,0:03:05.21,Default,,0,0,0,,THAT HE {\c&H0010e0ff\fscx108\fscy108\b1}OR{\c&H00ffffff\fscx100\fscy100\b1} SHE HAS
+Dialogue: 0,0:03:05.21,0:03:05.35,Default,,0,0,0,,THAT HE OR {\c&H0010e0ff\fscx108\fscy108\b1}SHE{\c&H00ffffff\fscx100\fscy100\b1} HAS
+Dialogue: 0,0:03:05.35,0:03:05.57,Default,,0,0,0,,THAT HE OR SHE {\c&H0010e0ff\fscx108\fscy108\b1}HAS{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:05.57,0:03:05.83,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}NO{\c&H00ffffff\fscx100\fscy100\b1} CONTROL OVER WHAT OCCURS,
+Dialogue: 0,0:03:05.83,0:03:06.35,Default,,0,0,0,,NO {\c&H0010e0ff\fscx108\fscy108\b1}CONTROL{\c&H00ffffff\fscx100\fscy100\b1} OVER WHAT OCCURS,
+Dialogue: 0,0:03:06.35,0:03:06.89,Default,,0,0,0,,NO CONTROL {\c&H0010e0ff\fscx108\fscy108\b1}OVER{\c&H00ffffff\fscx100\fscy100\b1} WHAT OCCURS,
+Dialogue: 0,0:03:06.89,0:03:07.21,Default,,0,0,0,,NO CONTROL OVER {\c&H0010e0ff\fscx108\fscy108\b1}WHAT{\c&H00ffffff\fscx100\fscy100\b1} OCCURS,
+Dialogue: 0,0:03:07.21,0:03:08.11,Default,,0,0,0,,NO CONTROL OVER WHAT {\c&H0010e0ff\fscx108\fscy108\b1}OCCURS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:08.29,0:03:08.43,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} THAT EXTERNAL FORCES,
+Dialogue: 0,0:03:08.43,0:03:08.63,Default,,0,0,0,,AND {\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} EXTERNAL FORCES,
+Dialogue: 0,0:03:08.63,0:03:09.11,Default,,0,0,0,,AND THAT {\c&H0010e0ff\fscx108\fscy108\b1}EXTERNAL{\c&H00ffffff\fscx100\fscy100\b1} FORCES,
+Dialogue: 0,0:03:09.11,0:03:09.55,Default,,0,0,0,,AND THAT EXTERNAL {\c&H0010e0ff\fscx108\fscy108\b1}FORCES,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:09.55,0:03:10.21,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}SUCH{\c&H00ffffff\fscx100\fscy100\b1} AS GENETICS OR SOCIAL
+Dialogue: 0,0:03:10.21,0:03:10.51,Default,,0,0,0,,SUCH {\c&H0010e0ff\fscx108\fscy108\b1}AS{\c&H00ffffff\fscx100\fscy100\b1} GENETICS OR SOCIAL
+Dialogue: 0,0:03:10.51,0:03:10.99,Default,,0,0,0,,SUCH AS {\c&H0010e0ff\fscx108\fscy108\b1}GENETICS{\c&H00ffffff\fscx100\fscy100\b1} OR SOCIAL
+Dialogue: 0,0:03:10.99,0:03:11.41,Default,,0,0,0,,SUCH AS GENETICS {\c&H0010e0ff\fscx108\fscy108\b1}OR{\c&H00ffffff\fscx100\fscy100\b1} SOCIAL
+Dialogue: 0,0:03:11.41,0:03:11.81,Default,,0,0,0,,SUCH AS GENETICS OR {\c&H0010e0ff\fscx108\fscy108\b1}SOCIAL{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:11.81,0:03:12.75,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}CLASS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:12.77,0:03:13.09,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}ULTIMATELY{\c&H00ffffff\fscx100\fscy100\b1} DICTATE HIS OR HER
+Dialogue: 0,0:03:13.09,0:03:13.67,Default,,0,0,0,,ULTIMATELY {\c&H0010e0ff\fscx108\fscy108\b1}DICTATE{\c&H00ffffff\fscx100\fscy100\b1} HIS OR HER
+Dialogue: 0,0:03:13.67,0:03:14.13,Default,,0,0,0,,ULTIMATELY DICTATE {\c&H0010e0ff\fscx108\fscy108\b1}HIS{\c&H00ffffff\fscx100\fscy100\b1} OR HER
+Dialogue: 0,0:03:14.13,0:03:14.33,Default,,0,0,0,,ULTIMATELY DICTATE HIS {\c&H0010e0ff\fscx108\fscy108\b1}OR{\c&H00ffffff\fscx100\fscy100\b1} HER
+Dialogue: 0,0:03:14.33,0:03:14.45,Default,,0,0,0,,ULTIMATELY DICTATE HIS OR {\c&H0010e0ff\fscx108\fscy108\b1}HER{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:14.45,0:03:14.81,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}ABILITY{\c&H00ffffff\fscx100\fscy100\b1} TO ACCOMPLISH A TASK
+Dialogue: 0,0:03:14.81,0:03:15.01,Default,,0,0,0,,ABILITY {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} ACCOMPLISH A TASK
+Dialogue: 0,0:03:15.01,0:03:15.41,Default,,0,0,0,,ABILITY TO {\c&H0010e0ff\fscx108\fscy108\b1}ACCOMPLISH{\c&H00ffffff\fscx100\fscy100\b1} A TASK
+Dialogue: 0,0:03:15.41,0:03:15.57,Default,,0,0,0,,ABILITY TO ACCOMPLISH {\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} TASK
+Dialogue: 0,0:03:15.57,0:03:16.01,Default,,0,0,0,,ABILITY TO ACCOMPLISH A {\c&H0010e0ff\fscx108\fscy108\b1}TASK{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:16.01,0:03:16.31,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}OR{\c&H00ffffff\fscx100\fscy100\b1} SUCCEED.
+Dialogue: 0,0:03:16.31,0:03:17.27,Default,,0,0,0,,OR {\c&H0010e0ff\fscx108\fscy108\b1}SUCCEED.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:17.39,0:03:17.73,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}EVIDENCE{\c&H00ffffff\fscx100\fscy100\b1} SUGGESTS THAT WELL-BEING IS
+Dialogue: 0,0:03:17.73,0:03:18.23,Default,,0,0,0,,EVIDENCE {\c&H0010e0ff\fscx108\fscy108\b1}SUGGESTS{\c&H00ffffff\fscx100\fscy100\b1} THAT WELL-BEING IS
+Dialogue: 0,0:03:18.23,0:03:18.45,Default,,0,0,0,,EVIDENCE SUGGESTS {\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} WELL-BEING IS
+Dialogue: 0,0:03:18.45,0:03:18.97,Default,,0,0,0,,EVIDENCE SUGGESTS THAT {\c&H0010e0ff\fscx108\fscy108\b1}WELL-BEING{\c&H00ffffff\fscx100\fscy100\b1} IS
+Dialogue: 0,0:03:18.97,0:03:19.67,Default,,0,0,0,,EVIDENCE SUGGESTS THAT WELL-BEING {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:19.67,0:03:19.95,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}NOT{\c&H00ffffff\fscx100\fscy100\b1} SIMPLY THE RESULT
+Dialogue: 0,0:03:19.95,0:03:20.41,Default,,0,0,0,,NOT {\c&H0010e0ff\fscx108\fscy108\b1}SIMPLY{\c&H00ffffff\fscx100\fscy100\b1} THE RESULT
+Dialogue: 0,0:03:20.41,0:03:20.57,Default,,0,0,0,,NOT SIMPLY {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} RESULT
+Dialogue: 0,0:03:20.57,0:03:20.87,Default,,0,0,0,,NOT SIMPLY THE {\c&H0010e0ff\fscx108\fscy108\b1}RESULT{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:20.91,0:03:21.03,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} FORTUNATE SPIN OF THE
+Dialogue: 0,0:03:21.03,0:03:21.41,Default,,0,0,0,,THE {\c&H0010e0ff\fscx108\fscy108\b1}FORTUNATE{\c&H00ffffff\fscx100\fscy100\b1} SPIN OF THE
+Dialogue: 0,0:03:21.41,0:03:21.87,Default,,0,0,0,,THE FORTUNATE {\c&H0010e0ff\fscx108\fscy108\b1}SPIN{\c&H00ffffff\fscx100\fscy100\b1} OF THE
+Dialogue: 0,0:03:21.87,0:03:22.07,Default,,0,0,0,,THE FORTUNATE SPIN {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} THE
+Dialogue: 0,0:03:22.07,0:03:22.13,Default,,0,0,0,,THE FORTUNATE SPIN OF {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:22.13,0:03:22.49,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}GENETIC{\c&H00ffffff\fscx100\fscy100\b1} ROULETTE WHEEL.
+Dialogue: 0,0:03:22.49,0:03:22.79,Default,,0,0,0,,GENETIC {\c&H0010e0ff\fscx108\fscy108\b1}ROULETTE{\c&H00ffffff\fscx100\fscy100\b1} WHEEL.
+Dialogue: 0,0:03:22.79,0:03:23.65,Default,,0,0,0,,GENETIC ROULETTE {\c&H0010e0ff\fscx108\fscy108\b1}WHEEL.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:23.77,0:03:23.89,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THERE{\c&H00ffffff\fscx100\fscy100\b1} ARE THINGS THAT PEOPLE
+Dialogue: 0,0:03:23.89,0:03:24.09,Default,,0,0,0,,THERE {\c&H0010e0ff\fscx108\fscy108\b1}ARE{\c&H00ffffff\fscx100\fscy100\b1} THINGS THAT PEOPLE
+Dialogue: 0,0:03:24.09,0:03:24.47,Default,,0,0,0,,THERE ARE {\c&H0010e0ff\fscx108\fscy108\b1}THINGS{\c&H00ffffff\fscx100\fscy100\b1} THAT PEOPLE
+Dialogue: 0,0:03:24.47,0:03:24.67,Default,,0,0,0,,THERE ARE THINGS {\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} PEOPLE
+Dialogue: 0,0:03:24.67,0:03:24.97,Default,,0,0,0,,THERE ARE THINGS THAT {\c&H0010e0ff\fscx108\fscy108\b1}PEOPLE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:24.97,0:03:25.17,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}CAN{\c&H00ffffff\fscx100\fscy100\b1} ACTIVELY DO TO LEAD
+Dialogue: 0,0:03:25.17,0:03:25.59,Default,,0,0,0,,CAN {\c&H0010e0ff\fscx108\fscy108\b1}ACTIVELY{\c&H00ffffff\fscx100\fscy100\b1} DO TO LEAD
+Dialogue: 0,0:03:25.59,0:03:25.95,Default,,0,0,0,,CAN ACTIVELY {\c&H0010e0ff\fscx108\fscy108\b1}DO{\c&H00ffffff\fscx100\fscy100\b1} TO LEAD
+Dialogue: 0,0:03:25.95,0:03:26.41,Default,,0,0,0,,CAN ACTIVELY DO {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} LEAD
+Dialogue: 0,0:03:26.41,0:03:26.73,Default,,0,0,0,,CAN ACTIVELY DO TO {\c&H0010e0ff\fscx108\fscy108\b1}LEAD{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:26.73,0:03:27.19,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}MORE{\c&H00ffffff\fscx100\fscy100\b1} FULFILLING LIVES.
+Dialogue: 0,0:03:27.19,0:03:27.63,Default,,0,0,0,,MORE {\c&H0010e0ff\fscx108\fscy108\b1}FULFILLING{\c&H00ffffff\fscx100\fscy100\b1} LIVES.
+Dialogue: 0,0:03:27.63,0:03:28.23,Default,,0,0,0,,MORE FULFILLING {\c&H0010e0ff\fscx108\fscy108\b1}LIVES.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:29.03,0:03:29.33,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}PROFESSOR{\c&H00ffffff\fscx100\fscy100\b1} HOWARD GARDNER IS LEADING
+Dialogue: 0,0:03:29.33,0:03:29.85,Default,,0,0,0,,PROFESSOR {\c&H0010e0ff\fscx108\fscy108\b1}HOWARD{\c&H00ffffff\fscx100\fscy100\b1} GARDNER IS LEADING
+Dialogue: 0,0:03:29.85,0:03:30.23,Default,,0,0,0,,PROFESSOR HOWARD {\c&H0010e0ff\fscx108\fscy108\b1}GARDNER{\c&H00ffffff\fscx100\fscy100\b1} IS LEADING
+Dialogue: 0,0:03:30.23,0:03:30.81,Default,,0,0,0,,PROFESSOR HOWARD GARDNER {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} LEADING
+Dialogue: 0,0:03:30.81,0:03:31.11,Default,,0,0,0,,PROFESSOR HOWARD GARDNER IS {\c&H0010e0ff\fscx108\fscy108\b1}LEADING{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:31.11,0:03:31.29,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} LARGE-SCALE EFFORT TO IDENTIFY
+Dialogue: 0,0:03:31.29,0:03:31.89,Default,,0,0,0,,A {\c&H0010e0ff\fscx108\fscy108\b1}LARGE-SCALE{\c&H00ffffff\fscx100\fscy100\b1} EFFORT TO IDENTIFY
+Dialogue: 0,0:03:31.89,0:03:32.21,Default,,0,0,0,,A LARGE-SCALE {\c&H0010e0ff\fscx108\fscy108\b1}EFFORT{\c&H00ffffff\fscx100\fscy100\b1} TO IDENTIFY
+Dialogue: 0,0:03:32.21,0:03:32.39,Default,,0,0,0,,A LARGE-SCALE EFFORT {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} IDENTIFY
+Dialogue: 0,0:03:32.39,0:03:32.83,Default,,0,0,0,,A LARGE-SCALE EFFORT TO {\c&H0010e0ff\fscx108\fscy108\b1}IDENTIFY{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:32.83,0:03:33.47,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}INDIVIDUALS{\c&H00ffffff\fscx100\fscy100\b1} AND INSTITUTIONS THAT
+Dialogue: 0,0:03:33.47,0:03:34.09,Default,,0,0,0,,INDIVIDUALS {\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} INSTITUTIONS THAT
+Dialogue: 0,0:03:34.09,0:03:34.55,Default,,0,0,0,,INDIVIDUALS AND {\c&H0010e0ff\fscx108\fscy108\b1}INSTITUTIONS{\c&H00ffffff\fscx100\fscy100\b1} THAT
+Dialogue: 0,0:03:34.23,0:03:35.39,Default,,0,0,0,,INDIVIDUALS AND INSTITUTIONS {\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:35.39,0:03:36.11,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}EXEMPLIFY{\c&H00ffffff\fscx100\fscy100\b1} GOOD WORK,
+Dialogue: 0,0:03:36.11,0:03:36.71,Default,,0,0,0,,EXEMPLIFY {\c&H0010e0ff\fscx108\fscy108\b1}GOOD{\c&H00ffffff\fscx100\fscy100\b1} WORK,
+Dialogue: 0,0:03:36.71,0:03:37.23,Default,,0,0,0,,EXEMPLIFY GOOD {\c&H0010e0ff\fscx108\fscy108\b1}WORK,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:37.23,0:03:38.19,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}WORK{\c&H00ffffff\fscx100\fscy100\b1} THAT IS EXCELLENT IN
+Dialogue: 0,0:03:38.19,0:03:38.39,Default,,0,0,0,,WORK {\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} IS EXCELLENT IN
+Dialogue: 0,0:03:38.39,0:03:38.49,Default,,0,0,0,,WORK THAT {\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} EXCELLENT IN
+Dialogue: 0,0:03:38.49,0:03:38.95,Default,,0,0,0,,WORK THAT IS {\c&H0010e0ff\fscx108\fscy108\b1}EXCELLENT{\c&H00ffffff\fscx100\fscy100\b1} IN
+Dialogue: 0,0:03:38.95,0:03:39.15,Default,,0,0,0,,WORK THAT IS EXCELLENT {\c&H0010e0ff\fscx108\fscy108\b1}IN{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:39.15,0:03:40.21,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}QUALITY,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:40.21,0:03:40.51,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}SOCIALLY{\c&H00ffffff\fscx100\fscy100\b1} RESPONSIBLE,
+Dialogue: 0,0:03:40.51,0:03:41.69,Default,,0,0,0,,SOCIALLY {\c&H0010e0ff\fscx108\fscy108\b1}RESPONSIBLE,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:41.69,0:03:41.81,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} MEANINGFUL TO ITS PRACTITIONERS.
+Dialogue: 0,0:03:41.81,0:03:42.47,Default,,0,0,0,,AND {\c&H0010e0ff\fscx108\fscy108\b1}MEANINGFUL{\c&H00ffffff\fscx100\fscy100\b1} TO ITS PRACTITIONERS.
+Dialogue: 0,0:03:42.07,0:03:42.81,Default,,0,0,0,,AND MEANINGFUL {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} ITS PRACTITIONERS.
+Dialogue: 0,0:03:42.81,0:03:42.93,Default,,0,0,0,,AND MEANINGFUL TO {\c&H0010e0ff\fscx108\fscy108\b1}ITS{\c&H00ffffff\fscx100\fscy100\b1} PRACTITIONERS.
+Dialogue: 0,0:03:42.93,0:03:43.43,Default,,0,0,0,,AND MEANINGFUL TO ITS {\c&H0010e0ff\fscx108\fscy108\b1}PRACTITIONERS.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:44.45,0:03:44.53,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} PROJECT ALSO SEEKS TO
+Dialogue: 0,0:03:44.54,0:03:44.94,Default,,0,0,0,,THE {\c&H0010e0ff\fscx108\fscy108\b1}PROJECT{\c&H00ffffff\fscx100\fscy100\b1} ALSO SEEKS TO
+Dialogue: 0,0:03:44.94,0:03:45.44,Default,,0,0,0,,THE PROJECT {\c&H0010e0ff\fscx108\fscy108\b1}ALSO{\c&H00ffffff\fscx100\fscy100\b1} SEEKS TO
+Dialogue: 0,0:03:45.44,0:03:45.76,Default,,0,0,0,,THE PROJECT ALSO {\c&H0010e0ff\fscx108\fscy108\b1}SEEKS{\c&H00ffffff\fscx100\fscy100\b1} TO
+Dialogue: 0,0:03:45.76,0:03:45.92,Default,,0,0,0,,THE PROJECT ALSO SEEKS {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:45.92,0:03:46.26,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}DETERMINE{\c&H00ffffff\fscx100\fscy100\b1} HOW BEST TO INCREASE
+Dialogue: 0,0:03:46.26,0:03:46.54,Default,,0,0,0,,DETERMINE {\c&H0010e0ff\fscx108\fscy108\b1}HOW{\c&H00ffffff\fscx100\fscy100\b1} BEST TO INCREASE
+Dialogue: 0,0:03:46.54,0:03:46.78,Default,,0,0,0,,DETERMINE HOW {\c&H0010e0ff\fscx108\fscy108\b1}BEST{\c&H00ffffff\fscx100\fscy100\b1} TO INCREASE
+Dialogue: 0,0:03:46.78,0:03:46.96,Default,,0,0,0,,DETERMINE HOW BEST {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} INCREASE
+Dialogue: 0,0:03:46.96,0:03:47.50,Default,,0,0,0,,DETERMINE HOW BEST TO {\c&H0010e0ff\fscx108\fscy108\b1}INCREASE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:47.50,0:03:47.78,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} INCIDENCE OF GOOD WORK
+Dialogue: 0,0:03:47.78,0:03:48.18,Default,,0,0,0,,THE {\c&H0010e0ff\fscx108\fscy108\b1}INCIDENCE{\c&H00ffffff\fscx100\fscy100\b1} OF GOOD WORK
+Dialogue: 0,0:03:48.18,0:03:48.52,Default,,0,0,0,,THE INCIDENCE {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} GOOD WORK
+Dialogue: 0,0:03:48.52,0:03:48.78,Default,,0,0,0,,THE INCIDENCE OF {\c&H0010e0ff\fscx108\fscy108\b1}GOOD{\c&H00ffffff\fscx100\fscy100\b1} WORK
+Dialogue: 0,0:03:48.78,0:03:49.08,Default,,0,0,0,,THE INCIDENCE OF GOOD {\c&H0010e0ff\fscx108\fscy108\b1}WORK{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:49.08,0:03:49.48,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IN{\c&H00ffffff\fscx100\fscy100\b1} OUR SOCIETY.
+Dialogue: 0,0:03:49.48,0:03:49.68,Default,,0,0,0,,IN {\c&H0010e0ff\fscx108\fscy108\b1}OUR{\c&H00ffffff\fscx100\fscy100\b1} SOCIETY.
+Dialogue: 0,0:03:49.68,0:03:50.16,Default,,0,0,0,,IN OUR {\c&H0010e0ff\fscx108\fscy108\b1}SOCIETY.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:50.80,0:03:50.94,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} GOOD WORK PROJECT ARGUES
+Dialogue: 0,0:03:50.94,0:03:51.28,Default,,0,0,0,,THE {\c&H0010e0ff\fscx108\fscy108\b1}GOOD{\c&H00ffffff\fscx100\fscy100\b1} WORK PROJECT ARGUES
+Dialogue: 0,0:03:51.28,0:03:51.44,Default,,0,0,0,,THE GOOD {\c&H0010e0ff\fscx108\fscy108\b1}WORK{\c&H00ffffff\fscx100\fscy100\b1} PROJECT ARGUES
+Dialogue: 0,0:03:51.44,0:03:51.84,Default,,0,0,0,,THE GOOD WORK {\c&H0010e0ff\fscx108\fscy108\b1}PROJECT{\c&H00ffffff\fscx100\fscy100\b1} ARGUES
+Dialogue: 0,0:03:51.84,0:03:52.24,Default,,0,0,0,,THE GOOD WORK PROJECT {\c&H0010e0ff\fscx108\fscy108\b1}ARGUES{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:52.24,0:03:52.50,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1} SOCIETY AS A WHOLE
+Dialogue: 0,0:03:52.50,0:03:53.06,Default,,0,0,0,,THAT {\c&H0010e0ff\fscx108\fscy108\b1}SOCIETY{\c&H00ffffff\fscx100\fscy100\b1} AS A WHOLE
+Dialogue: 0,0:03:53.06,0:03:53.42,Default,,0,0,0,,THAT SOCIETY {\c&H0010e0ff\fscx108\fscy108\b1}AS{\c&H00ffffff\fscx100\fscy100\b1} A WHOLE
+Dialogue: 0,0:03:53.42,0:03:53.56,Default,,0,0,0,,THAT SOCIETY AS {\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} WHOLE
+Dialogue: 0,0:03:53.56,0:03:53.84,Default,,0,0,0,,THAT SOCIETY AS A {\c&H0010e0ff\fscx108\fscy108\b1}WHOLE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:53.84,0:03:54.36,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}WOULD{\c&H00ffffff\fscx100\fscy100\b1} BE BETTER OFF TO
+Dialogue: 0,0:03:54.36,0:03:54.46,Default,,0,0,0,,WOULD {\c&H0010e0ff\fscx108\fscy108\b1}BE{\c&H00ffffff\fscx100\fscy100\b1} BETTER OFF TO
+Dialogue: 0,0:03:54.46,0:03:54.72,Default,,0,0,0,,WOULD BE {\c&H0010e0ff\fscx108\fscy108\b1}BETTER{\c&H00ffffff\fscx100\fscy100\b1} OFF TO
+Dialogue: 0,0:03:54.72,0:03:54.98,Default,,0,0,0,,WOULD BE BETTER {\c&H0010e0ff\fscx108\fscy108\b1}OFF{\c&H00ffffff\fscx100\fscy100\b1} TO
+Dialogue: 0,0:03:54.98,0:03:55.12,Default,,0,0,0,,WOULD BE BETTER OFF {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:55.12,0:03:55.48,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}ENCOURAGE{\c&H00ffffff\fscx100\fscy100\b1} INDIVIDUALS TO
+Dialogue: 0,0:03:55.48,0:03:56.10,Default,,0,0,0,,ENCOURAGE {\c&H0010e0ff\fscx108\fscy108\b1}INDIVIDUALS{\c&H00ffffff\fscx100\fscy100\b1} TO
+Dialogue: 0,0:03:55.74,0:03:56.74,Default,,0,0,0,,ENCOURAGE INDIVIDUALS {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:56.74,0:03:57.28,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}PURSUE{\c&H00ffffff\fscx100\fscy100\b1} EXCELLENCE FOR ITS OWN
+Dialogue: 0,0:03:57.28,0:03:57.98,Default,,0,0,0,,PURSUE {\c&H0010e0ff\fscx108\fscy108\b1}EXCELLENCE{\c&H00ffffff\fscx100\fscy100\b1} FOR ITS OWN
+Dialogue: 0,0:03:57.98,0:03:58.28,Default,,0,0,0,,PURSUE EXCELLENCE {\c&H0010e0ff\fscx108\fscy108\b1}FOR{\c&H00ffffff\fscx100\fscy100\b1} ITS OWN
+Dialogue: 0,0:03:58.28,0:03:58.44,Default,,0,0,0,,PURSUE EXCELLENCE FOR {\c&H0010e0ff\fscx108\fscy108\b1}ITS{\c&H00ffffff\fscx100\fscy100\b1} OWN
+Dialogue: 0,0:03:58.44,0:03:58.78,Default,,0,0,0,,PURSUE EXCELLENCE FOR ITS {\c&H0010e0ff\fscx108\fscy108\b1}OWN{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:58.78,0:03:59.70,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}SAKE,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:03:59.74,0:03:59.86,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} GRAVITATE TOWARD PROJECTS WHERE
+Dialogue: 0,0:03:59.86,0:04:00.30,Default,,0,0,0,,TO {\c&H0010e0ff\fscx108\fscy108\b1}GRAVITATE{\c&H00ffffff\fscx100\fscy100\b1} TOWARD PROJECTS WHERE
+Dialogue: 0,0:04:00.30,0:04:00.58,Default,,0,0,0,,TO GRAVITATE {\c&H0010e0ff\fscx108\fscy108\b1}TOWARD{\c&H00ffffff\fscx100\fscy100\b1} PROJECTS WHERE
+Dialogue: 0,0:04:00.58,0:04:01.06,Default,,0,0,0,,TO GRAVITATE TOWARD {\c&H0010e0ff\fscx108\fscy108\b1}PROJECTS{\c&H00ffffff\fscx100\fscy100\b1} WHERE
+Dialogue: 0,0:04:01.06,0:04:01.26,Default,,0,0,0,,TO GRAVITATE TOWARD PROJECTS {\c&H0010e0ff\fscx108\fscy108\b1}WHERE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:01.26,0:04:01.38,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THEY{\c&H00ffffff\fscx100\fscy100\b1} REGULARLY ACHIEVE A SENSE
+Dialogue: 0,0:04:01.38,0:04:01.90,Default,,0,0,0,,THEY {\c&H0010e0ff\fscx108\fscy108\b1}REGULARLY{\c&H00ffffff\fscx100\fscy100\b1} ACHIEVE A SENSE
+Dialogue: 0,0:04:01.90,0:04:02.26,Default,,0,0,0,,THEY REGULARLY {\c&H0010e0ff\fscx108\fscy108\b1}ACHIEVE{\c&H00ffffff\fscx100\fscy100\b1} A SENSE
+Dialogue: 0,0:04:02.26,0:04:02.46,Default,,0,0,0,,THEY REGULARLY ACHIEVE {\c&H0010e0ff\fscx108\fscy108\b1}A{\c&H00ffffff\fscx100\fscy100\b1} SENSE
+Dialogue: 0,0:04:02.46,0:04:02.68,Default,,0,0,0,,THEY REGULARLY ACHIEVE A {\c&H0010e0ff\fscx108\fscy108\b1}SENSE{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:02.68,0:04:02.80,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} FLOW,
+Dialogue: 0,0:04:02.80,0:04:03.68,Default,,0,0,0,,OF {\c&H0010e0ff\fscx108\fscy108\b1}FLOW,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:03.90,0:04:04.02,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} TO FIND POSITIONS THAT
+Dialogue: 0,0:04:04.02,0:04:04.18,Default,,0,0,0,,AND {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} FIND POSITIONS THAT
+Dialogue: 0,0:04:04.18,0:04:04.50,Default,,0,0,0,,AND TO {\c&H0010e0ff\fscx108\fscy108\b1}FIND{\c&H00ffffff\fscx100\fscy100\b1} POSITIONS THAT
+Dialogue: 0,0:04:04.50,0:04:05.02,Default,,0,0,0,,AND TO FIND {\c&H0010e0ff\fscx108\fscy108\b1}POSITIONS{\c&H00ffffff\fscx100\fscy100\b1} THAT
+Dialogue: 0,0:04:05.02,0:04:05.40,Default,,0,0,0,,AND TO FIND POSITIONS {\c&H0010e0ff\fscx108\fscy108\b1}THAT{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:05.40,0:04:05.54,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}WILL{\c&H00ffffff\fscx100\fscy100\b1} HELP THEM ACHIEVE HIGHER
+Dialogue: 0,0:04:05.54,0:04:05.80,Default,,0,0,0,,WILL {\c&H0010e0ff\fscx108\fscy108\b1}HELP{\c&H00ffffff\fscx100\fscy100\b1} THEM ACHIEVE HIGHER
+Dialogue: 0,0:04:05.80,0:04:05.96,Default,,0,0,0,,WILL HELP {\c&H0010e0ff\fscx108\fscy108\b1}THEM{\c&H00ffffff\fscx100\fscy100\b1} ACHIEVE HIGHER
+Dialogue: 0,0:04:05.96,0:04:06.36,Default,,0,0,0,,WILL HELP THEM {\c&H0010e0ff\fscx108\fscy108\b1}ACHIEVE{\c&H00ffffff\fscx100\fscy100\b1} HIGHER
+Dialogue: 0,0:04:06.36,0:04:06.88,Default,,0,0,0,,WILL HELP THEM ACHIEVE {\c&H0010e0ff\fscx108\fscy108\b1}HIGHER{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:06.88,0:04:07.32,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}LEVELS{\c&H00ffffff\fscx100\fscy100\b1} OF FULFILLMENT.
+Dialogue: 0,0:04:07.32,0:04:07.58,Default,,0,0,0,,LEVELS {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} FULFILLMENT.
+Dialogue: 0,0:04:07.58,0:04:08.50,Default,,0,0,0,,LEVELS OF {\c&H0010e0ff\fscx108\fscy108\b1}FULFILLMENT.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:09.42,0:04:09.68,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IS{\c&H00ffffff\fscx100\fscy100\b1} POSITIVE PSYCHOLOGY AN EASY
+Dialogue: 0,0:04:09.68,0:04:10.14,Default,,0,0,0,,IS {\c&H0010e0ff\fscx108\fscy108\b1}POSITIVE{\c&H00ffffff\fscx100\fscy100\b1} PSYCHOLOGY AN EASY
+Dialogue: 0,0:04:10.14,0:04:10.72,Default,,0,0,0,,IS POSITIVE {\c&H0010e0ff\fscx108\fscy108\b1}PSYCHOLOGY{\c&H00ffffff\fscx100\fscy100\b1} AN EASY
+Dialogue: 0,0:04:10.72,0:04:11.20,Default,,0,0,0,,IS POSITIVE PSYCHOLOGY {\c&H0010e0ff\fscx108\fscy108\b1}AN{\c&H00ffffff\fscx100\fscy100\b1} EASY
+Dialogue: 0,0:04:11.20,0:04:11.56,Default,,0,0,0,,IS POSITIVE PSYCHOLOGY AN {\c&H0010e0ff\fscx108\fscy108\b1}EASY{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:11.56,0:04:11.96,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}ANSWER{\c&H00ffffff\fscx100\fscy100\b1} TO ALL OF SOCIETY'S
+Dialogue: 0,0:04:11.96,0:04:12.16,Default,,0,0,0,,ANSWER {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1} ALL OF SOCIETY'S
+Dialogue: 0,0:04:12.16,0:04:12.46,Default,,0,0,0,,ANSWER TO {\c&H0010e0ff\fscx108\fscy108\b1}ALL{\c&H00ffffff\fscx100\fscy100\b1} OF SOCIETY'S
+Dialogue: 0,0:04:12.46,0:04:12.56,Default,,0,0,0,,ANSWER TO ALL {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} SOCIETY'S
+Dialogue: 0,0:04:12.56,0:04:13.04,Default,,0,0,0,,ANSWER TO ALL OF {\c&H0010e0ff\fscx108\fscy108\b1}SOCIETY'S{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:13.04,0:04:13.86,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}PROBLEMS?{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:14.26,0:04:14.80,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}NO,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:14.80,0:04:14.99,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}LET'S{\c&H00ffffff\fscx100\fscy100\b1} NOT BE NAIVE.
+Dialogue: 0,0:04:14.99,0:04:15.16,Default,,0,0,0,,LET'S {\c&H0010e0ff\fscx108\fscy108\b1}NOT{\c&H00ffffff\fscx100\fscy100\b1} BE NAIVE.
+Dialogue: 0,0:04:15.16,0:04:15.30,Default,,0,0,0,,LET'S NOT {\c&H0010e0ff\fscx108\fscy108\b1}BE{\c&H00ffffff\fscx100\fscy100\b1} NAIVE.
+Dialogue: 0,0:04:15.30,0:04:16.26,Default,,0,0,0,,LET'S NOT BE {\c&H0010e0ff\fscx108\fscy108\b1}NAIVE.{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:16.74,0:04:16.96,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}BUT{\c&H00ffffff\fscx100\fscy100\b1} WE MUST ASK OURSELVES,
+Dialogue: 0,0:04:16.96,0:04:17.12,Default,,0,0,0,,BUT {\c&H0010e0ff\fscx108\fscy108\b1}WE{\c&H00ffffff\fscx100\fscy100\b1} MUST ASK OURSELVES,
+Dialogue: 0,0:04:17.12,0:04:17.38,Default,,0,0,0,,BUT WE {\c&H0010e0ff\fscx108\fscy108\b1}MUST{\c&H00ffffff\fscx100\fscy100\b1} ASK OURSELVES,
+Dialogue: 0,0:04:17.38,0:04:17.68,Default,,0,0,0,,BUT WE MUST {\c&H0010e0ff\fscx108\fscy108\b1}ASK{\c&H00ffffff\fscx100\fscy100\b1} OURSELVES,
+Dialogue: 0,0:04:17.68,0:04:18.12,Default,,0,0,0,,BUT WE MUST ASK {\c&H0010e0ff\fscx108\fscy108\b1}OURSELVES,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:18.68,0:04:18.86,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IF{\c&H00ffffff\fscx100\fscy100\b1} WE APPLIED THE TENETS
+Dialogue: 0,0:04:18.86,0:04:18.99,Default,,0,0,0,,IF {\c&H0010e0ff\fscx108\fscy108\b1}WE{\c&H00ffffff\fscx100\fscy100\b1} APPLIED THE TENETS
+Dialogue: 0,0:04:18.99,0:04:19.50,Default,,0,0,0,,IF WE {\c&H0010e0ff\fscx108\fscy108\b1}APPLIED{\c&H00ffffff\fscx100\fscy100\b1} THE TENETS
+Dialogue: 0,0:04:19.50,0:04:19.70,Default,,0,0,0,,IF WE APPLIED {\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} TENETS
+Dialogue: 0,0:04:19.70,0:04:20.04,Default,,0,0,0,,IF WE APPLIED THE {\c&H0010e0ff\fscx108\fscy108\b1}TENETS{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:20.04,0:04:20.28,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} POSITIVE PSYCHOLOGY TO
+Dialogue: 0,0:04:20.28,0:04:20.72,Default,,0,0,0,,OF {\c&H0010e0ff\fscx108\fscy108\b1}POSITIVE{\c&H00ffffff\fscx100\fscy100\b1} PSYCHOLOGY TO
+Dialogue: 0,0:04:20.72,0:04:21.26,Default,,0,0,0,,OF POSITIVE {\c&H0010e0ff\fscx108\fscy108\b1}PSYCHOLOGY{\c&H00ffffff\fscx100\fscy100\b1} TO
+Dialogue: 0,0:04:20.82,0:04:21.64,Default,,0,0,0,,OF POSITIVE PSYCHOLOGY {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:21.64,0:04:22.92,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}EDUCATION,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:22.92,0:04:23.46,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}BUSINESS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:23.46,0:04:23.58,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1} GOVERNMENT,
+Dialogue: 0,0:04:23.58,0:04:23.92,Default,,0,0,0,,AND {\c&H0010e0ff\fscx108\fscy108\b1}GOVERNMENT,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:24.70,0:04:24.96,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IF{\c&H00ffffff\fscx100\fscy100\b1} WE ENCOURAGED INDIVIDUALS AND
+Dialogue: 0,0:04:24.96,0:04:25.08,Default,,0,0,0,,IF {\c&H0010e0ff\fscx108\fscy108\b1}WE{\c&H00ffffff\fscx100\fscy100\b1} ENCOURAGED INDIVIDUALS AND
+Dialogue: 0,0:04:25.08,0:04:25.50,Default,,0,0,0,,IF WE {\c&H0010e0ff\fscx108\fscy108\b1}ENCOURAGED{\c&H00ffffff\fscx100\fscy100\b1} INDIVIDUALS AND
+Dialogue: 0,0:04:25.50,0:04:26.16,Default,,0,0,0,,IF WE ENCOURAGED {\c&H0010e0ff\fscx108\fscy108\b1}INDIVIDUALS{\c&H00ffffff\fscx100\fscy100\b1} AND
+Dialogue: 0,0:04:26.16,0:04:26.42,Default,,0,0,0,,IF WE ENCOURAGED INDIVIDUALS {\c&H0010e0ff\fscx108\fscy108\b1}AND{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:26.42,0:04:26.76,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}COMMUNITIES{\c&H00ffffff\fscx100\fscy100\b1} TO
+Dialogue: 0,0:04:26.32,0:04:27.36,Default,,0,0,0,,COMMUNITIES {\c&H0010e0ff\fscx108\fscy108\b1}TO{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:27.36,0:04:27.82,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}BUILD{\c&H00ffffff\fscx100\fscy100\b1} ON THEIR STRENGTHS,
+Dialogue: 0,0:04:27.82,0:04:27.98,Default,,0,0,0,,BUILD {\c&H0010e0ff\fscx108\fscy108\b1}ON{\c&H00ffffff\fscx100\fscy100\b1} THEIR STRENGTHS,
+Dialogue: 0,0:04:27.98,0:04:28.12,Default,,0,0,0,,BUILD ON {\c&H0010e0ff\fscx108\fscy108\b1}THEIR{\c&H00ffffff\fscx100\fscy100\b1} STRENGTHS,
+Dialogue: 0,0:04:28.12,0:04:29.18,Default,,0,0,0,,BUILD ON THEIR {\c&H0010e0ff\fscx108\fscy108\b1}STRENGTHS,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:29.26,0:04:29.50,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IF{\c&H00ffffff\fscx100\fscy100\b1} WE FOCUSED ATTENTION ON
+Dialogue: 0,0:04:29.50,0:04:29.64,Default,,0,0,0,,IF {\c&H0010e0ff\fscx108\fscy108\b1}WE{\c&H00ffffff\fscx100\fscy100\b1} FOCUSED ATTENTION ON
+Dialogue: 0,0:04:29.64,0:04:30.08,Default,,0,0,0,,IF WE {\c&H0010e0ff\fscx108\fscy108\b1}FOCUSED{\c&H00ffffff\fscx100\fscy100\b1} ATTENTION ON
+Dialogue: 0,0:04:30.08,0:04:30.52,Default,,0,0,0,,IF WE FOCUSED {\c&H0010e0ff\fscx108\fscy108\b1}ATTENTION{\c&H00ffffff\fscx100\fscy100\b1} ON
+Dialogue: 0,0:04:30.52,0:04:31.02,Default,,0,0,0,,IF WE FOCUSED ATTENTION {\c&H0010e0ff\fscx108\fscy108\b1}ON{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:31.02,0:04:31.18,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}THE{\c&H00ffffff\fscx100\fscy100\b1} PILLARS OF WELL-BEING,
+Dialogue: 0,0:04:31.18,0:04:31.62,Default,,0,0,0,,THE {\c&H0010e0ff\fscx108\fscy108\b1}PILLARS{\c&H00ffffff\fscx100\fscy100\b1} OF WELL-BEING,
+Dialogue: 0,0:04:31.62,0:04:31.84,Default,,0,0,0,,THE PILLARS {\c&H0010e0ff\fscx108\fscy108\b1}OF{\c&H00ffffff\fscx100\fscy100\b1} WELL-BEING,
+Dialogue: 0,0:04:31.84,0:04:32.28,Default,,0,0,0,,THE PILLARS OF {\c&H0010e0ff\fscx108\fscy108\b1}WELL-BEING,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:32.92,0:04:33.16,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}IF{\c&H00ffffff\fscx100\fscy100\b1} WE CHANNELED MORE ENERGY
+Dialogue: 0,0:04:33.16,0:04:33.32,Default,,0,0,0,,IF {\c&H0010e0ff\fscx108\fscy108\b1}WE{\c&H00ffffff\fscx100\fscy100\b1} CHANNELED MORE ENERGY
+Dialogue: 0,0:04:33.32,0:04:33.80,Default,,0,0,0,,IF WE {\c&H0010e0ff\fscx108\fscy108\b1}CHANNELED{\c&H00ffffff\fscx100\fscy100\b1} MORE ENERGY
+Dialogue: 0,0:04:33.80,0:04:34.20,Default,,0,0,0,,IF WE CHANNELED {\c&H0010e0ff\fscx108\fscy108\b1}MORE{\c&H00ffffff\fscx100\fscy100\b1} ENERGY
+Dialogue: 0,0:04:34.20,0:04:34.60,Default,,0,0,0,,IF WE CHANNELED MORE {\c&H0010e0ff\fscx108\fscy108\b1}ENERGY{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:34.60,0:04:35.16,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}INTO{\c&H00ffffff\fscx100\fscy100\b1} WHAT MAKES LIFE WORTH
+Dialogue: 0,0:04:35.16,0:04:35.56,Default,,0,0,0,,INTO {\c&H0010e0ff\fscx108\fscy108\b1}WHAT{\c&H00ffffff\fscx100\fscy100\b1} MAKES LIFE WORTH
+Dialogue: 0,0:04:35.56,0:04:35.90,Default,,0,0,0,,INTO WHAT {\c&H0010e0ff\fscx108\fscy108\b1}MAKES{\c&H00ffffff\fscx100\fscy100\b1} LIFE WORTH
+Dialogue: 0,0:04:35.90,0:04:36.34,Default,,0,0,0,,INTO WHAT MAKES {\c&H0010e0ff\fscx108\fscy108\b1}LIFE{\c&H00ffffff\fscx100\fscy100\b1} WORTH
+Dialogue: 0,0:04:36.34,0:04:36.62,Default,,0,0,0,,INTO WHAT MAKES LIFE {\c&H0010e0ff\fscx108\fscy108\b1}WORTH{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:36.62,0:04:37.54,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}LIVING,{\c&H00ffffff\fscx100\fscy100\b1}
+Dialogue: 0,0:04:37.92,0:04:38.14,Default,,0,0,0,,{\c&H0010e0ff\fscx108\fscy108\b1}WHAT{\c&H00ffffff\fscx100\fscy100\b1} MIGHT BE POSSIBLE
+Dialogue: 0,0:04:38.14,0:04:38.48,Default,,0,0,0,,WHAT {\c&H0010e0ff\fscx108\fscy108\b1}MIGHT{\c&H00ffffff\fscx100\fscy100\b1} BE POSSIBLE
+Dialogue: 0,0:04:38.48,0:04:38.74,Default,,0,0,0,,WHAT MIGHT {\c&H0010e0ff\fscx108\fscy108\b1}BE{\c&H00ffffff\fscx100\fscy100\b1} POSSIBLE
+Dialogue: 0,0:04:38.74,0:04:39.12,Default,,0,0,0,,WHAT MIGHT BE {\c&H0010e0ff\fscx108\fscy108\b1}POSSIBLE{\c&H00ffffff\fscx100\fscy100\b1}

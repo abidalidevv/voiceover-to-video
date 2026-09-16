@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VideoGen Studio - Automated YouTube Full HD Video Generator</title>
+  <meta name="description" content="Generate Full HD YouTube videos from voiceover audio with live stock video synchronization and CapCut-style animated kinetic captions.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bangers&family=Bebas+Neue&family=Cinzel:wght@700;900&family=Inter:wght@300;400;500;600;700;800&family=Luckiest+Guy&family=Montserrat:wght@500;700;800;900&family=Oswald:wght@600;700&family=Outfit:wght@600;800&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260916_v4">
+  <style id="preview-screen-fit-styles">
+    /* VideoGen Studio - Clean Pro Layout */
+    .app-header {
+      height: 58px !important;
+      padding: 0 18px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 12px !important;
+      flex-wrap: nowrap !important;
+      box-sizing: border-box !important;
+    }
+    .brand {
+      display: flex !important;
+      align-items: center !important;
+      gap: 10px !important;
+      flex-shrink: 0 !important;
+    }
+    .logo-icon {
+      width: 34px !important;
+      height: 34px !important;
+      min-width: 34px !important;
+      min-height: 34px !important;
+      flex-shrink: 0 !important;
+    }
+    .brand-text {
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+    }
+    .brand-title {
+      font-size: 17px !important;
+      white-space: nowrap !important;
+      line-height: 1 !important;
+    }
+    .brand-badge {
+      font-size: 10px !important;
+      white-space: nowrap !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      line-height: 1 !important;
+      margin-left: 0 !important;
+      padding: 3px 7px !important;
+    }
+    .preview-layout {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) 380px !important;
+      gap: 18px !important;
+      align-items: start !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    .player-column {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 12px !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      overflow: hidden !important;
+      box-sizing: border-box !important;
+    }
+    .player-wrapper {
+      background: #04060a !important;
+      border-radius: var(--radius-md) !important;
+      border: 1px solid var(--border-color) !important;
+      overflow: hidden !important;
+      box-shadow: var(--shadow-card) !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      margin: 0 auto !important;
+      flex-shrink: 0 !important;
+      box-sizing: border-box !important;
+    }
+    .video-container {
+      position: relative !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      aspect-ratio: 16 / 9 !important;
+      height: auto !important;
+      max-height: 368px !important;
+      background: #000000 !important;
+      overflow: hidden !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      margin: 0 auto !important;
+      box-sizing: border-box !important;
+      border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+    }
+    .video-container.aspect-9-16 {
+      aspect-ratio: 9 / 16 !important;
+      width: auto !important;
+      height: 368px !important;
+      max-height: 368px !important;
+      max-width: calc(368px * 9 / 16) !important;
+    }
+    #preview-video {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      object-fit: contain !important;
+      display: block !important;
+    }
+    .player-controls {
+      height: 38px !important;
+      background: var(--bg-card) !important;
+      display: flex !important;
+      align-items: center !important;
+      padding: 0 10px !important;
+      gap: 8px !important;
+      border-top: 1px solid var(--border-color) !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+      flex-shrink: 0 !important;
+    }
+    .scene-director-panel {
+      background: var(--bg-card) !important;
+      border: 1px solid var(--border-color) !important;
+      border-radius: var(--radius-md) !important;
+      padding: 12px 14px !important;
+      box-shadow: var(--shadow-card) !important;
+      flex-shrink: 0 !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      overflow: hidden !important;
+      box-sizing: border-box !important;
+    }
+    .scenes-strip {
+      display: flex !important;
+      gap: 10px !important;
+      overflow-x: auto !important;
+      padding: 6px 0 2px 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+    }
+    .caption-inspector {
+      height: calc(100vh - 84px) !important;
+      max-height: calc(100vh - 84px) !important;
+      overflow-y: auto !important;
+      box-sizing: border-box !important;
+      padding: 16px !important;
+      gap: 12px !important;
+    }
+    .subtitle-overlay {
+      bottom: 14px !important;
+    }
+    .subtitle-caption {
+      font-size: clamp(12px, 1.6vw, 16px) !important;
+    }
+  </style>
+</head>
+<body class="dark-theme">
+  <!-- Top Navigation Header -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo-icon">⚡</div>
+      <div class="brand-text">
+        <span class="brand-title">VideoGen Studio</span>
+        <span class="brand-badge">1080p Engine</span>
+      </div>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="nav-btn active" id="tab-studio-btn" onclick="switchTab('studio')">
+        <span class="icon">🎙️</span> Studio Create
+      </button>
+      <button class="nav-btn" id="tab-preview-btn" onclick="switchTab('preview')">
+        <span class="icon">🎬</span> Preview & Editor
+      </button>
+      <button class="nav-btn" id="tab-library-btn" onclick="switchTab('library')">
+        <span class="icon">📁</span> Projects
+      </button>
+      <button class="nav-btn" id="tab-settings-btn" onclick="switchTab('settings')">
+        <span class="icon">⚙️</span> Settings
+      </button>
+    </nav>
+
+    <div class="header-actions">
+      <div class="workers-pill" id="workers-status-pill">
+        <span class="dot green"></span> <span id="worker-count-badge">6 Workers</span>
+      </div>
+      <a href="docs.html" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+        📖 Guide
+      </a>
+      <button class="btn btn-secondary btn-sm" onclick="openOutputFolder()">
+        📂 Output Folder
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="app-container">
+
+    <!-- ==================== TAB 1: STUDIO CREATE ==================== -->
+    <section class="tab-pane active" id="tab-studio">
+      <div class="studio-card">
+        <div class="studio-card-header">
+          <h2>Create New YouTube Video</h2>
+          <p class="subtitle">Upload your voiceover audio and choose a niche. The AI engine will transcribe, segment scenes, download matched Full HD stock videos with multi-worker concurrency, and apply CapCut kinetic captions.</p>
+        </div>
+
+        <div class="studio-grid">
+          <!-- Left: Audio Upload Zone -->
+          <div class="upload-section">
+            <label class="form-label">Voiceover Audio File</label>
+            <div class="dropzone" id="audio-dropzone" onclick="document.getElementById('audio-input').click()">
+              <input type="file" id="audio-input" accept="audio/*,.mp3,.wav,.m4a,.aac" style="display:none" onchange="handleAudioSelect(event)">
+              <div class="dropzone-content" id="dropzone-prompt">
+                <div class="dropzone-icon">🎵</div>
+                <h3>Drop voiceover audio here or click to browse</h3>
+                <p>Supports MP3, WAV, M4A, AAC (YouTube Full HD 16:9 output)</p>
+              </div>
+              <div class="dropzone-content hidden" id="dropzone-fileinfo">
+                <div class="dropzone-icon success">✅</div>
+                <h3 id="audio-filename">voiceover.mp3</h3>
+                <div class="audio-stats">
+                  <span id="audio-duration-stat">⏱ 0:00</span> • <span id="audio-filesize-stat">0 MB</span>
+                </div>
+                <button class="btn btn-xs btn-outline" onclick="event.stopPropagation(); resetAudioUpload()">Change File</button>
+              </div>
+            </div>
+
+            <!-- Pipeline Selection -->
+            <div class="form-group mt-20">
+              <label class="form-label">Generation Pipeline</label>
+              <div class="pipeline-switch">
+                <button class="pipeline-btn active" id="pipe-main" onclick="selectPipeline('Main')">
+                  🔍 Main Pipeline
+                </button>
+                <button class="pipeline-btn" id="pipe-nature" onclick="selectPipeline('Nature')">
+                  🌿 Nature & Scenery
+                </button>
+                <button class="pipeline-btn" id="pipe-cinematic" onclick="selectPipeline('Cinematic')">
+                  🎬 Cinematic Film
+                </button>
+              </div>
+            </div>
+
+            <!-- Niche Selection -->
+            <div class="form-group mt-20">
+              <label class="form-label">Video Niche & Visual Context</label>
+              <select id="niche-select" class="form-select">
+                <option value="Motivation Psychology" selected>🔥 Motivation Psychology (Dark / Stoic / High Energy)</option>
+                <option value="Nature & Wildlife">🌿 Nature & Wildlife (Scenic 4K Landscapes / Relaxing)</option>
+                <option value="Tech & AI">🤖 Tech & AI (Futuristic / Coding / Cyberpunk / Robotics)</option>
+                <option value="Finance & Wealth">💰 Finance & Wealth (Stock Market / Crypto / Business / Cash)</option>
+                <option value="Luxury & Lifestyle">🏎️ Luxury & Lifestyle (Supercars / Penthouses / Yachts)</option>
+                <option value="Fitness & Health">💪 Fitness & Health (Gym Training / Athletes / Wellness)</option>
+                <option value="Stoicism & Philosophy">🏛️ Stoicism & Philosophy (Statues / Deep Thought / Moody)</option>
+                <option value="Sci-Fi & Space">🛸 Sci-Fi & Space (Cosmos / Galaxies / Astrophotography / NASA)</option>
+                <option value="Crime & Mystery">🕵️ Crime & Mystery (Dark Noir / True Crime / Suspense / Investigations)</option>
+                <option value="Meditation & Lofi">🧘 Meditation & Lofi (Relaxing Rain / Zen Garden / Chill Ambient)</option>
+                <option value="Brain & Human Facts">🧠 Brain & Human Facts (Mind Science / Optical Illusions / Psychology)</option>
+                <option value="History & Empires">📜 History & Empires (Ancient Rome / Egypt / Castles / Civilizations)</option>
+                <option value="Business & Hustle">🚀 Business & Hustle (Startups / Pitching / Executive Leadership)</option>
+                <option value="Automotive & Supercars">🚗 Automotive & Supercars (Formula 1 / Drift / Hypercars / Engines)</option>
+                <option value="Gaming & Esports">🎮 Gaming & Esports (RGB Battlestations / High-Voltage / Tournaments)</option>
+                <option value="Travel & Adventure">✈️ Travel & Adventure (Swiss Alps / Tropical Beaches / Exploration)</option>
+                <option value="Science & Engineering">🧪 Science & Engineering (Physics / Chemistry / Robotics / Labs)</option>
+                <option value="Productivity & Self-Growth">💡 Productivity & Self-Growth (Deep Work / Habits / Clean Desks)</option>
+                <option value="Horror & Paranormal">👻 Horror & Paranormal (Creepy Forests / Abandoned / Eerie Shadows)</option>
+                <option value="Food & Culinary">🍲 Food & Culinary (Artisanal Coffee / Gourmet Steaks / Kitchen Prep)</option>
+                <option value="Wildlife Predators & Oceans">🦁 Wildlife Predators & Oceans (Savannah Lions / Sharks / Coral Reefs)</option>
+                <option value="General">✨ General Inspiring / Dynamic B-Roll</option>
+              </select>
+            </div>
+
+            <!-- Start Processing Button -->
+            <div class="action-wrap mt-24">
+              <button class="btn btn-primary btn-block btn-lg" id="generate-btn" onclick="startGeneration()">
+                ⚡ Start Processing & Generate Video
+              </button>
+            </div>
+          </div>
+
+          <!-- Right: Workflow Guidance & Live Status -->
+          <div class="info-sidebar">
+            <div class="sidebar-box">
+              <h3>⚡ How It Works</h3>
+              <ul class="feature-checklist">
+                <li>
+                  <span class="step-num">1</span>
+                  <div>
+                    <strong>Word-by-Word Transcription</strong>
+                    <p>Accurate speech recognition with micro-timestamps for kinetic captions.</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="step-num">2</span>
+                  <div>
+                    <strong>Contextual Visual Matching</strong>
+                    <p>Stock video queries correspond directly to what is spoken in the audio.</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="step-num">3</span>
+                  <div>
+                    <strong>Multi-Worker Concurrent Downloader</strong>
+                    <p>Pexels & Pixabay APIs are queried in parallel across multiple worker threads.</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="step-num">4</span>
+                  <div>
+                    <strong>Interactive Preview & CapCut Styling</strong>
+                    <p>Preview video before merging. Tweak fonts, colors, strokes, and animations in real time.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <div class="sidebar-box mt-16" id="api-status-card">
+              <h3>🔑 API Status</h3>
+              <div class="status-item">
+                <span>Pexels Stock API:</span>
+                <span id="badge-pexels" class="badge badge-warning">Checking...</span>
+              </div>
+              <div class="status-item">
+                <span>Pixabay Stock API:</span>
+                <span id="badge-pixabay" class="badge badge-warning">Checking...</span>
+              </div>
+              <div class="status-item">
+                <span>Groq / Whisper AI:</span>
+                <span id="badge-groq" class="badge badge-warning">Checking...</span>
+              </div>
+              <button class="btn btn-outline btn-xs mt-12 btn-block" onclick="switchTab('settings')">
+                Configure Keys in Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ==================== TAB 2: INTERACTIVE PREVIEW & CAPCUT EDITOR ==================== -->
+    <section class="tab-pane" id="tab-preview">
+      <div class="preview-layout">
+        <!-- Left: Video Player & Controls -->
+        <div class="player-column">
+          <div class="player-wrapper">
+            <div class="video-container" id="video-container">
+              <!-- Video Element (Muted so stock audio never clashes) -->
+              <video id="preview-video" preload="auto" playsinline muted></video>
+              
+              <!-- Voiceover Audio Element (Plays input audio in preview) -->
+              <audio id="preview-audio" preload="auto"></audio>
+              
+              <!-- Real-time Animated Subtitle Canvas / Overlay -->
+              <div id="subtitle-overlay" class="subtitle-overlay">
+                <span id="subtitle-text" class="subtitle-caption">YOU ARE NOT TIRED</span>
+              </div>
+
+              <!-- Video Watermark / Resolution Tag -->
+              <div class="res-tag">1080p 16:9 Full HD</div>
+            </div>
+
+
+            <!-- Video Timeline & Playback Bar -->
+            <div class="player-controls">
+              <button class="btn-ctrl" id="play-pause-btn" onclick="togglePlayPause()">▶</button>
+              <div class="time-display" id="time-display">00:00 / 00:00</div>
+              <div class="timeline-bar" id="timeline-bar" onclick="seekVideo(event)">
+                <div class="timeline-progress" id="timeline-progress"></div>
+                <div class="timeline-scenes" id="timeline-scene-markers"></div>
+              </div>
+              <div class="volume-box">
+                <span class="vol-icon">🔊</span>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1" oninput="changeVolume(this.value)">
+              </div>
+              <button class="btn-ctrl" onclick="toggleFullscreen()">⛶</button>
+            </div>
+          </div>
+
+          <!-- Bottom: Scene Director / Clip Swapper Strip -->
+          <div class="scene-director-panel">
+            <div class="director-header">
+              <h3>🎬 Scene Director (<span id="scene-count-badge">0</span> scenes)</h3>
+              <p>Review each visual clip matching the spoken voiceover. Click "Swap Clip" to replace any scene's stock video.</p>
+            </div>
+            <div class="scenes-strip" id="scenes-strip">
+              <!-- Dynamic Scene Cards injected here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: CapCut Caption Customizer Panel -->
+        <div class="caption-inspector">
+          <div class="inspector-header">
+            <h3>🎨 CapCut Caption Customizer</h3>
+            <p>Customize kinetic animated subtitles live before final export.</p>
+          </div>
+
+          <!-- Style Presets (Aa Templates) -->
+          <!-- Style Presets (Aa Templates) -->
+          <div class="inspector-section">
+            <label class="section-title">Preset Style Templates</label>
+            <div class="preset-grid">
+              <button class="preset-btn active" id="preset-capcut_yellow" onclick="applyPreset('capcut_yellow')" title="CapCut Viral Yellow">
+                <span class="preset-sample capcut-yellow">Aa</span>
+                <span class="preset-label">CapCut Viral</span>
+              </button>
+              <button class="preset-btn" id="preset-hormozi_green" onclick="applyPreset('hormozi_green')" title="Hormozi Punch Green">
+                <span class="preset-sample hormozi-green">Aa</span>
+                <span class="preset-label">Hormozi</span>
+              </button>
+              <button class="preset-btn" id="preset-mrbeast_punch" onclick="applyPreset('mrbeast_punch')" title="MrBeast Punchy Gold">
+                <span class="preset-sample mrbeast-punch">Aa</span>
+                <span class="preset-label">MrBeast</span>
+              </button>
+              <button class="preset-btn" id="preset-ali_abdaal" onclick="applyPreset('ali_abdaal')" title="Ali Abdaal Aesthetic">
+                <span class="preset-sample ali-abdaal">Aa</span>
+                <span class="preset-label">Ali Abdaal</span>
+              </button>
+              <button class="preset-btn" id="preset-iman_gadzhi" onclick="applyPreset('iman_gadzhi')" title="Iman Gadzhi Luxury">
+                <span class="preset-sample iman-gadzhi">Aa</span>
+                <span class="preset-label">Luxury</span>
+              </button>
+              <button class="preset-btn" id="preset-tiktok_violet" onclick="applyPreset('tiktok_violet')" title="TikTok Viral Violet">
+                <span class="preset-sample tiktok-violet">Aa</span>
+                <span class="preset-label">TikTok Glow</span>
+              </button>
+              <button class="preset-btn" id="preset-podcast_pill" onclick="applyPreset('podcast_pill')" title="Vox / Podcast Pill Box">
+                <span class="preset-sample podcast-pill">Aa</span>
+                <span class="preset-label">Podcast Box</span>
+              </button>
+              <button class="preset-btn" id="preset-streamer_lime" onclick="applyPreset('streamer_lime')" title="Streamer High-Voltage">
+                <span class="preset-sample streamer-lime">Aa</span>
+                <span class="preset-label">Streamer</span>
+              </button>
+              <button class="preset-btn" id="preset-neon_cyber" onclick="applyPreset('neon_cyber')" title="Neon Cyber Glow">
+                <span class="preset-sample neon-cyber">Aa</span>
+                <span class="preset-label">Neon Cyber</span>
+              </button>
+              <button class="preset-btn" id="preset-red_fire" onclick="applyPreset('red_fire')" title="Red Fire Accent">
+                <span class="preset-sample red-fire">Aa</span>
+                <span class="preset-label">Red Fire</span>
+              </button>
+              <button class="preset-btn" id="preset-dark_stoic" onclick="applyPreset('dark_stoic')" title="Stoic Slate Wisdom">
+                <span class="preset-sample dark-stoic">Aa</span>
+                <span class="preset-label">Stoic</span>
+              </button>
+              <button class="preset-btn" id="preset-clean_minimal" onclick="applyPreset('clean_minimal')" title="Clean Minimalist">
+                <span class="preset-sample clean-minimal">Aa</span>
+                <span class="preset-label">Clean Minimal</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Font Customization -->
+          <div class="inspector-section">
+            <label class="section-title">Typography & Size</label>
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label class="sub-label">Font Family</label>
+                <select id="font-family-select" class="form-select" onchange="updateCaptionStyle()">
+                  <optgroup label="Viral & Popular Fonts">
+                    <option value="Montserrat" selected>Montserrat (Modern Punchy)</option>
+                    <option value="Impact">Impact (Alex Hormozi Style)</option>
+                    <option value="Bangers">Bangers (MrBeast Comic Punch)</option>
+                    <option value="Poppins">Poppins (Ali Abdaal Clean)</option>
+                    <option value="Outfit">Outfit (Tech Minimalist)</option>
+                    <option value="Cinzel">Cinzel (Iman Gadzhi Luxury)</option>
+                    <option value="Luckiest Guy">Luckiest Guy (Streamer / Gaming)</option>
+                    <option value="Archivo Black">Archivo Black (Heavy TikTok)</option>
+                    <option value="Anton">Anton (Bold Tall Impact)</option>
+                  </optgroup>
+                  <optgroup label="Clean & Cinematic">
+                    <option value="Bebas Neue">Bebas Neue (Tall Condensed)</option>
+                    <option value="Oswald">Oswald (Bold Sans)</option>
+                    <option value="Inter">Inter (Ultra Clean Minimal)</option>
+                    <option value="Arial Black">Arial Black (System Heavy)</option>
+                    <option value="Trebuchet MS">Trebuchet MS</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row mt-12">
+              <div class="form-group flex-1">
+                <label class="sub-label">Font Size (<span id="font-size-val">24</span>px)</label>
+                <input type="range" id="font-size-slider" min="16" max="42" value="24" oninput="updateFontSize(this.value)">
+              </div>
+            </div>
+
+            <div class="form-row mt-12">
+              <div class="form-group flex-1">
+                <label class="sub-label">Letter Spacing (<span id="letter-spacing-val">1</span>px)</label>
+                <input type="range" id="letter-spacing-slider" min="-2" max="16" step="0.5" value="1" oninput="updateLetterSpacing(this.value)">
+              </div>
+              <div class="form-group flex-1">
+                <label class="sub-label">Word Spacing (<span id="word-spacing-val">6</span>px)</label>
+                <input type="range" id="word-spacing-slider" min="0" max="30" step="1" value="6" oninput="updateWordSpacing(this.value)">
+              </div>
+            </div>
+
+            <div class="form-row mt-12">
+              <label class="checkbox-label">
+                <input type="checkbox" id="uppercase-checkbox" checked onchange="updateCaptionStyle()">
+                <span>Force UPPERCASE Text</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Color & Stroke -->
+          <div class="inspector-section">
+            <label class="section-title">Colors & Stroke</label>
+            <div class="color-pickers-row">
+              <div class="color-item">
+                <label class="sub-label">Normal Words</label>
+                <input type="color" id="color-primary" value="#ffffff" onchange="updateCaptionStyle()">
+              </div>
+              <div class="color-item">
+                <label class="sub-label">Active Word</label>
+                <input type="color" id="color-highlight" value="#ffe010" onchange="updateCaptionStyle()">
+              </div>
+              <div class="color-item">
+                <label class="sub-label">Stroke Outline</label>
+                <input type="color" id="color-stroke" value="#000000" onchange="updateCaptionStyle()">
+              </div>
+            </div>
+
+            <div class="form-row mt-12">
+              <div class="form-group flex-1">
+                <label class="sub-label">Stroke Width (<span id="stroke-width-val">4</span>px)</label>
+                <input type="range" id="stroke-width-slider" min="0" max="8" step="0.5" value="4" oninput="updateStrokeWidth(this.value)">
+              </div>
+            </div>
+
+            <div class="form-row mt-12">
+              <div class="form-group flex-1">
+                <label class="sub-label">Vertical Position (<span id="margin-v-val">24</span>px from bottom)</label>
+                <input type="range" id="margin-v-slider" min="10" max="100" step="2" value="24" oninput="updateMarginV(this.value)">
+              </div>
+            </div>
+          </div>
+
+          <!-- Animation Mode -->
+          <div class="inspector-section">
+            <label class="section-title">Kinetic Animation</label>
+            <select id="animation-style-select" class="form-select" onchange="updateCaptionStyle()">
+              <option value="word_bounce" selected>⚡ Active Word Pop & Bounce</option>
+              <option value="word_glow">✨ Glowing Highlight</option>
+              <option value="word_box">📦 CapCut Rounded Pill Box</option>
+              <option value="fade_in">💨 Smooth Fade In</option>
+            </select>
+          </div>
+
+          
+          <!-- Background Music & Audio Mixing -->
+          <div class="inspector-section">
+            <label class="section-title">🎵 Background Music (BGM)</label>
+            <div class="form-group">
+              <label class="sub-label">BGM Track Preset</label>
+              <select id="bgm-track-select" class="form-select" onchange="updateBgmSelection()">
+                <option value="cinematic_ambient" selected>✨ Cinematic Ambient (Soft Chord Pad)</option>
+                <option value="lofi_chill">☕ Lofi Chill Beats (Relaxing Warm 7ths)</option>
+                <option value="deep_focus">🧘 Deep Focus Drone (Atmospheric)</option>
+                <option value="none">🔇 None (Voiceover Only)</option>
+              </select>
+            </div>
+            <div class="form-row mt-10">
+              <div class="form-group flex-1">
+                <label class="sub-label">BGM Volume Level (<span id="bgm-volume-val">10</span>%)</label>
+                <input type="range" id="bgm-volume-slider" min="0" max="30" step="1" value="10" oninput="updateBgmVolume(this.value)">
+              </div>
+            </div>
+          </div>
+
+          <!-- Video Polish & Cinematic Motion FX -->
+          <div class="inspector-section">
+            <label class="section-title">🎬 Video Polish & Cinematic FX</label>
+            <div class="form-row">
+              <label class="checkbox-label flex-1">
+                <input type="checkbox" id="kenburns-checkbox" checked>
+                <span>Dynamic Camera Motion (Ken Burns Slow Zoom)</span>
+              </label>
+            </div>
+            <div class="form-row mt-8">
+              <label class="checkbox-label flex-1">
+                <input type="checkbox" id="vignette-checkbox" checked>
+                <span>Subtle Cinematic Vignette (Dark Corners)</span>
+              </label>
+            </div>
+            <div class="form-row mt-8">
+              <label class="checkbox-label flex-1">
+                <input type="checkbox" id="mute-stock-checkbox" checked>
+                <span>Mute Stock Video Audio (100% Voiceover Clarity)</span>
+              </label>
+            </div>
+            <div class="form-group mt-10">
+              <label class="sub-label">Color Grading Tone</label>
+              <select id="color-grade-select" class="form-select">
+                <option value="clean" selected>Original Clean (Natural)</option>
+                <option value="teal_orange">Cinematic Teal & Orange</option>
+                <option value="warm_film">Warm Golden Hour</option>
+                <option value="vibrant">Punchy & Vibrant</option>
+              </select>
+            </div>
+            <div class="form-group mt-10">
+              <label class="sub-label">Modern Scene Transition</label>
+              <select id="transition-select" class="form-select">
+                <option value="none" selected>None (Clean Fast Jump Cut - Creator Standard)</option>
+                <option value="smoothleft">⚡ Smooth Whip Pan Left</option>
+                <option value="smoothright">⚡ Smooth Whip Pan Right</option>
+                <option value="zoomin">🔍 Dynamic Zoom Punch</option>
+                <option value="fade">🎬 Cinematic Crossfade (0.35s)</option>
+                <option value="fadefast">⚡ Fast Flash Fade (0.25s)</option>
+                <option value="circlecrop">🎯 Focus Iris / Circle Open</option>
+              </select>
+            </div>
+          </div>
+<!-- Final Export Bar -->
+          <div class="inspector-footer">
+            <div class="export-settings-row">
+              <span>Resolution: <strong>1080p (1920x1080)</strong></span>
+              <select id="export-fps" class="form-select-sm">
+                <option value="30" selected>30 FPS</option>
+                <option value="60">60 FPS</option>
+              </select>
+            </div>
+            <div class="export-actions-row mt-8">
+              <button class="btn btn-success btn-sm" id="export-render-btn" onclick="startExportRender()" title="Merge & Export Full HD 1080p Video">
+                🚀 Export Video
+              </button>
+              <button class="btn btn-capcut btn-sm" id="export-capcut-btn" onclick="exportToCapCutTimeline()" title="Open in CapCut Timeline">
+                ✂️ CapCut Timeline
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ==================== TAB 3: PROJECTS LIBRARY ==================== -->
+    <section class="tab-pane" id="tab-library">
+      <div class="library-header">
+        <div>
+          <h2>Projects Library</h2>
+          <p class="subtitle">All generated and rendered YouTube videos. Preview, re-edit captions, or open in folder.</p>
+        </div>
+        <button class="btn btn-primary" onclick="switchTab('studio')">
+          + Create New Video
+        </button>
+      </div>
+
+      <div class="projects-grid" id="projects-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+
+    <!-- ==================== TAB 4: SETTINGS / ADMIN PANEL ==================== -->
+    <section class="tab-pane" id="tab-settings">
+      <div class="settings-container">
+        <div class="settings-header">
+          <h2>Admin Settings & Stock APIs</h2>
+          <p class="subtitle">Configure your stock video API keys and transcription provider. All keys are stored securely on your machine.</p>
+        </div>
+
+        <!-- Performance & GPU Power Tuning Card -->
+        <div class="settings-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>⚡ GPU & CPU Performance Tuner</h3>
+            <span class="badge badge-success" id="hardware-detected-badge">Hardware Ready</span>
+          </div>
+          <p class="help-text">Manually adjust background worker threads based on your CPU cores and GPU capability to achieve maximum speed.</p>
+
+          <div class="form-group mt-16">
+            <label class="form-label" style="display:flex;justify-content:space-between;">
+              <span>Parallel Background Workers: <strong id="workers-slider-val" style="color:#ffffff;">8</strong> Threads</span>
+              <span id="workers-power-label" style="font-size:12px;color:var(--accent-green);font-weight:700;">Standard Multi-Core</span>
+            </label>
+            <input type="range" id="input-workers-slider" min="2" max="32" step="1" value="8" oninput="handleWorkerSliderChange(this.value)">
+            
+            <div id="workers-recommend-badge" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.14);padding:10px 14px;border-radius:8px;margin-top:10px;font-size:12px;color:#f1f5f9;line-height:1.5;">
+              💡 <strong>GPU Profile:</strong> <span id="workers-recommend-desc">Recommended for 6-8 core CPUs (i5 / i7 / Ryzen 5) and GTX 1650 / RTX 3050. Fast concurrent downloads and smooth parallel normalization.</span>
+            </div>
+          </div>
+
+          <div class="form-row mt-16">
+            <div class="form-group flex-1">
+              <label class="form-label">Hardware Video Encoder</label>
+              <select id="input-hardware-encoder" class="form-select">
+                <option value="auto" selected>Auto-Detect (GPU if available, else CPU)</option>
+                <option value="nvenc">NVIDIA NVENC (GeForce GTX / RTX - Ultra Fast)</option>
+                <option value="amf">AMD AMF (Radeon RX Series)</option>
+                <option value="qsv">Intel QuickSync (Intel Iris / Arc / UHD)</option>
+                <option value="cpu">CPU Ultrafast (Universal Compatibility)</option>
+              </select>
+            </div>
+            <div class="form-group flex-1">
+              <label class="form-label">Active Provider Search Strategy</label>
+              <select id="input-video-provider" class="form-select">
+                <option value="all" selected>All Active Stock Video Providers (Fastest Concurrent)</option>
+                <option value="pexels">Pexels Only</option>
+                <option value="pixabay">Pixabay Only</option>
+                <option value="coverr">Coverr Only</option>
+                <option value="videvo">Videvo Only</option>
+                <option value="nasa">NASA Open Media Only</option>
+                <option value="wikimedia">Wikimedia Commons Only</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 10+ Stock Video APIs Grid -->
+        <div class="settings-card mt-24">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>🎬 Stock Video APIs (10+ Providers & Free Sources)</h3>
+            <span class="badge" style="background:rgba(59,130,246,0.18);color:#ffffff;border:1px solid rgba(59,130,246,0.35);">Multi-API Pool</span>
+          </div>
+          <p class="help-text">Connect multiple stock footage providers. When you generate a video, workers query all configured APIs concurrently to grab 1080p landscape clips.</p>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="mt-16">
+            <!-- 1. Pexels -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;">
+                <span>1. Pexels API Key <span style="font-size:10px;color:var(--accent-green);">(20k Free/mo)</span></span>
+                <a href="https://www.pexels.com/api/" target="_blank" class="external-link">Get Key ↗</a>
+              </label>
+              <input type="password" id="input-pexels-key" class="form-input" placeholder="Paste Pexels API Key...">
+            </div>
+
+            <!-- 2. Pixabay -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;">
+                <span>2. Pixabay API Key <span style="font-size:10px;color:var(--accent-green);">(Free Unlimited)</span></span>
+                <a href="https://pixabay.com/api/docs/" target="_blank" class="external-link">Get Key ↗</a>
+              </label>
+              <input type="password" id="input-pixabay-key" class="form-input" placeholder="Paste Pixabay API Key...">
+            </div>
+
+            <!-- 3. Coverr -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;">
+                <span>3. Coverr Video API Key <span style="font-size:10px;color:var(--accent-green);">(Free Commercial)</span></span>
+                <a href="https://coverr.co" target="_blank" class="external-link">Visit Coverr ↗</a>
+              </label>
+              <input type="password" id="input-coverr-key" class="form-input" placeholder="Paste Coverr API Key / Token...">
+            </div>
+
+            <!-- 4. Videvo -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;">
+                <span>4. Videvo Stock API Key <span style="font-size:10px;color:var(--accent-green);">(Free Clips)</span></span>
+                <a href="https://www.videvo.net" target="_blank" class="external-link">Get Key ↗</a>
+              </label>
+              <input type="password" id="input-videvo-key" class="form-input" placeholder="Paste Videvo API Key...">
+            </div>
+
+            <!-- 5. NASA Open Video -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;">
+                <span>5. NASA Open Media API <span style="font-size:10px;color:var(--accent-green);">(100% Free Public Domain)</span></span>
+                <a href="https://api.nasa.gov" target="_blank" class="external-link">api.nasa.gov ↗</a>
+              </label>
+              <input type="password" id="input-nasa-key" class="form-input" placeholder="DEMO_KEY or your NASA API Key...">
+            </div>
+
+            <!-- 6. Wikimedia Commons Video -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);display:flex;flex-direction:column;justify-content:center;">
+              <label class="checkbox-label" style="cursor:pointer;">
+                <input type="checkbox" id="input-wiki-enabled" checked>
+                <span><strong>6. Wikimedia Commons Video Search</strong></span>
+              </label>
+              <p style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-left:22px;">100% Free Open-Access public domain nature, history, and scientific video archives (Zero API key required).</p>
+            </div>
+
+            <!-- 7. Mixkit Integration -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;">
+                <span>7. Mixkit Video Integration <span style="font-size:10px;color:var(--accent-green);">(Free Envato Clips)</span></span>
+                <a href="https://mixkit.co" target="_blank" class="external-link">mixkit.co ↗</a>
+              </label>
+              <input type="password" id="input-mixkit-key" class="form-input" placeholder="Mixkit Key or Token (optional)...">
+            </div>
+
+            <!-- 8. Freepik / Storyblocks -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;">
+                <span>8. Freepik / Storyblocks API Key <span style="font-size:10px;color:var(--accent-blue);">(Premium)</span></span>
+                <a href="https://www.freepik.com/api" target="_blank" class="external-link">freepik.com ↗</a>
+              </label>
+              <input type="password" id="input-freepik-key" class="form-input" placeholder="Paste Freepik / Subscription Key...">
+            </div>
+
+            <!-- 9. RapidAPI Universal Stock Key -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;">
+                <span>9. RapidAPI Stock Videos Key <span style="font-size:10px;color:var(--accent-blue);">(Universal Hub)</span></span>
+                <a href="https://rapidapi.com" target="_blank" class="external-link">rapidapi.com ↗</a>
+              </label>
+              <input type="password" id="input-rapidapi-key" class="form-input" placeholder="Paste RapidAPI Key (X-RapidAPI-Key)...">
+            </div>
+
+            <!-- 10. Custom Webhook / Private Proxy -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;">
+                <span>10. Custom Stock Webhook / Proxy URL <span style="font-size:10px;color:#94a3b8;">(Custom)</span></span>
+              </label>
+              <input type="text" id="input-custom-webhook" class="form-input" placeholder="https://your-api.com/search-video">
+            </div>
+          </div>
+        </div>
+
+        <!-- Speech-to-Text & AI Scene Tagging -->
+        <div class="settings-card mt-24">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>🎙️ Speech-to-Text & AI Transcription</h3>
+            <span class="badge badge-success">Whisper Large v3</span>
+          </div>
+          <p class="help-text">High-speed transcription engine to extract sentence timestamps, emotion cues, and visual context.</p>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="mt-16">
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;">
+                <span>11. Groq API Key <span style="font-size:10px;color:var(--accent-green);">(100% Free - 1.5s Whisper)</span></span>
+                <a href="https://console.groq.com/keys" target="_blank" class="external-link">Get Free Key ↗</a>
+              </label>
+              <input type="password" id="input-groq-key" class="form-input" placeholder="gsk_...">
+            </div>
+
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;">
+                <span>12. OpenAI API Key <span style="font-size:10px;color:var(--accent-blue);">(Whisper / GPT Fallback)</span></span>
+                <a href="https://platform.openai.com/api-keys" target="_blank" class="external-link">Get Key ↗</a>
+              </label>
+              <input type="password" id="input-openai-key" class="form-input" placeholder="sk-...">
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-actions mt-24">
+          <button class="btn btn-secondary" onclick="testApiConnections()">
+            🔄 Test All API Connections
+          </button>
+          <button class="btn btn-primary" onclick="saveAppSettings()">
+            💾 Save All Settings & Keys
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== PROCESSING MODAL ==================== -->
+  <div class="modal-overlay hidden" id="processing-modal">
+    <div class="modal-card">
+      <div class="modal-spinner"></div>
+      <h3 id="modal-status-title">Generating YouTube Video...</h3>
+      <p id="modal-status-desc">Transcribing speech and extracting visual scene cues...</p>
+      
+      <!-- Live Dynamic Progress Bar -->
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="job-progress-bar" style="width: 5%;"></div>
+      </div>
+      <div class="progress-stats-row">
+        <span id="job-scene-counter">Initializing workers...</span>
+        <strong id="job-progress-pct">5%</strong>
+      </div>
+      <div class="current-download-scene hidden" id="job-current-scene"></div>
+
+      <div class="stepper-list">
+        <div class="stepper-item active" id="step-transcribe">
+          <span class="step-indicator">1</span>
+          <span class="step-name">Transcribing Audio & Timestamps</span>
+        </div>
+        <div class="stepper-item" id="step-scenes">
+          <span class="step-indicator">2</span>
+          <span class="step-name">Semantic Scene & Tag Analysis</span>
+        </div>
+        <div class="stepper-item" id="step-download">
+          <span class="step-indicator">3</span>
+          <span class="step-name">Multi-Worker Stock Video Downloads</span>
+        </div>
+        <div class="stepper-item" id="step-preview">
+          <span class="step-indicator">4</span>
+          <span class="step-name">Preparing CapCut Interactive Preview</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SWAP CLIP MODAL ==================== -->
+  <div class="modal-overlay hidden" id="swap-clip-modal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3>Swap Video Clip for Scene <span id="swap-scene-number">#1</span></h3>
+        <button class="btn-close" onclick="closeSwapModal()">✕</button>
+      </div>
+      <div class="modal-search-bar">
+        <input type="text" id="swap-search-input" class="form-input" placeholder="Search stock clips (e.g. man thinking, rainy city, luxury car)...">
+        <button class="btn btn-primary" onclick="executeSwapSearch()">Search Clips</button>
+      </div>
+      <div class="swap-results-grid" id="swap-results-grid">
+        <!-- Stock clip alternatives -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== EXPORT COMPLETED MODAL ==================== -->
+  <div class="modal-overlay hidden" id="export-complete-modal">
+    <div class="modal-card modal-md">
+      <div class="success-check">🎉</div>
+      <h3>Full HD Video Exported Successfully!</h3>
+      <p id="export-success-filename">Your video is merged and ready for YouTube upload.</p>
+      
+      <div class="exported-preview-box">
+        <video id="exported-video-player" controls style="width:100%; border-radius:8px;"></video>
+      </div>
+
+      <div class="modal-actions-row mt-16">
+        <button class="btn btn-secondary" onclick="openOutputFolder()">
+          📂 Show in Windows Folder
+        </button>
+        <button class="btn btn-capcut" onclick="exportToCapCutTimeline()">
+          ✂️ Open in CapCut
+        </button>
+        <a id="export-download-link" class="btn btn-success" download>
+          💾 Download MP4
+        </a>
+        <button class="btn btn-outline" onclick="closeExportModal()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CAPCUT TIMELINE EXPORT MODAL ==================== -->
+  <div class="modal-overlay hidden" id="capcut-modal">
+    <div class="modal-card modal-md">
+      <div class="success-check">✂️</div>
+      <h3 id="capcut-modal-title">CapCut Timeline Project Ready!</h3>
+      <p id="capcut-status-msg">Project draft generated with synchronized video cuts, voiceover, and kinetic captions.</p>
+      
+      <div class="capcut-path-box" id="capcut-draft-path" style="background:rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding:12px; border-radius:8px; font-size:12px; word-break:break-all; color:#bbb; margin:16px 0; text-align:left; font-family:monospace;">
+      </div>
+
+      <div class="modal-actions-row mt-16">
+        <button class="btn btn-primary" id="capcut-launch-btn" onclick="openCapCutDraftFolder()">
+          📂 Open Draft Folder
+        </button>
+        <button class="btn btn-outline" onclick="closeCapCutModal()">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="caption_engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
