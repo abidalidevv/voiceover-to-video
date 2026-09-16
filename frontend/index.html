@@ -535,9 +535,10 @@
                 </h3>
                 <p id="batch-overall-status">Processing videos in queue...</p>
               </div>
-              <div class="batch-overall-counter">
+              <div class="batch-overall-counter" style="display:flex;align-items:center;gap:10px;">
                 <span id="batch-completed-counter">0 / 0 Completed</span>
                 <span class="badge badge-accent" id="batch-overall-pct">0%</span>
+                <button class="btn btn-outline btn-sm" id="btn-cancel-batch" onclick="cancelActiveBatch()" style="color:#ef4444;border-color:rgba(239,68,68,0.4);font-size:12px;padding:4px 10px;">⏹️ Cancel Batch</button>
               </div>
             </div>
 

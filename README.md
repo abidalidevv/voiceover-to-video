@@ -86,7 +86,7 @@ VideoGen/
 │   └── test_xfade.py         # FFmpeg transition matrix test
 ├── data/                     # Local SQLite DB, media cache, and exported videos
 │   ├── videogen.db           # Projects and stock assets database
-│   ├── settings.json         # Encrypted local API credentials
+│   ├── settings.json         # Local on-device JSON API credentials (unshared)
 │   ├── cache/                # Downloaded stock videos and audio clips
 │   └── output/               # Rendered 1080p MP4 videos and CapCut drafts
 ├── main.py                   # Server entrypoint (port 8765)
@@ -98,11 +98,11 @@ VideoGen/
 
 ## 🔑 API Configuration
 
-Configure your API keys in the **Settings & APIs** tab in the UI or in `data/settings.json`:
+Configure your API keys in the **Settings & APIs** tab in the UI or directly in `data/settings.json`:
 - **Groq API Key**: `gsk_...` (Ultra-fast Whisper transcription in ~1.5s)
 - **Pexels API Key**: For 1080p Full HD landscape stock footage
 - **Pixabay API Key**: For secondary high-resolution video candidates
-*(All keys remain strictly stored on your local disk).*
+*(All keys remain strictly stored on your local disk in data/settings.json and are never transmitted to third-party telemetry).*
 
 ---
 

@@ -1483,6 +1483,33 @@ function resetBatchUpload() {
 }
 
 // ==================== BATCH GENERATION EXECUTION & POLLING ====================
+let currentActiveBatchId = null;
+
+async function cancelActiveBatch() {
+  if (!currentActiveBatchId) {
+    showToast('No active batch to cancel');
+    return;
+  }
+  const btn = document.getElementById('btn-cancel-batch');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Cancelling...';
+  }
+  try {
+    const res = await fetch(`/api/batch-cancel/${currentActiveBatchId}`, { method: 'POST' });
+    if (res.ok) {
+      showToast('🛑 Batch cancellation requested. Active videos will wrap up, remaining queued items will stop.');
+      const statusEl = document.getElementById('batch-overall-status');
+      if (statusEl) statusEl.textContent = 'Cancelling remaining queued videos...';
+    } else {
+      showToast('Failed to cancel batch.');
+    }
+  } catch (err) {
+    console.error('Failed to cancel batch:', err);
+    showToast('Network error while cancelling batch.');
+  }
+}
+
 async function startBatchGeneration() {
   if (batchFilesData.length === 0) {
     alert('Please upload voiceover audio files first!');
@@ -1502,6 +1529,12 @@ async function startBatchGeneration() {
   document.getElementById('batch-overall-progress-bar').style.width = '2%';
   document.getElementById('batch-overall-pct').textContent = '2%';
   document.getElementById('batch-completed-counter').textContent = `0 / ${filenames.length} Completed`;
+
+  const cancelBtn = document.getElementById('btn-cancel-batch');
+  if (cancelBtn) {
+    cancelBtn.disabled = false;
+    cancelBtn.textContent = '⏹️ Cancel Batch';
+  }
 
   const container = document.getElementById('batch-items-container');
   container.innerHTML = '';
@@ -1542,6 +1575,7 @@ async function startBatchGeneration() {
     }
 
     const { batch_id } = await res.json();
+    currentActiveBatchId = batch_id;
 
     if (activeBatchPollInterval) clearInterval(activeBatchPollInterval);
 
@@ -1559,10 +1593,14 @@ async function startBatchGeneration() {
         document.getElementById('batch-overall-progress-bar').style.width = `${overallPct}%`;
         document.getElementById('batch-overall-pct').textContent = `${overallPct}%`;
         document.getElementById('batch-completed-counter').textContent = `${completed} / ${total} Completed`;
-        document.getElementById('batch-overall-status').textContent = 
-          job.status === 'completed' 
-            ? '✅ All batch videos finished successfully!' 
-            : `Processing ${total - completed} videos concurrently across 6-8 worker threads...`;
+        
+        if (job.status === 'cancelled') {
+          document.getElementById('batch-overall-status').textContent = '⏹️ Batch stopped / cancelled by user.';
+        } else if (job.status === 'completed') {
+          document.getElementById('batch-overall-status').textContent = '✅ All batch videos finished successfully!';
+        } else {
+          document.getElementById('batch-overall-status').textContent = `Processing ${total - completed} videos concurrently across 6-8 worker threads...`;
+        }
 
         // Update individual cards
         if (job.items) {
@@ -1581,11 +1619,16 @@ async function startBatchGeneration() {
               bar.style.width = `${item.percent || 0}%`;
             }
             if (desc) {
-              desc.textContent = item.error ? `❌ Error: ${item.error}` : (item.stage_desc || 'Processing...');
+              let msg = item.error ? `❌ Error: ${item.error}` : (item.stage_desc || 'Processing...');
+              if (item.fallback_scenes_count > 0 && !msg.includes('gradient')) {
+                msg += ` <span style="color:#f59e0b;font-size:11px;font-weight:600;">(⚠️ ${item.fallback_scenes_count} gradient fallback)</span>`;
+              }
+              desc.innerHTML = msg;
             }
             if (card) {
               if (item.status === 'completed') card.className = 'batch-item-card completed';
               if (item.status === 'error') card.className = 'batch-item-card error';
+              if (item.status === 'cancelled') card.className = 'batch-item-card error';
             }
 
             if (item.status === 'completed' && act && act.classList.contains('hidden')) {
@@ -1599,11 +1642,20 @@ async function startBatchGeneration() {
           });
         }
 
-        if (job.status === 'completed') {
+        if (job.status === 'completed' || job.status === 'cancelled') {
           clearInterval(activeBatchPollInterval);
           activeBatchPollInterval = null;
           document.getElementById('batch-start-btn').disabled = false;
-          showToast('🎉 All batch videos processed & rendered successfully!');
+          const cancelBtn = document.getElementById('btn-cancel-batch');
+          if (cancelBtn) {
+            cancelBtn.disabled = true;
+            cancelBtn.textContent = job.status === 'cancelled' ? 'Cancelled' : '⏹️ Cancel Batch';
+          }
+          if (job.status === 'completed') {
+            showToast('🎉 All batch videos processed & rendered successfully!');
+          } else {
+            showToast('⏹️ Batch cancelled.');
+          }
           loadProjectsLibrary();
         }
       } catch (err) {

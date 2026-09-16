@@ -9,6 +9,7 @@ data/temp/
 data/output/
 data/exports/
 data/projects/
+data/batch_jobs.json
 *.db
 *.db-wal
 *.db-shm

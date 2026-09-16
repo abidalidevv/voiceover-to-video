@@ -2,6 +2,7 @@ import os
 import json
 import time
 import shutil
+import threading
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -474,13 +475,14 @@ def render_video(req: RenderRequest):
         "mute_stock_audio": bool(req.custom_options.get("mute_stock_audio", True)),
         **req.custom_options
     }
-    rendered_path = render_final_video(
-        audio_path=audio_path,
-        scenes=scenes,
-        ass_subtitle_path=ass_path,
-        output_filename=out_filename,
-        custom_options=render_opts
-    )
+    with RENDER_LOCK:
+        rendered_path = render_final_video(
+            audio_path=audio_path,
+            scenes=scenes,
+            ass_subtitle_path=ass_path,
+            output_filename=out_filename,
+            custom_options=render_opts
+        )
 
 
     web_url = _to_media_url(rendered_path)
@@ -605,9 +607,31 @@ def get_templates():
     return list_templates()
 
 
-# ======================== BATCH / BULK VIDEO GENERATION ========================
+# ======================== BATCH / BULK VIDEO GENERATION & CONCURRENCY LOCKS ========================
 
-BATCH_JOBS: Dict[str, Dict[str, Any]] = {}
+RENDER_LOCK = threading.Lock()       # Serializes heavy FFmpeg rendering to 1 active process to prevent GPU NVENC limit exhaustion
+GLOBAL_BATCH_LOCK = threading.Lock() # Prevents overlapping batch runs if clicked twice
+BATCH_LOCK = threading.Lock()        # Protects batch dictionary and counter state updates
+
+BATCH_JOBS_FILE = DATA_DIR / "batch_jobs.json"
+
+def load_batch_jobs_from_disk() -> Dict[str, Dict[str, Any]]:
+    if BATCH_JOBS_FILE.exists():
+        try:
+            with open(BATCH_JOBS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[WARN] Failed to load batch jobs: {e}")
+    return {}
+
+def save_batch_jobs_to_disk():
+    try:
+        with open(BATCH_JOBS_FILE, "w", encoding="utf-8") as f:
+            json.dump(BATCH_JOBS, f, indent=2)
+    except Exception as e:
+        print(f"[WARN] Failed to save batch jobs: {e}")
+
+BATCH_JOBS: Dict[str, Dict[str, Any]] = load_batch_jobs_from_disk()
 
 @app.post("/api/batch-upload-audio")
 async def batch_upload_audio(files: List[UploadFile] = File(...)):
@@ -642,6 +666,12 @@ def start_batch_generation(req: BatchGenerateRequest):
     if not req.audio_filenames:
         raise HTTPException(status_code=400, detail="No audio files provided")
 
+    if GLOBAL_BATCH_LOCK.locked():
+        raise HTTPException(
+            status_code=409,
+            detail="A batch generation job is currently running. Please wait for it to complete or cancel it before starting a new batch."
+        )
+
     batch_id = f"batch_{int(time.time() * 1000)}"
     tmpl = get_template(req.template_id)
     niche = req.niche or tmpl.get("niche", "Motivation Psychology")
@@ -656,159 +686,221 @@ def start_batch_generation(req: BatchGenerateRequest):
             "stage_desc": "Waiting in queue...",
             "project_id": None,
             "rendered_url": None,
-            "error": None
+            "error": None,
+            "fallback_scenes_count": 0
         })
 
-    BATCH_JOBS[batch_id] = {
-        "id": batch_id,
-        "template": tmpl,
-        "niche": niche,
-        "pipeline": req.pipeline,
-        "total": len(items),
-        "completed": 0,
-        "percent": 0,
-        "status": "processing",
-        "items": items,
-        "created_at": time.strftime("%b %d, %Y %I:%M %p")
-    }
+    with BATCH_LOCK:
+        BATCH_JOBS[batch_id] = {
+            "id": batch_id,
+            "template": tmpl,
+            "niche": niche,
+            "pipeline": req.pipeline,
+            "total": len(items),
+            "completed": 0,
+            "percent": 0,
+            "status": "processing",
+            "cancel_requested": False,
+            "items": items,
+            "created_at": time.strftime("%b %d, %Y %I:%M %p")
+        }
+        save_batch_jobs_to_disk()
 
     def run_batch():
-        batch = BATCH_JOBS[batch_id]
-        from concurrent.futures import ThreadPoolExecutor
+        if not GLOBAL_BATCH_LOCK.acquire(blocking=False):
+            return
+        try:
+            batch = BATCH_JOBS[batch_id]
+            from concurrent.futures import ThreadPoolExecutor
 
-        def process_single_audio(idx: int, item: Dict[str, Any]):
-            audio_fn = item["filename"]
-            audio_path = TEMP_DIR / audio_fn
-            if not audio_path.exists():
-                item["status"] = "error"
-                item["error"] = "Audio file missing"
-                return
+            def process_single_audio(idx: int, item: Dict[str, Any]):
+                if batch.get("cancel_requested"):
+                    item["status"] = "cancelled"
+                    item["stage_desc"] = "Cancelled by user"
+                    return
 
-            try:
-                item["status"] = "processing"
-                item["percent"] = 10
-                item["stage_desc"] = "Transcribing speech..."
+                audio_fn = item["filename"]
+                audio_path = TEMP_DIR / audio_fn
+                if not audio_path.exists():
+                    item["status"] = "error"
+                    item["error"] = "Audio file missing"
+                    return
 
-                # 1. Transcribe
-                transcription = transcribe_audio(str(audio_path), niche=niche)
-                item["percent"] = 25
-                item["stage_desc"] = "Building sentence scenes..."
+                try:
+                    item["status"] = "processing"
+                    item["percent"] = 10
+                    item["stage_desc"] = "Transcribing speech..."
 
-                # 2. Scene analysis with template max duration
-                max_dur = tmpl.get("max_scene_duration", 3.5)
-                scenes = build_scenes(transcription, niche=niche)
-                for sc in scenes:
-                    if sc.get("duration", 0) > max_dur:
-                        sc["duration"] = round(min(sc["duration"], max_dur), 2)
-                item["percent"] = 40
-                item["stage_desc"] = f"Downloading {len(scenes)} stock clips in parallel..."
+                    # 1. Transcribe
+                    transcription = transcribe_audio(str(audio_path), niche=niche)
+                    if batch.get("cancel_requested"):
+                        item["status"] = "cancelled"
+                        item["stage_desc"] = "Cancelled by user"
+                        return
 
-                # 3. Download stock clips concurrently
-                def on_download(done, total, sc_item):
-                    pct = int(40 + (done / max(1, total)) * 30)
-                    item["percent"] = pct
-                    item["stage_desc"] = f"Downloaded stock clip {done}/{total}..."
+                    item["percent"] = 25
+                    item["stage_desc"] = "Building sentence scenes..."
 
-                processed_scenes = download_scenes_concurrently(scenes, progress_callback=on_download)
-                for sc in processed_scenes:
-                    if sc.get("video_clip") and sc["video_clip"].get("file_path"):
-                        sc["video_clip"]["web_url"] = _to_media_url(sc["video_clip"]["file_path"])
+                    # 2. Scene analysis with template max duration
+                    max_dur = tmpl.get("max_scene_duration", 3.5)
+                    scenes = build_scenes(transcription, niche=niche)
+                    for sc in scenes:
+                        if sc.get("duration", 0) > max_dur:
+                            sc["duration"] = round(min(sc["duration"], max_dur), 2)
+                    
+                    if batch.get("cancel_requested"):
+                        item["status"] = "cancelled"
+                        item["stage_desc"] = "Cancelled by user"
+                        return
 
-                # 4. Create project data
-                proj_id = f"proj_batch_{int(time.time() * 1000)}_{idx}"
-                proj_name = Path(audio_fn).stem
-                project_data = {
-                    "id": proj_id,
-                    "name": proj_name,
-                    "niche": niche,
-                    "pipeline": req.pipeline,
-                    "template_id": tmpl["id"],
-                    "audio_filename": audio_fn,
-                    "audio_path": str(audio_path),
-                    "audio_url": f"/media/temp/{audio_fn}",
-                    "duration": transcription.get("duration", 30.0),
-                    "scenes": processed_scenes,
-                    "created_at": time.strftime("%b %d, %Y %I:%M %p"),
-                    "status": "ready_for_preview",
-                    "aspect_ratio": tmpl.get("aspect_ratio", "16:9"),
-                    "transition": tmpl.get("transition", "smoothleft"),
-                    "bgm_track": tmpl.get("bgm_track", "lofi_chill.mp3"),
-                    "bgm_volume": tmpl.get("bgm_volume", 0.10),
-                    "caption_style": tmpl.get("caption_style", "capcut-yellow")
-                }
-                ACTIVE_PROJECTS[proj_id] = project_data
-                save_project_to_history(project_data)
-                item["project_id"] = proj_id
+                    item["percent"] = 40
+                    item["stage_desc"] = f"Downloading {len(scenes)} stock clips in parallel..."
 
-                # 5. Auto Render if requested
-                if req.auto_render:
-                    item["percent"] = 75
-                    item["stage_desc"] = "Rendering 1080p MP4 with transitions & captions..."
-                    ass_path = str(TEMP_DIR / f"{proj_id}_subtitles.ass")
-                    generate_ass_subtitles(
-                        scenes=processed_scenes,
-                        output_path=ass_path,
-                        preset_key=tmpl.get("caption_style", "capcut_yellow"),
-                        custom_options={"aspect_ratio": tmpl.get("aspect_ratio", "16:9")}
-                    )
+                    # 3. Download stock clips concurrently
+                    def on_download(done, total, sc_item):
+                        pct = int(40 + (done / max(1, total)) * 30)
+                        item["percent"] = pct
+                        item["stage_desc"] = f"Downloaded stock clip {done}/{total}..."
 
-                    out_filename = f"{proj_name}_1080p_{tmpl['id']}_{int(time.time())}.mp4"
-                    render_opts = {
-                        "fps": 30,
+                    processed_scenes = download_scenes_concurrently(scenes, progress_callback=on_download)
+                    for sc in processed_scenes:
+                        if sc.get("video_clip") and sc["video_clip"].get("file_path"):
+                            sc["video_clip"]["web_url"] = _to_media_url(sc["video_clip"]["file_path"])
+
+                    # Count fallback scenes
+                    fallback_count = sum(1 for sc in processed_scenes if sc.get("fallback_used"))
+                    item["fallback_scenes_count"] = fallback_count
+
+                    if batch.get("cancel_requested"):
+                        item["status"] = "cancelled"
+                        item["stage_desc"] = "Cancelled by user"
+                        return
+
+                    # 4. Create project data
+                    proj_id = f"proj_batch_{int(time.time() * 1000)}_{idx}"
+                    proj_name = Path(audio_fn).stem
+                    project_data = {
+                        "id": proj_id,
+                        "name": proj_name,
+                        "niche": niche,
+                        "pipeline": req.pipeline,
+                        "template_id": tmpl["id"],
+                        "audio_filename": audio_fn,
+                        "audio_path": str(audio_path),
+                        "audio_url": f"/media/temp/{audio_fn}",
+                        "duration": transcription.get("duration", 30.0),
+                        "scenes": processed_scenes,
+                        "fallback_scenes_count": fallback_count,
+                        "created_at": time.strftime("%b %d, %Y %I:%M %p"),
+                        "status": "ready_for_preview",
                         "aspect_ratio": tmpl.get("aspect_ratio", "16:9"),
+                        "transition": tmpl.get("transition", "smoothleft"),
                         "bgm_track": tmpl.get("bgm_track", "lofi_chill.mp3"),
                         "bgm_volume": tmpl.get("bgm_volume", 0.10),
-                        "transition": tmpl.get("transition", "smoothleft"),
-                        "transition_duration": tmpl.get("transition_duration", 0.30),
-                        "enable_motion": True,
-                        "mute_stock_audio": True
+                        "caption_style": tmpl.get("caption_style", "capcut-yellow")
                     }
-                    rendered_path = render_final_video(
-                        audio_path=str(audio_path),
-                        scenes=processed_scenes,
-                        ass_subtitle_path=ass_path,
-                        output_filename=out_filename,
-                        custom_options=render_opts
-                    )
-                    web_url = _to_media_url(rendered_path)
-                    project_data["rendered_video"] = {
-                        "filename": out_filename,
-                        "file_path": rendered_path,
-                        "web_url": web_url,
-                        "rendered_at": time.strftime("%b %d, %Y %I:%M %p")
-                    }
-                    project_data["status"] = "completed"
+                    ACTIVE_PROJECTS[proj_id] = project_data
                     save_project_to_history(project_data)
-                    item["rendered_url"] = web_url
+                    item["project_id"] = proj_id
 
-                    # Generate CapCut draft automatically
-                    try:
-                        export_project_to_capcut(project_data, render_opts)
-                    except Exception:
-                        pass
+                    # 5. Auto Render if requested (STRICTLY SERIALIZED via RENDER_LOCK)
+                    if req.auto_render:
+                        if batch.get("cancel_requested"):
+                            item["status"] = "cancelled"
+                            item["stage_desc"] = "Cancelled by user"
+                            return
 
-                item["status"] = "completed"
-                item["percent"] = 100
-                item["stage_desc"] = "Completed successfully!"
+                        item["percent"] = 72
+                        item["stage_desc"] = "Queued for GPU/CPU render slot..."
 
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                item["status"] = "error"
-                item["error"] = str(e)
+                        ass_path = str(TEMP_DIR / f"{proj_id}_subtitles.ass")
+                        generate_ass_subtitles(
+                            scenes=processed_scenes,
+                            output_path=ass_path,
+                            preset_key=tmpl.get("caption_style", "capcut_yellow"),
+                            custom_options={"aspect_ratio": tmpl.get("aspect_ratio", "16:9")}
+                        )
 
-            finally:
-                batch["completed"] += 1
-                batch["percent"] = int((batch["completed"] / batch["total"]) * 100)
+                        out_filename = f"{proj_name}_1080p_{tmpl['id']}_{int(time.time())}.mp4"
+                        render_opts = {
+                            "fps": 30,
+                            "aspect_ratio": tmpl.get("aspect_ratio", "16:9"),
+                            "bgm_track": tmpl.get("bgm_track", "lofi_chill.mp3"),
+                            "bgm_volume": tmpl.get("bgm_volume", 0.10),
+                            "transition": tmpl.get("transition", "smoothleft"),
+                            "transition_duration": tmpl.get("transition_duration", 0.30),
+                            "enable_motion": True,
+                            "mute_stock_audio": True
+                        }
 
-        # Bounded concurrency: 2 audio projects at a time
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            futures = [pool.submit(process_single_audio, i, item) for i, item in enumerate(items)]
-            for fut in futures:
-                fut.result()
+                        with RENDER_LOCK:
+                            if batch.get("cancel_requested"):
+                                item["status"] = "cancelled"
+                                item["stage_desc"] = "Cancelled by user"
+                                return
+                            item["percent"] = 75
+                            item["stage_desc"] = "Rendering 1080p MP4 (exclusive GPU render slot)..."
+                            rendered_path = render_final_video(
+                                audio_path=str(audio_path),
+                                scenes=processed_scenes,
+                                ass_subtitle_path=ass_path,
+                                output_filename=out_filename,
+                                custom_options=render_opts
+                            )
 
-        batch["status"] = "completed"
-        batch["percent"] = 100
+                        web_url = _to_media_url(rendered_path)
+                        project_data["rendered_video"] = {
+                            "filename": out_filename,
+                            "file_path": rendered_path,
+                            "web_url": web_url,
+                            "rendered_at": time.strftime("%b %d, %Y %I:%M %p")
+                        }
+                        project_data["status"] = "completed"
+                        save_project_to_history(project_data)
+                        item["rendered_url"] = web_url
+
+                        # Generate CapCut draft automatically
+                        try:
+                            export_project_to_capcut(project_data, render_opts)
+                        except Exception:
+                            pass
+
+                    item["status"] = "completed"
+                    item["percent"] = 100
+                    status_text = "Completed successfully!"
+                    if fallback_count > 0:
+                        status_text += f" (⚠️ {fallback_count} offline gradient scenes used)"
+                    item["stage_desc"] = status_text
+
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    item["status"] = "error"
+                    item["error"] = str(e)
+
+                finally:
+                    with BATCH_LOCK:
+                        batch["completed"] += 1
+                        batch["percent"] = int((batch["completed"] / max(1, batch["total"])) * 100)
+                        save_batch_jobs_to_disk()
+
+            # Bounded concurrency: 2 audio projects transcribe/download in parallel, but FFmpeg rendering is serialized
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = [pool.submit(process_single_audio, i, item) for i, item in enumerate(items)]
+                for fut in futures:
+                    fut.result()
+
+            with BATCH_LOCK:
+                if batch.get("cancel_requested"):
+                    batch["status"] = "cancelled"
+                else:
+                    batch["status"] = "completed"
+                    batch["percent"] = 100
+                save_batch_jobs_to_disk()
+
+        finally:
+            if GLOBAL_BATCH_LOCK.locked():
+                GLOBAL_BATCH_LOCK.release()
 
     threading.Thread(target=run_batch, daemon=True).start()
     return {"status": "started", "batch_id": batch_id, "total": len(items)}
@@ -816,10 +908,27 @@ def start_batch_generation(req: BatchGenerateRequest):
 
 @app.get("/api/batch-progress/{batch_id}")
 def get_batch_progress(batch_id: str):
-    batch = BATCH_JOBS.get(batch_id)
+    with BATCH_LOCK:
+        batch = BATCH_JOBS.get(batch_id)
     if not batch:
         raise HTTPException(status_code=404, detail="Batch job not found")
     return batch
+
+
+@app.post("/api/batch-cancel/{batch_id}")
+def cancel_batch(batch_id: str):
+    with BATCH_LOCK:
+        batch = BATCH_JOBS.get(batch_id)
+        if not batch:
+            raise HTTPException(status_code=404, detail="Batch job not found")
+        batch["cancel_requested"] = True
+        batch["status"] = "cancelled"
+        for item in batch.get("items", []):
+            if item.get("status") in ("queued", "waiting"):
+                item["status"] = "cancelled"
+                item["stage_desc"] = "Cancelled by user"
+        save_batch_jobs_to_disk()
+    return {"status": "success", "message": "Batch cancellation requested", "batch_id": batch_id}
 
 
 # Mount data folder to serve audio, video clips, and exported MP4s
