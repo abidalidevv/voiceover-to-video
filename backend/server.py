@@ -472,6 +472,7 @@ def render_video(req: RenderRequest):
         "enable_vignette": bool(req.custom_options.get("enable_vignette", project.get("enable_vignette", False))),
         "color_grade": req.custom_options.get("color_grade", project.get("color_grade", "clean")),
         "transition": req.custom_options.get("transition", project.get("transition", "none")),
+        "transition_mode": req.custom_options.get("transition_mode", project.get("transition_mode", "fixed")),
         "mute_stock_audio": bool(req.custom_options.get("mute_stock_audio", True)),
         **req.custom_options
     }
@@ -795,6 +796,8 @@ def start_batch_generation(req: BatchGenerateRequest):
                         "status": "ready_for_preview",
                         "aspect_ratio": tmpl.get("aspect_ratio", "16:9"),
                         "transition": tmpl.get("transition", "smoothleft"),
+                        "transition_mode": tmpl.get("transition_mode", "fixed"),
+                        "transition_duration": tmpl.get("transition_duration", 0.30),
                         "bgm_track": tmpl.get("bgm_track", "lofi_chill.mp3"),
                         "bgm_volume": tmpl.get("bgm_volume", 0.10),
                         "caption_style": tmpl.get("caption_style", "capcut-yellow")
@@ -828,6 +831,7 @@ def start_batch_generation(req: BatchGenerateRequest):
                             "bgm_track": tmpl.get("bgm_track", "lofi_chill.mp3"),
                             "bgm_volume": tmpl.get("bgm_volume", 0.10),
                             "transition": tmpl.get("transition", "smoothleft"),
+                            "transition_mode": tmpl.get("transition_mode", "fixed"),
                             "transition_duration": tmpl.get("transition_duration", 0.30),
                             "enable_motion": True,
                             "mute_stock_audio": True

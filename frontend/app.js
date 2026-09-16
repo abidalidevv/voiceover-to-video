@@ -1052,6 +1052,7 @@ async function startExportRender() {
     mute_stock_audio: document.getElementById('mute-stock-checkbox')?.checked ?? true,
     color_grade: document.getElementById('color-grade-select')?.value || 'clean',
     transition: document.getElementById('transition-select')?.value || 'none',
+    transition_mode: document.getElementById('transition-select')?.value === 'random' ? 'random' : 'fixed',
     transition_duration: parseFloat(document.getElementById('transition-speed-slider')?.value || '0.30')
   };
 
@@ -1325,8 +1326,12 @@ function applyEditingTemplate(tmplId) {
   if (!tmpl) return;
 
   // 1. Transition & Speed
-  if (tmpl.transition && document.getElementById('transition-select')) {
-    document.getElementById('transition-select').value = tmpl.transition;
+  if (document.getElementById('transition-select')) {
+    if (tmpl.transition_mode === 'random') {
+      document.getElementById('transition-select').value = 'random';
+    } else if (tmpl.transition) {
+      document.getElementById('transition-select').value = tmpl.transition;
+    }
   }
   if (tmpl.transition_duration !== undefined && document.getElementById('transition-speed-slider')) {
     document.getElementById('transition-speed-slider').value = tmpl.transition_duration;

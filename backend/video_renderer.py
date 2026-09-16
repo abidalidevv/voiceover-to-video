@@ -11,11 +11,33 @@ from .config import find_ffmpeg, find_ffprobe, TEMP_DIR, OUTPUT_DIR, BASE_DIR, D
 TRANSITION_POOL = ["smoothleft", "smoothright", "zoomin", "fade", "fadefast", "circlecrop", "dissolve"]
 
 
-def _pick_transition(idx: int, mode: str) -> str:
-    """Returns transition type for scene boundary idx based on mode."""
-    if mode == "random":
-        return TRANSITION_POOL[idx % len(TRANSITION_POOL)]
-    return mode
+def _pick_transition(
+    idx: int,
+    mode: str = "fixed",
+    fallback: str = "smoothleft",
+    last_picked: Optional[str] = None
+) -> str:
+    """
+    Returns transition type for scene boundary idx based on mode.
+    - If mode is 'random', picks via random.choice(TRANSITION_POOL) ensuring no two
+      consecutive scene boundaries ever use the same transition type.
+    - If mode is 'fixed', returns the template's single fixed transition value (fallback).
+    - If mode is a specific transition name (backward compatibility), returns that mode.
+    """
+    mode_str = str(mode or "fixed").lower().strip()
+
+    if mode_str == "random":
+        # Never pick the SAME transition twice in a row
+        candidates = [t for t in TRANSITION_POOL if t != last_picked]
+        if not candidates:
+            candidates = TRANSITION_POOL
+        return random.choice(candidates)
+
+    if mode_str == "fixed":
+        return fallback if fallback is not None else "smoothleft"
+
+    # Direct transition name passed as mode (e.g. "smoothleft", "fade", "none")
+    return mode_str
 
 
 def _resolve_audio_path(path_str: str) -> str:
@@ -96,6 +118,10 @@ def render_final_video(
     enable_vignette = bool(custom_options.get("enable_vignette", False))
     color_grade = custom_options.get("color_grade", "clean")
     transition = custom_options.get("transition", "none").lower().strip()
+    transition_mode = custom_options.get("transition_mode", "fixed").lower().strip()
+    if transition == "random":
+        transition_mode = "random"
+
     mute_stock_audio = bool(custom_options.get("mute_stock_audio", True))
     bgm_track = custom_options.get("bgm_track", settings.get("default_bgm", "cinematic_ambient"))
     bgm_volume = float(custom_options.get("bgm_volume", 0.10)) # default 10%
@@ -129,14 +155,15 @@ def render_final_video(
     seg_dir = TEMP_DIR / render_session_id
     seg_dir.mkdir(parents=True, exist_ok=True)
 
-    # Modern transition settings (supports 'random' for mixed transitions)
+    # Modern transition settings (supports 'random' and 'fixed' modes)
     has_transition = (
-        (transition in ("smoothleft", "smoothright", "zoomin", "fade", "fadefast", "circlecrop", "dissolve", "random"))
+        (transition_mode == "random" or transition in ("smoothleft", "smoothright", "zoomin", "fade", "fadefast", "circlecrop", "dissolve"))
         and len(valid_clips) > 1
+        and not (transition_mode == "fixed" and transition in ("none", "", "off"))
     )
-    trans_dur = 0.25 if transition == "fadefast" else 0.35
+    trans_dur = float(custom_options.get("transition_duration", 0.25 if transition == "fadefast" else 0.30))
 
-    print(f"[Renderer] Normalizing {len(valid_clips)} clips in parallel across multi-worker threads (Transition: {transition})...")
+    print(f"[Renderer] Normalizing {len(valid_clips)} clips in parallel across multi-worker threads (Transition: {transition}, Mode: {transition_mode})...")
     if progress_callback:
         progress_callback("normalizing", 10, f"Normalizing {len(valid_clips)} scene clips in parallel...")
 
@@ -254,7 +281,7 @@ def render_final_video(
     stitched_video = seg_dir / "stitched_raw.mp4"
 
     if has_transition:
-        print(f"[Renderer] Applying modern '{transition}' transitions across {len(valid_clips)} clips via FFmpeg xfade...")
+        print(f"[Renderer] Applying modern '{transition}' transitions across {len(valid_clips)} clips via FFmpeg xfade (mode: {transition_mode})...")
         if progress_callback:
             progress_callback("concatenating", 60, f"Applying modern '{transition}' transitions...")
 
@@ -264,7 +291,7 @@ def render_final_video(
         BATCH_SIZE = 15
         if len(valid_clips) > BATCH_SIZE:
             batch_outputs = _render_xfade_batches(
-                ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, seg_dir, BATCH_SIZE
+                ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, seg_dir, BATCH_SIZE, transition_mode=transition_mode
             )
             # Concat batch outputs via stream copy
             batch_list = seg_dir / "batch_concat.txt"
@@ -283,7 +310,7 @@ def render_final_video(
         else:
             # Single-pass xfade for small scene counts
             _render_xfade_single(
-                ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, stitched_video
+                ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, stitched_video, transition_mode=transition_mode
             )
 
     else:
@@ -436,21 +463,25 @@ def _check_nvenc_available(ffmpeg_exe: str) -> bool:
         return False
 
 
-def _render_xfade_single(ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, output_path):
-    """Single-pass xfade for <=15 clips. Supports 'random' transition mode."""
+def _render_xfade_single(ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, output_path, transition_mode="fixed"):
+    """Single-pass xfade for <=15 clips. Supports 'random' and 'fixed' transition modes."""
     xfade_cmd = [ffmpeg_exe, "-y"]
     for seg in seg_files:
         xfade_cmd.extend(["-i", str(seg)])
 
     filter_chains = []
     cum_offset = 0.0
+    last_picked = None
     for i in range(len(valid_clips) - 1):
         dur_i = valid_clips[i][2]
         cum_offset += dur_i
         trans_offset = max(0.01, cum_offset - (trans_dur / 2.0))
 
-        # Pick transition type (random or fixed)
-        trans_type = _pick_transition(i, transition)
+        # Pick transition type (random or fixed) with no consecutive repeats
+        trans_type = _pick_transition(i, mode=transition_mode, fallback=transition, last_picked=last_picked)
+        last_picked = trans_type
+
+        print(f"[Renderer] Scene boundary {i} -> {i+1}: transition '{trans_type}' (mode: {transition_mode}, offset: {trans_offset:.2f}s, duration: {trans_dur:.2f}s)")
 
         in_label = "[0:v]" if i == 0 else f"[v{i}]"
         next_label = f"[{i+1}:v]"
@@ -476,7 +507,7 @@ def _render_xfade_single(ffmpeg_exe, seg_files, valid_clips, transition, trans_d
     subprocess.run(xfade_cmd, capture_output=True, check=True)
 
 
-def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, seg_dir, batch_size=15):
+def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, seg_dir, batch_size=15, transition_mode="fixed"):
     """
     2-pass xfade for large scene counts (>15 clips).
     Splits clips into batches, renders each batch with xfade transitions,
@@ -485,6 +516,7 @@ def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_
     """
     batch_outputs = []
     total = len(valid_clips)
+    last_picked = None
 
     for batch_start in range(0, total, batch_size):
         batch_end = min(batch_start + batch_size, total)
@@ -508,7 +540,11 @@ def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_
             cum_offset += dur_i
             trans_offset = max(0.01, cum_offset - (trans_dur / 2.0))
 
-            trans_type = _pick_transition(batch_start + i, transition)
+            boundary_idx = batch_start + i
+            trans_type = _pick_transition(boundary_idx, mode=transition_mode, fallback=transition, last_picked=last_picked)
+            last_picked = trans_type
+
+            print(f"[Renderer] Batch scene boundary {boundary_idx} -> {boundary_idx+1}: transition '{trans_type}' (mode: {transition_mode}, offset: {trans_offset:.2f}s, duration: {trans_dur:.2f}s)")
 
             in_label = "[0:v]" if i == 0 else f"[v{i}]"
             next_label = f"[{i+1}:v]"
