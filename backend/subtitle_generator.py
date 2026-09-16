@@ -239,7 +239,8 @@ def generate_ass_subtitles(
     """
     Generates a stylized .ass subtitle file with CapCut kinetic active-word highlighting.
     """
-    preset = PRESET_STYLES.get(preset_key, PRESET_STYLES["capcut_yellow"]).copy()
+    norm_key = str(preset_key or "capcut_yellow").lower().replace("-", "_")
+    preset = PRESET_STYLES.get(norm_key, PRESET_STYLES.get(preset_key, PRESET_STYLES["capcut_yellow"])).copy()
     if custom_options:
         if "font_size" in custom_options:
             preset["font_size"] = int(custom_options["font_size"])

@@ -601,7 +601,7 @@ async def upload_bgm(file: UploadFile = File(...)):
     }
 # ======================== EDITING TEMPLATES ENDPOINTS ========================
 
-from .templates import list_templates, get_template, EDITING_TEMPLATES
+from .templates import list_templates, get_template, resolve_template_variant, EDITING_TEMPLATES
 
 @app.get("/api/templates")
 def get_templates():
@@ -714,11 +714,23 @@ def start_batch_generation(req: BatchGenerateRequest):
             batch = BATCH_JOBS[batch_id]
             from concurrent.futures import ThreadPoolExecutor
 
+            last_used = {"bgm_track": None, "caption_style": None}
+            last_used_lock = threading.Lock()
+
             def process_single_audio(idx: int, item: Dict[str, Any]):
                 if batch.get("cancel_requested"):
                     item["status"] = "cancelled"
                     item["stage_desc"] = "Cancelled by user"
                     return
+
+                # Resolve per-item template variant from pool to ensure variation across batch
+                with last_used_lock:
+                    item_tmpl = resolve_template_variant(req.template_id, exclude=last_used)
+                    last_used["bgm_track"] = item_tmpl.get("bgm_track")
+                    last_used["caption_style"] = item_tmpl.get("caption_style")
+
+                item["bgm_track"] = item_tmpl.get("bgm_track")
+                item["caption_style"] = item_tmpl.get("caption_style")
 
                 audio_fn = item["filename"]
                 audio_path = TEMP_DIR / audio_fn
@@ -743,7 +755,7 @@ def start_batch_generation(req: BatchGenerateRequest):
                     item["stage_desc"] = "Building sentence scenes..."
 
                     # 2. Scene analysis with template max duration
-                    max_dur = tmpl.get("max_scene_duration", 3.5)
+                    max_dur = item_tmpl.get("max_scene_duration", 3.5)
                     scenes = build_scenes(transcription, niche=niche)
                     for sc in scenes:
                         if sc.get("duration", 0) > max_dur:
@@ -777,7 +789,7 @@ def start_batch_generation(req: BatchGenerateRequest):
                         item["stage_desc"] = "Cancelled by user"
                         return
 
-                    # 4. Create project data
+                    # 4. Create project data with item-specific template variant
                     proj_id = f"proj_batch_{int(time.time() * 1000)}_{idx}"
                     proj_name = Path(audio_fn).stem
                     project_data = {
@@ -785,7 +797,7 @@ def start_batch_generation(req: BatchGenerateRequest):
                         "name": proj_name,
                         "niche": niche,
                         "pipeline": req.pipeline,
-                        "template_id": tmpl["id"],
+                        "template_id": item_tmpl["id"],
                         "audio_filename": audio_fn,
                         "audio_path": str(audio_path),
                         "audio_url": f"/media/temp/{audio_fn}",
@@ -794,13 +806,13 @@ def start_batch_generation(req: BatchGenerateRequest):
                         "fallback_scenes_count": fallback_count,
                         "created_at": time.strftime("%b %d, %Y %I:%M %p"),
                         "status": "ready_for_preview",
-                        "aspect_ratio": tmpl.get("aspect_ratio", "16:9"),
-                        "transition": tmpl.get("transition", "smoothleft"),
-                        "transition_mode": tmpl.get("transition_mode", "fixed"),
-                        "transition_duration": tmpl.get("transition_duration", 0.30),
-                        "bgm_track": tmpl.get("bgm_track", "lofi_chill.mp3"),
-                        "bgm_volume": tmpl.get("bgm_volume", 0.10),
-                        "caption_style": tmpl.get("caption_style", "capcut-yellow")
+                        "aspect_ratio": item_tmpl.get("aspect_ratio", "16:9"),
+                        "transition": item_tmpl.get("transition", "smoothleft"),
+                        "transition_mode": item_tmpl.get("transition_mode", "fixed"),
+                        "transition_duration": item_tmpl.get("transition_duration", 0.30),
+                        "bgm_track": item_tmpl.get("bgm_track", "lofi_chill.mp3"),
+                        "bgm_volume": item_tmpl.get("bgm_volume", 0.10),
+                        "caption_style": item_tmpl.get("caption_style", "capcut-yellow")
                     }
                     ACTIVE_PROJECTS[proj_id] = project_data
                     save_project_to_history(project_data)
@@ -820,19 +832,19 @@ def start_batch_generation(req: BatchGenerateRequest):
                         generate_ass_subtitles(
                             scenes=processed_scenes,
                             output_path=ass_path,
-                            preset_key=tmpl.get("caption_style", "capcut_yellow"),
-                            custom_options={"aspect_ratio": tmpl.get("aspect_ratio", "16:9")}
+                            preset_key=item_tmpl.get("caption_style", "capcut_yellow"),
+                            custom_options={"aspect_ratio": item_tmpl.get("aspect_ratio", "16:9")}
                         )
 
-                        out_filename = f"{proj_name}_1080p_{tmpl['id']}_{int(time.time())}.mp4"
+                        out_filename = f"{proj_name}_1080p_{item_tmpl['id']}_{int(time.time())}.mp4"
                         render_opts = {
                             "fps": 30,
-                            "aspect_ratio": tmpl.get("aspect_ratio", "16:9"),
-                            "bgm_track": tmpl.get("bgm_track", "lofi_chill.mp3"),
-                            "bgm_volume": tmpl.get("bgm_volume", 0.10),
-                            "transition": tmpl.get("transition", "smoothleft"),
-                            "transition_mode": tmpl.get("transition_mode", "fixed"),
-                            "transition_duration": tmpl.get("transition_duration", 0.30),
+                            "aspect_ratio": item_tmpl.get("aspect_ratio", "16:9"),
+                            "bgm_track": item_tmpl.get("bgm_track", "lofi_chill.mp3"),
+                            "bgm_volume": item_tmpl.get("bgm_volume", 0.10),
+                            "transition": item_tmpl.get("transition", "smoothleft"),
+                            "transition_mode": item_tmpl.get("transition_mode", "fixed"),
+                            "transition_duration": item_tmpl.get("transition_duration", 0.30),
                             "enable_motion": True,
                             "mute_stock_audio": True
                         }
