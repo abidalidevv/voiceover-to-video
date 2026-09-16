@@ -12,6 +12,7 @@ data/projects/
 *.db
 *.db-wal
 *.db-shm
+*.mp4
 
 # Secrets & Local Credentials
 api.txt
