@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 from .config import (
-    BASE_DIR, DATA_DIR, CACHE_DIR, OUTPUT_DIR, TEMP_DIR,
+    BASE_DIR, DATA_DIR, CACHE_DIR, OUTPUT_DIR, TEMP_DIR, FRONTEND_DIR,
     load_settings, save_settings, find_ffmpeg
 )
 from .transcriber import transcribe_audio, get_audio_duration
@@ -1146,6 +1146,6 @@ def cancel_batch(batch_id: str):
 app.mount("/media", StaticFiles(directory=str(DATA_DIR)), name="media")
 
 # Mount frontend files
-frontend_dir = BASE_DIR / "frontend"
+frontend_dir = FRONTEND_DIR
 if frontend_dir.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")

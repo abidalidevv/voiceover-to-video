@@ -23,6 +23,9 @@ api.txt
 node_modules/
 dist/
 build/
+bin/*.exe
+.venv/
+*.zip
 
 # Test generated binary outputs
 test/*.mp4

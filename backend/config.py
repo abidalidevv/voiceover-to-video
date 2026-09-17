@@ -1,17 +1,31 @@
+import sys
 import os
 import json
 import shutil
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Determine if running in a frozen bundle (PyInstaller) or raw Python script
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys.executable).resolve().parent
+    BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", str(BASE_DIR)))
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    BUNDLE_DIR = BASE_DIR
+
 DATA_DIR = BASE_DIR / "data"
 SETTINGS_FILE = DATA_DIR / "settings.json"
 CACHE_DIR = DATA_DIR / "cache"
 OUTPUT_DIR = DATA_DIR / "output"
 TEMP_DIR = DATA_DIR / "temp"
 SFX_DIR = DATA_DIR / "sfx"
+BIN_DIR = BASE_DIR / "bin"
 
-for d in [DATA_DIR, CACHE_DIR, OUTPUT_DIR, TEMP_DIR, SFX_DIR]:
+# Resolve Frontend directory (checks bundle directory first, then root folder)
+FRONTEND_DIR = BUNDLE_DIR / "frontend"
+if not FRONTEND_DIR.exists():
+    FRONTEND_DIR = BASE_DIR / "frontend"
+
+for d in [DATA_DIR, CACHE_DIR, OUTPUT_DIR, TEMP_DIR, SFX_DIR, BIN_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 
@@ -54,14 +68,29 @@ DEFAULT_SETTINGS = {
 
 
 def find_ffmpeg() -> str:
-    """Find the path to ffmpeg executable."""
+    """Find the path to ffmpeg executable with portable priority."""
+    # 1. Check local portable bin directories
+    candidates = [
+        BIN_DIR / "ffmpeg.exe",
+        BUNDLE_DIR / "bin" / "ffmpeg.exe",
+        BUNDLE_DIR / "ffmpeg.exe",
+        DATA_DIR / "bin" / "ffmpeg.exe",
+        BASE_DIR / "ffmpeg.exe"
+    ]
+    for c in candidates:
+        if c.exists():
+            return str(c)
+
+    # 2. Check system PATH
     found = shutil.which("ffmpeg")
     if found:
         return found
-    # Common windows winget / local paths
+
+    # 3. Common windows winget / local paths
     common_paths = [
         Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Links" / "ffmpeg.exe",
         Path(os.environ.get("ProgramFiles", "")) / "ffmpeg" / "bin" / "ffmpeg.exe",
+        Path(os.environ.get("ProgramFiles(x86)", "")) / "ffmpeg" / "bin" / "ffmpeg.exe",
     ]
     for p in common_paths:
         if p.exists():
@@ -70,13 +99,26 @@ def find_ffmpeg() -> str:
 
 
 def find_ffprobe() -> str:
-    """Find the path to ffprobe executable."""
+    """Find the path to ffprobe executable with portable priority."""
+    candidates = [
+        BIN_DIR / "ffprobe.exe",
+        BUNDLE_DIR / "bin" / "ffprobe.exe",
+        BUNDLE_DIR / "ffprobe.exe",
+        DATA_DIR / "bin" / "ffprobe.exe",
+        BASE_DIR / "ffprobe.exe"
+    ]
+    for c in candidates:
+        if c.exists():
+            return str(c)
+
     found = shutil.which("ffprobe")
     if found:
         return found
+
     common_paths = [
         Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Links" / "ffprobe.exe",
         Path(os.environ.get("ProgramFiles", "")) / "ffmpeg" / "bin" / "ffprobe.exe",
+        Path(os.environ.get("ProgramFiles(x86)", "")) / "ffmpeg" / "bin" / "ffprobe.exe",
     ]
     for p in common_paths:
         if p.exists():
