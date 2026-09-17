@@ -66,10 +66,14 @@ hidden_imports += collect_submodules("fastapi")
 datas = [
     (str(BASE_DIR / "frontend"), "frontend"),
 ]
+if (BASE_DIR / "bin").exists():
+    datas.append((str(BASE_DIR / "bin"), "bin"))
 if (BASE_DIR / "data" / "sfx").exists():
     datas.append((str(BASE_DIR / "data" / "sfx"), "data/sfx"))
 if (BASE_DIR / "data" / "assets").exists():
     datas.append((str(BASE_DIR / "data" / "assets"), "data/assets"))
+if (BASE_DIR / "data" / "settings.json").exists():
+    datas.append((str(BASE_DIR / "data" / "settings.json"), "data"))
 
 a = Analysis(
     ["desktop_launcher.py"],

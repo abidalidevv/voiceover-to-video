@@ -1214,7 +1214,7 @@ async function startExportRender() {
     animation: document.getElementById('animation-style-select').value,
     bgm_track: document.getElementById('bgm-track-select')?.value || 'cinematic_ambient',
     bgm_volume: (parseInt(document.getElementById('bgm-volume-slider')?.value || '10', 10)) / 100.0,
-    enable_motion: document.getElementById('kenburns-checkbox')?.checked ?? true,
+    enable_motion: document.getElementById('kenburns-checkbox')?.checked ?? false,
     enable_vignette: document.getElementById('vignette-checkbox')?.checked ?? false,
     mute_stock_audio: document.getElementById('mute-stock-checkbox')?.checked ?? true,
     color_grade: document.getElementById('color-grade-select')?.value || 'clean',

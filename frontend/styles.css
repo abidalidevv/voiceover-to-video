@@ -1888,13 +1888,137 @@ input[type="range"]::-webkit-slider-thumb:hover {
 @media (max-width: 1024px) {
   .preview-layout {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   .caption-inspector {
     height: auto;
     max-height: none;
+    overflow: visible;
   }
   .player-column {
     max-height: none;
+  }
+  .studio-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .info-sidebar {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    height: auto;
+    min-height: 52px;
+    padding: 6px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .brand {
+    order: 1;
+  }
+  .header-actions {
+    order: 2;
+  }
+  .nav-tabs {
+    order: 3;
+    width: 100%;
+    margin-top: 4px;
+    padding-bottom: 2px;
+    overflow-x: auto;
+  }
+  .brand-badge {
+    display: none;
+  }
+  .workers-pill {
+    display: none;
+  }
+  .app-container {
+    padding: 8px 10px;
+  }
+  .studio-card {
+    padding: 16px 12px;
+  }
+  .studio-card-header h2 {
+    font-size: 20px;
+  }
+  .studio-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .studio-mode-switch {
+    width: 100%;
+  }
+  .mode-tab {
+    flex: 1;
+    justify-content: center;
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  .pipeline-switch {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .pipeline-btn {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 120px;
+    text-align: center;
+    justify-content: center;
+  }
+  .video-container {
+    max-height: 320px;
+  }
+  .player-controls {
+    padding: 0 6px;
+    gap: 6px;
+  }
+  .player-controls .volume-box input[type="range"] {
+    width: 44px;
+  }
+  .modal-card {
+    padding: 18px 14px;
+    width: 96%;
+  }
+  .modal-actions-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .modal-actions-row .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-title {
+    font-size: 14.5px;
+  }
+  .nav-btn {
+    padding: 0 7px;
+    font-size: 11px;
+  }
+  .video-container {
+    max-height: 230px;
+  }
+  .player-controls .volume-box {
+    display: none;
+  }
+  .export-settings-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .export-actions-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .export-actions-row .btn {
+    width: 100%;
+  }
+  .preset-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 

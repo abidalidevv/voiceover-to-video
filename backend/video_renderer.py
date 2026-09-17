@@ -135,7 +135,7 @@ def render_final_video(
     use_gpu = bool(settings.get("gpu_acceleration", True))
     
     # Options for visual FX and audio
-    enable_motion = bool(custom_options.get("enable_motion", True))
+    enable_motion = bool(custom_options.get("enable_motion", False))
     enable_vignette = bool(custom_options.get("enable_vignette", False))
     color_grade = custom_options.get("color_grade", "clean")
     transition = custom_options.get("transition", "none").lower().strip()
@@ -150,6 +150,9 @@ def render_final_video(
     transition_sfx_volume = float(custom_options.get("transition_sfx_volume", 0.40))
     emphasis_zoom_enabled = bool(custom_options.get("emphasis_zoom_enabled", False))
     emphasis_zoom_intensity = float(custom_options.get("emphasis_zoom_intensity", 1.15))
+
+    # Detect fastest hardware or CPU encoder once
+    encoder, encoder_args = get_best_video_encoder(ffmpeg_exe, use_gpu=use_gpu)
 
     # Verify input voiceover audio
     resolved_audio_path = _resolve_audio_path(audio_path)
@@ -188,13 +191,13 @@ def render_final_video(
     )
     trans_dur = float(custom_options.get("transition_duration", 0.25 if transition == "fadefast" else 0.30))
 
-    print(f"[Renderer] Normalizing {len(valid_clips)} clips in parallel across multi-worker threads (Transition: {transition}, Mode: {transition_mode})...")
+    print(f"[Renderer] Normalizing {len(valid_clips)} clips in parallel (Transition: {transition}, Mode: {transition_mode}, Encoder: {encoder})...")
     if progress_callback:
         progress_callback("normalizing", 10, f"Normalizing {len(valid_clips)} scene clips in parallel...")
 
     # ==================== STAGE 1: PARALLEL SEGMENT NORMALIZATION (16:9 FULL HD) ====================
     seg_files = [None] * len(valid_clips)
-    num_workers = min(8, max(2, (os.cpu_count() or 4)))
+    num_workers = min(4, max(2, (os.cpu_count() or 4) // 2))
 
     def normalize_clip(item_idx, sc_id, fpath, dur, sc):
         # File extension
@@ -219,13 +222,13 @@ def render_final_video(
 
         # OPTIMIZATION: Skip heavy re-encoding if clip was already pre-processed
         # by trim_and_fit_clip (filename starts with 'sc_'). Only apply motion/FX
-        # if those features are actually enabled, otherwise just re-trim duration.
+        # if those features are actually enabled, otherwise just stream-copy duration.
         fname = Path(fpath).name
         is_pretrimmed = fname.startswith("sc_")
         needs_fx = enable_motion or enable_vignette or color_grade != "clean" or has_punch_zoom
 
-        if is_pretrimmed and not needs_fx and not has_transition:
-            # Fast path: clip is already 1920x1080@30fps, just re-mux to .ts with stream copy
+        if is_pretrimmed and not needs_fx:
+            # Fast path: clip is already 1920x1080@30fps, just re-mux/copy in < 0.05 seconds
             cmd = [
                 ffmpeg_exe, "-y",
                 "-i", str(fpath),
@@ -284,19 +287,36 @@ def render_final_video(
             "-i", str(fpath),
             "-t", f"{clip_target_dur:.2f}",
             "-vf", vf,
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "18",
-            "-pix_fmt", "yuv420p",
+            "-c:v", encoder,
+            *encoder_args,
             "-an",  # Strip stock video audio completely to avoid noise
-            "-threads", "2",
             str(seg_out)
         ]
         try:
             subprocess.run(cmd, capture_output=True, check=True)
             return (item_idx, seg_out)
         except subprocess.CalledProcessError as e:
-            print(f"[Renderer] Normalization failed for scene {sc_id}: {e.stderr.decode('utf-8', errors='ignore')}")
+            # CPU fallback if hardware encoder throws for this specific clip
+            try:
+                cpu_cmd = [
+                    ffmpeg_exe, "-y",
+                    "-stream_loop", "-1",
+                    "-i", str(fpath),
+                    "-t", f"{clip_target_dur:.2f}",
+                    "-vf", vf,
+                    "-c:v", "libx264",
+                    "-preset", "ultrafast",
+                    "-crf", "20",
+                    "-pix_fmt", "yuv420p",
+                    "-threads", "0",
+                    "-an",
+                    str(seg_out)
+                ]
+                subprocess.run(cpu_cmd, capture_output=True, check=True)
+                return (item_idx, seg_out)
+            except Exception:
+                pass
+            print(f"[Renderer] Normalization failed for scene {sc_id}: {e.stderr.decode('utf-8', errors='ignore') if hasattr(e, 'stderr') and e.stderr else e}")
             # Fallback: create solid color test clip for this duration
             fb_cmd = [
                 ffmpeg_exe, "-y",
@@ -305,6 +325,7 @@ def render_final_video(
                 "-c:v", "libx264",
                 "-preset", "ultrafast",
                 "-pix_fmt", "yuv420p",
+                "-threads", "0",
                 "-an",
                 str(seg_out)
             ]
@@ -335,11 +356,11 @@ def render_final_video(
 
         # 2-PASS APPROACH for large scene counts (>15 clips):
         # Split into batches, render each batch with xfade, then concat batches.
-        # This prevents massive single-command filtergraphs that exhaust RAM.
         BATCH_SIZE = 15
         if len(valid_clips) > BATCH_SIZE:
             batch_outputs = _render_xfade_batches(
-                ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, seg_dir, BATCH_SIZE, transition_mode=transition_mode
+                ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, seg_dir, BATCH_SIZE,
+                transition_mode=transition_mode, encoder=encoder, encoder_args=encoder_args
             )
             # Concat batch outputs via stream copy
             batch_list = seg_dir / "batch_concat.txt"
@@ -358,11 +379,12 @@ def render_final_video(
         else:
             # Single-pass xfade for small scene counts
             _render_xfade_single(
-                ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, stitched_video, transition_mode=transition_mode
+                ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, stitched_video,
+                transition_mode=transition_mode, encoder=encoder, encoder_args=encoder_args
             )
 
     else:
-        print("[Renderer] Concatenating normalized segments via stream copy...")
+        print("[Renderer] Concatenating normalized segments via lossless stream copy...")
         if progress_callback:
             progress_callback("concatenating", 60, "Stitching video segments into timeline...")
 
@@ -383,18 +405,9 @@ def render_final_video(
         subprocess.run(concat_cmd, capture_output=True, check=True)
 
     # ==================== STAGE 3: AUDIO MIX & SUBTITLE BURN ====================
-    print("[Renderer] Burning CapCut kinetic subtitles and mixing audio...")
+    print(f"[Renderer] Burning CapCut kinetic subtitles and mixing audio (Encoder: {encoder})...")
     if progress_callback:
         progress_callback("burning_subtitles", 75, "Burning CapCut kinetic captions & mastering audio...")
-
-    # Choose encoder: check for hardware NVENC
-    encoder = "libx264"
-    encoder_args = ["-preset", "ultrafast", "-crf", "20", "-pix_fmt", "yuv420p"]
-
-
-    if use_gpu and _check_nvenc_available(ffmpeg_exe):
-        encoder = "h264_nvenc"
-        encoder_args = ["-preset", "p4", "-cq", "22", "-pix_fmt", "yuv420p"]
 
     # Check for Background Music (BGM)
     resolved_bgm_path = _resolve_bgm_path(bgm_track)
@@ -507,8 +520,8 @@ def render_final_video(
     try:
         subprocess.run(final_cmd, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as e:
-        print(f"[Renderer] Render with {encoder} failed: {e.stderr}. Retrying with CPU libx264...")
-        # Fallback to CPU libx264
+        print(f"[Renderer] Render with {encoder} failed: {e.stderr}. Retrying with multi-threaded CPU libx264...")
+        # Fallback to CPU libx264 with all cores
         cpu_cmd = [
             ffmpeg_exe, "-y",
             "-i", str(stitched_video),
@@ -518,6 +531,7 @@ def render_final_video(
             cpu_cmd.extend(["-i", str(resolved_bgm_path)])
         if has_sfx:
             cpu_cmd.extend(["-i", str(resolved_sfx_path)])
+
         if filter_complex_parts:
             cpu_cmd.extend(["-filter_complex", ";".join(filter_complex_parts)])
             cpu_cmd.extend(["-map", video_map_label, "-map", audio_map_label])
@@ -529,6 +543,7 @@ def render_final_video(
             "-preset", "ultrafast",
             "-crf", "20",
             "-pix_fmt", "yuv420p",
+            "-threads", "0",
             "-c:a", "aac",
             "-b:a", "192k",
             "-shortest",
@@ -550,21 +565,56 @@ def render_final_video(
     return str(final_output_path)
 
 
-def _check_nvenc_available(ffmpeg_exe: str) -> bool:
-    """Quickly probes if NVIDIA NVENC is operational on this system."""
-    try:
-        test_cmd = [
-            ffmpeg_exe, "-f", "lavfi", "-i", "nullsrc=s=64x64:d=0.1",
-            "-c:v", "h264_nvenc", "-f", "null", "-"
-        ]
-        res = subprocess.run(test_cmd, capture_output=True)
-        return res.returncode == 0
-    except Exception:
-        return False
+_DETECTED_ENCODER_CACHE = None
+
+def get_best_video_encoder(ffmpeg_exe: str, use_gpu: bool = True):
+    """
+    Detects the fastest available H.264 video encoder on Windows.
+    Probes in priority order:
+    1. NVIDIA NVENC (h264_nvenc)
+    2. Intel QuickSync (h264_qsv)
+    3. AMD AMF (h264_amf)
+    4. Windows MediaFoundation (h264_mf)
+    5. Fallback: Highly optimized CPU libx264 using all CPU cores (-threads 0)
+    """
+    global _DETECTED_ENCODER_CACHE
+    if not use_gpu:
+        return ("libx264", ["-preset", "ultrafast", "-crf", "20", "-pix_fmt", "yuv420p", "-threads", "0"])
+
+    if _DETECTED_ENCODER_CACHE is not None:
+        return _DETECTED_ENCODER_CACHE
+
+    candidates = [
+        ("h264_nvenc", ["-preset", "p4", "-cq", "22", "-pix_fmt", "yuv420p"]),
+        ("h264_qsv", ["-preset", "veryfast", "-global_quality", "22", "-pix_fmt", "nv12"]),
+        ("h264_amf", ["-usage", "transcoding", "-quality", "speed", "-rc", "cqp", "-qp_p", "22", "-pix_fmt", "yuv420p"]),
+        ("h264_mf", ["-rate_control", "cbr", "-b:v", "8M", "-pix_fmt", "yuv420p"])
+    ]
+
+    for enc, args in candidates:
+        try:
+            test_cmd = [
+                ffmpeg_exe, "-y", "-f", "lavfi", "-i", "nullsrc=s=64x64:d=0.1",
+                "-c:v", enc, *args, "-f", "null", "-"
+            ]
+            res = subprocess.run(test_cmd, capture_output=True, timeout=5)
+            if res.returncode == 0:
+                print(f"[Renderer] Hardware Acceleration Active: '{enc}' (args: {args})")
+                _DETECTED_ENCODER_CACHE = (enc, args)
+                return _DETECTED_ENCODER_CACHE
+        except Exception:
+            pass
+
+    print("[Renderer] Hardware acceleration not available. Using multi-threaded CPU libx264 (-threads 0)")
+    _DETECTED_ENCODER_CACHE = ("libx264", ["-preset", "ultrafast", "-crf", "20", "-pix_fmt", "yuv420p", "-threads", "0"])
+    return _DETECTED_ENCODER_CACHE
 
 
-def _render_xfade_single(ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, output_path, transition_mode="fixed"):
+def _render_xfade_single(ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, output_path, transition_mode="fixed", encoder="libx264", encoder_args=None):
     """Single-pass xfade for <=15 clips. Supports 'random' and 'fixed' transition modes."""
+    if encoder_args is None:
+        encoder_args = ["-preset", "ultrafast", "-crf", "18", "-pix_fmt", "yuv420p"]
+
     xfade_cmd = [ffmpeg_exe, "-y"]
     for seg in seg_files:
         xfade_cmd.extend(["-i", str(seg)])
@@ -597,23 +647,47 @@ def _render_xfade_single(ffmpeg_exe, seg_files, valid_clips, transition, trans_d
     xfade_cmd.extend([
         "-filter_complex", final_filter,
         "-map", last_out,
-        "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-crf", "18",
-        "-pix_fmt", "yuv420p",
+        "-c:v", encoder,
+        *encoder_args,
         "-an",
         str(output_path)
     ])
-    subprocess.run(xfade_cmd, capture_output=True, check=True)
+    try:
+        subprocess.run(xfade_cmd, capture_output=True, check=True)
+    except subprocess.CalledProcessError:
+        if encoder != "libx264":
+            print(f"[Renderer] xfade with {encoder} failed, retrying with CPU libx264...")
+            fallback_cmd = [
+                ffmpeg_exe, "-y"
+            ]
+            for seg in seg_files:
+                fallback_cmd.extend(["-i", str(seg)])
+            fallback_cmd.extend([
+                "-filter_complex", final_filter,
+                "-map", last_out,
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-crf", "18",
+                "-pix_fmt", "yuv420p",
+                "-threads", "0",
+                "-an",
+                str(output_path)
+            ])
+            subprocess.run(fallback_cmd, capture_output=True, check=True)
+        else:
+            raise
 
 
-def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, seg_dir, batch_size=15, transition_mode="fixed"):
+def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, seg_dir, batch_size=15, transition_mode="fixed", encoder="libx264", encoder_args=None):
     """
     2-pass xfade for large scene counts (>15 clips).
     Splits clips into batches, renders each batch with xfade transitions,
     then returns list of batch output files for final concatenation.
     This prevents massive filtergraphs that exhaust RAM on weaker machines.
     """
+    if encoder_args is None:
+        encoder_args = ["-preset", "ultrafast", "-crf", "18", "-pix_fmt", "yuv420p"]
+
     batch_outputs = []
     total = len(valid_clips)
     last_picked = None
@@ -660,10 +734,8 @@ def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_
         xfade_cmd.extend([
             "-filter_complex", final_filter,
             "-map", last_out,
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "18",
-            "-pix_fmt", "yuv420p",
+            "-c:v", encoder,
+            *encoder_args,
             "-an",
             str(batch_out)
         ])
@@ -673,6 +745,29 @@ def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_
             batch_outputs.append(batch_out)
             print(f"[Renderer] Batch {batch_start}-{batch_end} rendered with xfade transitions")
         except subprocess.CalledProcessError as e:
+            if encoder != "libx264":
+                print(f"[Renderer] Batch xfade with {encoder} failed, retrying with CPU libx264...")
+                fallback_cmd = [ffmpeg_exe, "-y"]
+                for seg in batch_segs:
+                    fallback_cmd.extend(["-i", str(seg)])
+                fallback_cmd.extend([
+                    "-filter_complex", final_filter,
+                    "-map", last_out,
+                    "-c:v", "libx264",
+                    "-preset", "ultrafast",
+                    "-crf", "18",
+                    "-pix_fmt", "yuv420p",
+                    "-threads", "0",
+                    "-an",
+                    str(batch_out)
+                ])
+                try:
+                    subprocess.run(fallback_cmd, capture_output=True, check=True)
+                    batch_outputs.append(batch_out)
+                    continue
+                except Exception:
+                    pass
+
             print(f"[Renderer] Batch xfade failed, falling back to concat for batch {batch_start}-{batch_end}")
             # Fallback: concat without transitions for this batch
             batch_list = seg_dir / f"batch_list_{batch_start}.txt"

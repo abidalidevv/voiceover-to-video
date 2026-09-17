@@ -74,6 +74,7 @@ def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int) -> str:
         "-preset", "ultrafast",
         "-crf", "18",
         "-pix_fmt", "yuv420p",
+        "-threads", "0",
         "-an",
         str(out_path)
     ])

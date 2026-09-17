@@ -10,163 +10,338 @@
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bangers&family=Bebas+Neue&family=Cinzel:wght@700;900&family=Inter:wght@300;400;500;600;700;800&family=Luckiest+Guy&family=Montserrat:wght@500;700;800;900&family=Oswald:wght@600;700&family=Outfit:wght@600;800&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=20260916_v4">
   <style id="preview-screen-fit-styles">
-    /* VideoGen Studio - Clean Pro Layout */
+    /* VideoGen Studio - Responsive Pro Layout System */
     .app-header {
-      height: 58px !important;
-      padding: 0 18px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: space-between !important;
-      gap: 12px !important;
-      flex-wrap: nowrap !important;
-      box-sizing: border-box !important;
+      height: 58px;
+      padding: 0 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-sizing: border-box;
+      background: rgba(17, 23, 38, 0.96);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      transition: all 0.2s ease;
     }
     .brand {
-      display: flex !important;
-      align-items: center !important;
-      gap: 10px !important;
-      flex-shrink: 0 !important;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
     }
     .logo-icon {
-      width: 34px !important;
-      height: 34px !important;
-      min-width: 34px !important;
-      min-height: 34px !important;
-      flex-shrink: 0 !important;
+      width: 34px;
+      height: 34px;
+      min-width: 34px;
+      min-height: 34px;
+      flex-shrink: 0;
     }
     .brand-text {
-      display: flex !important;
-      align-items: center !important;
-      gap: 8px !important;
-      white-space: nowrap !important;
-      flex-shrink: 0 !important;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .brand-title {
-      font-size: 17px !important;
-      white-space: nowrap !important;
-      line-height: 1 !important;
+      font-size: 17px;
+      white-space: nowrap;
+      line-height: 1;
     }
     .brand-badge {
-      font-size: 10px !important;
-      white-space: nowrap !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      line-height: 1 !important;
-      margin-left: 0 !important;
-      padding: 3px 7px !important;
+      font-size: 10px;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      line-height: 1;
+      margin-left: 0;
+      padding: 3px 7px;
     }
+    .nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 1;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar {
+      display: none;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Preview Layout - Responsive Grid */
     .preview-layout {
-      display: grid !important;
-      grid-template-columns: minmax(0, 1fr) 380px !important;
-      gap: 18px !important;
-      align-items: start !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      box-sizing: border-box !important;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) clamp(320px, 28vw, 380px);
+      gap: 18px;
+      align-items: start;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
     .player-column {
-      display: flex !important;
-      flex-direction: column !important;
-      gap: 12px !important;
-      min-width: 0 !important;
-      max-width: 100% !important;
-      overflow: hidden !important;
-      box-sizing: border-box !important;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
     }
     .player-wrapper {
-      background: #04060a !important;
-      border-radius: var(--radius-md) !important;
-      border: 1px solid var(--border-color) !important;
-      overflow: hidden !important;
-      box-shadow: var(--shadow-card) !important;
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      min-width: 0 !important;
-      margin: 0 auto !important;
-      flex-shrink: 0 !important;
-      box-sizing: border-box !important;
+      background: #04060a;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      margin: 0 auto;
+      flex-shrink: 0;
+      box-sizing: border-box;
     }
     .video-container {
-      position: relative !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      aspect-ratio: 16 / 9 !important;
-      height: auto !important;
-      max-height: 368px !important;
-      background: #000000 !important;
-      overflow: hidden !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      margin: 0 auto !important;
-      box-sizing: border-box !important;
-      border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+      position: relative;
+      width: 100%;
+      max-width: 100%;
+      aspect-ratio: 16 / 9;
+      height: auto;
+      max-height: 420px;
+      background: #000000;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+      box-sizing: border-box;
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
     }
     .video-container.aspect-9-16 {
-      aspect-ratio: 9 / 16 !important;
-      width: auto !important;
-      height: 368px !important;
-      max-height: 368px !important;
-      max-width: calc(368px * 9 / 16) !important;
+      aspect-ratio: 9 / 16;
+      width: auto;
+      height: 380px;
+      max-height: 380px;
+      max-width: calc(380px * 9 / 16);
     }
     #preview-video {
-      width: 100% !important;
-      height: 100% !important;
-      max-width: 100% !important;
-      max-height: 100% !important;
-      object-fit: contain !important;
-      display: block !important;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
     }
     .player-controls {
-      height: 38px !important;
-      background: var(--bg-card) !important;
-      display: flex !important;
-      align-items: center !important;
-      padding: 0 10px !important;
-      gap: 8px !important;
-      border-top: 1px solid var(--border-color) !important;
-      width: 100% !important;
-      box-sizing: border-box !important;
-      flex-shrink: 0 !important;
+      height: 38px;
+      background: var(--bg-card);
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      gap: 8px;
+      border-top: 1px solid var(--border-color);
+      width: 100%;
+      box-sizing: border-box;
+      flex-shrink: 0;
+    }
+    .player-controls .timeline-bar {
+      flex: 1;
+      min-width: 60px;
+    }
+    .player-controls .time-display {
+      font-size: 11.5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .player-controls .volume-box {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
     }
     .scene-director-panel {
-      background: var(--bg-card) !important;
-      border: 1px solid var(--border-color) !important;
-      border-radius: var(--radius-md) !important;
-      padding: 12px 14px !important;
-      box-shadow: var(--shadow-card) !important;
-      flex-shrink: 0 !important;
-      min-width: 0 !important;
-      max-width: 100% !important;
-      overflow: hidden !important;
-      box-sizing: border-box !important;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      box-shadow: var(--shadow-card);
+      flex-shrink: 0;
+      min-width: 0;
+      max-width: 100%;
+      box-sizing: border-box;
     }
     .scenes-strip {
-      display: flex !important;
-      gap: 10px !important;
-      overflow-x: auto !important;
-      padding: 6px 0 2px 0 !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      min-width: 0 !important;
-      box-sizing: border-box !important;
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 6px 0 4px 0;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
     }
     .caption-inspector {
-      height: calc(100vh - 84px) !important;
-      max-height: calc(100vh - 84px) !important;
-      overflow-y: auto !important;
-      box-sizing: border-box !important;
-      padding: 16px !important;
-      gap: 12px !important;
+      height: calc(100vh - 84px);
+      max-height: calc(100vh - 84px);
+      overflow-y: auto;
+      box-sizing: border-box;
+      padding: 16px;
+      gap: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
     }
     .subtitle-overlay {
       bottom: var(--caption-bottom, 24px);
     }
     .subtitle-caption {
       font-size: var(--caption-font-size, 24px);
+    }
+
+    /* ==================== RESPONSIVE BREAKPOINTS ==================== */
+    @media (max-width: 1100px) {
+      .app-header {
+        padding: 0 12px;
+        gap: 8px;
+      }
+      .brand-title {
+        font-size: 15.5px;
+      }
+      .nav-btn {
+        padding: 0 9px;
+        font-size: 12px;
+      }
+      .workers-pill {
+        display: none;
+      }
+    }
+
+    @media (max-width: 1024px) {
+      .preview-layout {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .caption-inspector {
+        height: auto;
+        max-height: none;
+        overflow: visible;
+      }
+      .video-container {
+        max-height: 440px;
+      }
+      .studio-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .app-header {
+        height: auto;
+        min-height: 52px;
+        padding: 6px 12px;
+        flex-wrap: wrap;
+      }
+      .brand {
+        order: 1;
+      }
+      .header-actions {
+        order: 2;
+      }
+      .nav-tabs {
+        order: 3;
+        width: 100%;
+        margin-top: 4px;
+        padding-bottom: 2px;
+      }
+      .brand-badge {
+        display: none;
+      }
+      .app-container {
+        padding: 8px 10px;
+      }
+      .studio-card {
+        padding: 16px 12px;
+      }
+      .studio-card-header h2 {
+        font-size: 20px;
+      }
+      .studio-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .studio-mode-switch {
+        width: 100%;
+      }
+      .mode-tab {
+        flex: 1;
+        justify-content: center;
+        font-size: 12px;
+        padding: 6px 10px;
+      }
+      .video-container {
+        max-height: 320px;
+      }
+      .player-controls {
+        padding: 0 6px;
+        gap: 6px;
+      }
+      .player-controls .volume-box input[type="range"] {
+        width: 44px;
+      }
+      .modal-card {
+        padding: 18px 14px;
+        width: 96%;
+      }
+      .modal-actions-row {
+        flex-direction: column;
+        gap: 8px;
+      }
+      .modal-actions-row .btn {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .brand-title {
+        font-size: 14.5px;
+      }
+      .nav-btn {
+        padding: 0 7px;
+        font-size: 11px;
+      }
+      .video-container {
+        max-height: 230px;
+      }
+      .player-controls .volume-box {
+        display: none;
+      }
+      .export-settings-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .export-actions-row {
+        flex-direction: column;
+        gap: 6px;
+      }
+      .export-actions-row .btn {
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -819,13 +994,13 @@
             <label class="section-title">🎬 Video Polish & Cinematic FX</label>
             <div class="form-row">
               <label class="checkbox-label flex-1">
-                <input type="checkbox" id="kenburns-checkbox" checked>
+                <input type="checkbox" id="kenburns-checkbox">
                 <span>Dynamic Camera Motion (Ken Burns Slow Zoom)</span>
               </label>
             </div>
             <div class="form-row mt-8">
               <label class="checkbox-label flex-1">
-                <input type="checkbox" id="vignette-checkbox" checked>
+                <input type="checkbox" id="vignette-checkbox">
                 <span>Subtle Cinematic Vignette (Dark Corners)</span>
               </label>
             </div>
