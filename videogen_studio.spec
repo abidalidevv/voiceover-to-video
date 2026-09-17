@@ -62,11 +62,14 @@ hidden_imports += collect_submodules("uvicorn")
 hidden_imports += collect_submodules("starlette")
 hidden_imports += collect_submodules("fastapi")
 
-# Collect static web assets & data assets
+# Collect static web assets & clean data assets (excluding heavy user exports/cache)
 datas = [
     (str(BASE_DIR / "frontend"), "frontend"),
-    (str(BASE_DIR / "data"), "data"),
 ]
+if (BASE_DIR / "data" / "sfx").exists():
+    datas.append((str(BASE_DIR / "data" / "sfx"), "data/sfx"))
+if (BASE_DIR / "data" / "assets").exists():
+    datas.append((str(BASE_DIR / "data" / "assets"), "data/assets"))
 
 a = Analysis(
     ["desktop_launcher.py"],
