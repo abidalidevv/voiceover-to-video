@@ -70,6 +70,12 @@ class CaptionEngine {
         });
       }
     }
+
+    // Force initial render of first scene chunk
+    this.lastRenderedChunkIdx = -1;
+    this.lastRenderedWordIdx = -1;
+    const curTime = (typeof currentPlaybackTime !== 'undefined') ? currentPlaybackTime : 0.0;
+    this.renderAtTime(curTime);
   }
 
   updateStyle(newStyle) {
@@ -78,18 +84,23 @@ class CaptionEngine {
     // Force re-render of current caption
     this.lastRenderedWordIdx = -1;
     this.lastRenderedChunkIdx = -1;
+    // Force immediate live re-render at current playback time even when paused
+    const curTime = (typeof currentPlaybackTime !== 'undefined') ? currentPlaybackTime : 0.0;
+    this.renderAtTime(curTime);
   }
 
   applyContainerStyles() {
     if (!this.overlay || !this.captionEl) return;
 
-    const marginV = this.style.marginV !== undefined ? this.style.marginV : 26;
-    this.overlay.style.bottom = `${marginV}px`;
-    this.captionEl.style.fontFamily = `'${this.style.fontFamily}', sans-serif`;
+    const marginV = this.style.marginV !== undefined ? this.style.marginV : 24;
+    this.overlay.style.setProperty('bottom', `${marginV}px`, 'important');
+    this.overlay.style.setProperty('--caption-bottom', `${marginV}px`);
+
+    this.captionEl.style.setProperty('font-family', `'${this.style.fontFamily}', sans-serif`, 'important');
     const baseFontSize = this.style.fontSize || 24;
-    this.captionEl.style.fontSize = `${baseFontSize}px`;
+    this.captionEl.style.setProperty('font-size', `${baseFontSize}px`, 'important');
     this.captionEl.style.setProperty('--caption-font-size', `${baseFontSize}px`);
-    this.captionEl.style.color = this.style.primaryColor;
+    this.captionEl.style.setProperty('color', this.style.primaryColor, 'important');
     // Do NOT apply stroke to the container, as it double-strokes child words
     this.captionEl.style.webkitTextStroke = '0px transparent';
 
@@ -119,13 +130,16 @@ class CaptionEngine {
     let startBottom = 0;
 
     const onStart = (e) => {
-      // Allow clicking buttons if any, otherwise start dragging
       isDragging = true;
       this.overlay.classList.add('dragging');
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
       startY = clientY;
-      startBottom = parseInt(this.overlay.style.bottom || '24', 10);
+      const parsed = parseInt(this.overlay.style.bottom || '', 10);
+      startBottom = Number.isFinite(parsed) ? parsed : (this.style.marginV || 24);
       e.stopPropagation();
+      if (e.cancelable && e.type !== 'touchstart') {
+        e.preventDefault();
+      }
     };
 
     const onMove = (e) => {
@@ -133,11 +147,12 @@ class CaptionEngine {
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
       const deltaY = startY - clientY; // dragging upward increases bottom offset
       const container = this.overlay.parentElement;
-      const containerH = container ? container.clientHeight : 400;
-      const maxBottom = Math.max(120, containerH - 60);
+      const containerH = container ? container.clientHeight : 368;
+      const maxBottom = Math.max(80, containerH - 45);
       const newBottom = Math.max(10, Math.min(maxBottom, Math.round(startBottom + deltaY)));
 
-      this.overlay.style.bottom = `${newBottom}px`;
+      this.overlay.style.setProperty('bottom', `${newBottom}px`, 'important');
+      this.overlay.style.setProperty('--caption-bottom', `${newBottom}px`);
       this.style.marginV = newBottom;
 
       if (onPositionChange) {
@@ -153,10 +168,16 @@ class CaptionEngine {
     };
 
     this.overlay.addEventListener('mousedown', onStart);
+    if (this.captionEl) {
+      this.captionEl.addEventListener('mousedown', onStart);
+    }
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onEnd);
 
     this.overlay.addEventListener('touchstart', onStart, { passive: true });
+    if (this.captionEl) {
+      this.captionEl.addEventListener('touchstart', onStart, { passive: true });
+    }
     window.addEventListener('touchmove', onMove, { passive: true });
     window.addEventListener('touchend', onEnd);
   }
@@ -165,35 +186,55 @@ class CaptionEngine {
    * Called on every video timeupdate / animation frame
    */
   renderAtTime(currentTime) {
-    if (!this.captionEl || this.wordChunks.length === 0) return;
+    if (!this.captionEl) return;
 
-    // Find active chunk
-    const chunkIdx = this.wordChunks.findIndex(c => currentTime >= c.start && currentTime <= c.end);
-    if (chunkIdx === -1) {
-      this.captionEl.innerHTML = '';
-      this.lastRenderedChunkIdx = -1;
+    if (this.wordChunks.length === 0) {
+      // Fallback: If scenes are loaded but wordChunks empty, check current scene
+      if (this.currentScenes && this.currentScenes.length > 0 && typeof currentSceneIdx !== 'undefined' && currentSceneIdx >= 0) {
+        const sc = this.currentScenes[currentSceneIdx];
+        if (sc && sc.text) {
+          this.captionEl.textContent = this.style.uppercase ? sc.text.toUpperCase() : sc.text;
+        }
+      }
       return;
     }
 
+    // Find active chunk
+    let chunkIdx = this.wordChunks.findIndex(c => currentTime >= c.start && currentTime <= c.end);
+    if (chunkIdx === -1) {
+      // When paused or seeking between words, find closest chunk so preview is NEVER empty
+      let minDiff = Infinity;
+      let closestIdx = 0;
+      for (let i = 0; i < this.wordChunks.length; i++) {
+        const c = this.wordChunks[i];
+        const diff = Math.min(Math.abs(currentTime - c.start), Math.abs(currentTime - c.end));
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestIdx = i;
+        }
+      }
+      chunkIdx = closestIdx;
+    }
+
     const chunk = this.wordChunks[chunkIdx];
+    if (!chunk) return;
 
     // If chunk has no word timestamps, display plain text
-    if (chunk.words.length === 0) {
-      if (this.lastRenderedChunkIdx !== chunkIdx) {
-        this.captionEl.textContent = chunk.text || '';
-        this.lastRenderedChunkIdx = chunkIdx;
-      }
+    if (!chunk.words || chunk.words.length === 0) {
+      const raw = chunk.text || '';
+      this.captionEl.textContent = this.style.uppercase ? raw.toUpperCase() : raw;
+      this.lastRenderedChunkIdx = chunkIdx;
       return;
     }
 
     // Find active word in this chunk
     let activeWordIdx = chunk.words.findIndex(w => currentTime >= w.start && currentTime <= w.end);
     if (activeWordIdx === -1) {
-      // Pick closest before or first
+      // Pick closest word before or first word of chunk
       activeWordIdx = chunk.words.reduce((closest, w, i) => (w.start <= currentTime ? i : closest), 0);
     }
 
-    // Only redraw DOM if active word or chunk changed
+    // Only redraw DOM if active word or chunk changed, OR if forced (-1)
     if (this.lastRenderedChunkIdx === chunkIdx && this.lastRenderedWordIdx === activeWordIdx) {
       return;
     }
@@ -208,7 +249,10 @@ class CaptionEngine {
     // Render HTML words with kinetic styling & CSS keyframe animation classes
     const htmlParts = chunk.words.map((w, idx) => {
       const isActive = idx === activeWordIdx;
-      const rawText = w.word || '';
+      let rawText = w.word || '';
+      if (this.style.uppercase) {
+        rawText = rawText.toUpperCase();
+      }
 
       if (isActive) {
         if (this.style.animation === 'word_box') {

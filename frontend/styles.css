@@ -725,25 +725,40 @@ input[type="range"]::-webkit-slider-thumb:hover {
 /* Live Animated Subtitle Overlay */
 .subtitle-overlay {
   position: absolute;
-  bottom: 16px;
+  bottom: 24px;
   left: 0;
   right: 0;
   text-align: center;
   pointer-events: none;
   padding: 0 14px;
-  z-index: 10;
-  transition: bottom 0.15s ease-out;
+  z-index: 15;
+  transition: bottom 0.08s ease-out;
 }
 
-.caption-overlay.draggable {
-  pointer-events: auto;
-  cursor: grab;
-  user-select: none;
+.subtitle-overlay.draggable,
+.subtitle-overlay.draggable .subtitle-caption,
+.subtitle-overlay.draggable .caption-word {
+  pointer-events: auto !important;
+  cursor: grab !important;
+  user-select: none !important;
 }
 
-.caption-overlay.dragging {
+.subtitle-overlay.draggable:hover .subtitle-caption {
+  outline: 2px dashed rgba(0, 240, 255, 0.6);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+
+.subtitle-overlay.dragging,
+.subtitle-overlay.dragging .subtitle-caption,
+.subtitle-overlay.dragging .caption-word {
   cursor: grabbing !important;
   transition: none !important;
+}
+
+.subtitle-overlay.dragging .subtitle-caption {
+  outline: 2px solid var(--accent-cyan) !important;
+  outline-offset: 6px;
 }
 
 .subtitle-caption {

@@ -475,7 +475,11 @@ function loadProjectIntoPreview(project) {
   const audioEl = document.getElementById('preview-audio');
   if (audioEl && project.audio_url) {
     audioEl.src = project.audio_url;
+    audioEl.volume = parseFloat(document.getElementById('volume-slider')?.value || '1');
     audioEl.load();
+    audioEl.onerror = () => {
+      console.warn("[VideoGen] Notice: voiceover audio could not load from", project.audio_url);
+    };
   }
   const videoEl = document.getElementById('preview-video');
   if (videoEl) {
@@ -524,9 +528,15 @@ function renderSceneCards(scenes) {
     const videoUrl = clip.web_url || '';
     const provider = clip.provider || 'stock';
 
+    const thumbHtml = videoUrl
+      ? `<video src="${videoUrl}#t=0.5" poster="${thumbUrl}" preload="metadata" muted playsinline loop onmouseover="this.play()" onmouseout="this.pause()"></video>`
+      : (thumbUrl 
+          ? `<img src="${thumbUrl}" alt="Scene thumbnail" style="width:100%;height:100%;object-fit:cover;">` 
+          : `<div style="padding:30px;color:#666;">No Clip</div>`);
+
     card.innerHTML = `
       <div class="scene-card-thumb">
-        ${videoUrl ? `<video src="${videoUrl}" muted playsinline loop onmouseover="this.play()" onmouseout="this.pause()"></video>` : `<div style="padding:30px;color:#666;">No Clip</div>`}
+        ${thumbHtml}
         <span class="scene-time-badge">⏱ ${formatTime(sc.start)} - ${formatTime(sc.end)}</span>
         <span class="scene-provider-badge">${provider}</span>
       </div>
@@ -549,9 +559,30 @@ function loadSceneClip(sceneIdx, autoPlay = true) {
   currentSceneIdx = sceneIdx;
   const sc = currentProject.scenes[sceneIdx];
   const videoEl = document.getElementById('preview-video');
+  if (!videoEl) return;
 
   const clip = sc.video_clip;
   if (clip && clip.web_url) {
+    if (clip.thumbnail_url) {
+      videoEl.poster = clip.thumbnail_url;
+    }
+
+    const targetOffset = Math.max(0, currentPlaybackTime - sc.start);
+    const safeOffset = Math.min(targetOffset, Math.max(0.1, (sc.duration || 4.0) - 0.05));
+
+    const applySeekAndPlay = () => {
+      try {
+        if (videoEl.duration && safeOffset < videoEl.duration) {
+          videoEl.currentTime = safeOffset;
+        } else if (videoEl.readyState >= 1) {
+          videoEl.currentTime = safeOffset;
+        }
+      } catch (e) {}
+      if (autoPlay && isPlaying) {
+        videoEl.play().catch(() => {});
+      }
+    };
+
     videoEl.onloadedmetadata = () => {
       const container = document.getElementById('video-container');
       const resTag = container ? container.querySelector('.res-tag') : null;
@@ -570,15 +601,19 @@ function loadSceneClip(sceneIdx, autoPlay = true) {
             : `${videoEl.videoWidth}x${videoEl.videoHeight} 16:9 Full HD`;
         }
       }
+      applySeekAndPlay();
     };
+
     videoEl.muted = true;
-    if (videoEl.src !== clip.web_url && !videoEl.src.endsWith(clip.web_url)) {
+    const currentSrc = videoEl.getAttribute('src') || videoEl.src || '';
+    if (currentSrc === clip.web_url || currentSrc.endsWith(clip.web_url)) {
+      applySeekAndPlay();
+    } else {
       videoEl.src = clip.web_url;
-    }
-    const offsetInScene = Math.max(0, currentPlaybackTime - sc.start);
-    videoEl.currentTime = Math.min(offsetInScene, Math.max(0.1, (sc.duration || 4.0) - 0.05));
-    if (autoPlay && isPlaying) {
-      videoEl.play().catch(() => {});
+      videoEl.load();
+      videoEl.onloadeddata = () => {
+        applySeekAndPlay();
+      };
     }
   }
 
@@ -617,12 +652,25 @@ function startPlayback() {
   const videoEl = document.getElementById('preview-video');
 
   if (audioEl && audioEl.src) {
-    audioEl.currentTime = currentPlaybackTime;
-    audioEl.play().catch(() => {});
+    try {
+      if (audioEl.readyState >= 1) {
+        audioEl.currentTime = currentPlaybackTime;
+      }
+    } catch (e) {}
+    audioEl.volume = parseFloat(document.getElementById('volume-slider')?.value || '1');
+    const playPromise = audioEl.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.warn("[VideoGen] Voiceover audio autoplay warning:", err);
+      });
+    }
   }
   if (videoEl) {
     videoEl.muted = true;
-    videoEl.play().catch(() => {});
+    const playPromise = videoEl.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {});
+    }
   }
 
   const startStamp = performance.now() - (currentPlaybackTime * 1000);
@@ -691,15 +739,19 @@ function seekToScene(sceneIdx) {
 }
 
 function seekVideoToTime(targetTime) {
-  currentPlaybackTime = targetTime;
+  currentPlaybackTime = Math.max(0, Math.min(targetTime, totalDuration || 9999));
   const audioEl = document.getElementById('preview-audio');
   if (audioEl) {
-    audioEl.currentTime = targetTime;
+    try {
+      if (audioEl.readyState >= 1) {
+        audioEl.currentTime = currentPlaybackTime;
+      }
+    } catch (e) {}
   }
   updatePlaybackUI();
 
   if (currentProject && currentProject.scenes) {
-    const scIdx = currentProject.scenes.findIndex(s => targetTime >= s.start && targetTime < s.end);
+    const scIdx = currentProject.scenes.findIndex(s => currentPlaybackTime >= s.start && currentPlaybackTime < s.end);
     if (scIdx !== -1) {
       loadSceneClip(scIdx, isPlaying);
     }
@@ -905,6 +957,7 @@ function applyPreset(presetKey) {
     document.getElementById('animation-style-select').value = p.animation;
 
     captionEngine.updateStyle({ preset: presetKey, ...p });
+    captionEngine.renderAtTime(currentPlaybackTime);
   }
 }
 
@@ -949,6 +1002,7 @@ function updateCaptionStyle() {
   };
 
   captionEngine.updateStyle(newStyle);
+  captionEngine.renderAtTime(currentPlaybackTime);
 }
 
 // ==================== SCENE CLIP SWAP MODAL ====================
