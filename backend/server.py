@@ -687,23 +687,39 @@ class OpenFolderRequest(BaseModel):
     path: Optional[str] = None
 
 
-@app.post("/api/open-folder")
+@app.get("/api/open-output-folder")
 @app.post("/api/open-output-folder")
-def open_folder(req: Optional[OpenFolderRequest] = None):
+@app.get("/api/open-folder")
+@app.post("/api/open-folder")
+def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = None):
     settings = load_settings()
+    req_path = None
     if req and req.path:
-        target_path = Path(req.path)
+        req_path = req.path
+    elif path:
+        req_path = path
+
+    if req_path:
+        target_path = Path(req_path)
     else:
-        target_path = Path(settings.get("output_dir", str(OUTPUT_DIR)))
+        conf = settings.get("output_dir", "")
+        if conf and Path(conf).exists():
+            target_path = Path(conf)
+        else:
+            target_path = OUTPUT_DIR
 
     target_path.mkdir(parents=True, exist_ok=True)
-    abs_path = str(target_path.resolve())
+    abs_path = os.path.normpath(str(target_path.resolve()))
 
     if os.name == "nt":
         try:
             os.startfile(abs_path)
-        except Exception:
-            subprocess.Popen(f'explorer "{abs_path}"', shell=True)
+        except Exception as e:
+            print(f"[OpenFolder] os.startfile notice: {e}, falling back to explorer.exe")
+            try:
+                subprocess.Popen(["explorer.exe", abs_path])
+            except Exception as e2:
+                print(f"[OpenFolder] explorer.exe failed: {e2}")
     return {"status": "success", "path": abs_path}
 
 
@@ -740,19 +756,30 @@ def export_capcut(req: CapCutExportRequest):
 
 # ======================== BGM AUDIO ENDPOINTS ========================
 
+SUPPORTED_BGM_EXTENSIONS = (".mp3", ".wav", ".aac", ".m4a", ".ogg")
+
 @app.get("/api/bgm-tracks")
 def get_bgm_tracks():
     bgm_dir = DATA_DIR / "assets" / "bgm"
     bgm_dir.mkdir(parents=True, exist_ok=True)
     tracks = [
-        {"id": "cinematic_ambient", "name": "✨ Cinematic Ambient (Ethereal)", "file": "cinematic_ambient.mp3"},
-        {"id": "lofi_chill", "name": "☕ Lofi Chill Beats (Relaxing)", "file": "lofi_chill.mp3"},
+        {"id": "cinematic_ambient", "name": "✨ Cinematic Ambient (Soft Chord Pad)", "file": "cinematic_ambient.mp3"},
+        {"id": "lofi_chill", "name": "☕ Lofi Chill Beats (Relaxing Warm 7ths)", "file": "lofi_chill.mp3"},
         {"id": "deep_focus", "name": "🧘 Deep Focus Drone (Atmospheric)", "file": "deep_focus.mp3"},
         {"id": "none", "name": "🔇 None (Voiceover Only)", "file": ""}
     ]
-    for p in bgm_dir.glob("*.mp3"):
-        if p.stem not in ("cinematic_ambient", "lofi_chill", "deep_focus"):
-            tracks.append({"id": p.name, "name": f"🎵 {p.stem}", "file": p.name})
+    for p in bgm_dir.glob("*.*"):
+        if p.suffix.lower() in SUPPORTED_BGM_EXTENSIONS:
+            if p.stem not in ("cinematic_ambient", "lofi_chill", "deep_focus"):
+                display_name = p.stem.replace("custom_", "", 1)
+                # Remove timestamp prefix if present
+                display_name = re.sub(r'^\d+_', '', display_name)
+                tracks.append({
+                    "id": p.name,
+                    "name": f"🎵 {display_name} (Custom)",
+                    "file": p.name,
+                    "is_custom": True
+                })
     return tracks
 
 
@@ -760,7 +787,9 @@ def get_bgm_tracks():
 async def upload_bgm(file: UploadFile = File(...)):
     bgm_dir = DATA_DIR / "assets" / "bgm"
     bgm_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"custom_{int(time.time())}_{file.filename}"
+    # Sanitize and timestamp filename
+    clean_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename or 'custom_bgm.mp3')
+    filename = f"custom_{int(time.time())}_{clean_name}"
     target_path = bgm_dir / filename
     with open(target_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)

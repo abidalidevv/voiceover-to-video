@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   setupDropzone();
   setupBatchDropzone();
+  await loadBgmTracks();
   await loadEditingTemplates();
   await loadSettings();
   await checkApiStatus();
@@ -252,14 +253,17 @@ async function openOutputFolder(customPath = null) {
     const res = await fetch('/api/open-folder', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: customPath })
+      body: JSON.stringify({ path: customPath || null })
     });
+    if (!res.ok) {
+      throw new Error(`Server returned HTTP ${res.status}`);
+    }
     const data = await res.json();
-    const folderName = data.path.split(/[\\/]/).pop() || 'Output';
+    const folderName = (data.path ? data.path.split(/[\\/]/).pop() : '') || 'Output';
     showToast(`📂 Opened folder in Windows Explorer: <strong>${folderName}</strong>`);
   } catch (e) {
     console.error(e);
-    alert('Could not open folder: ' + e.message);
+    showToast(`⚠️ Could not open folder: ${e.message}`);
   }
 }
 
@@ -1003,6 +1007,98 @@ function updateCaptionStyle() {
 
   captionEngine.updateStyle(newStyle);
   captionEngine.renderAtTime(currentPlaybackTime);
+}
+
+// ==================== BGM TRACKS & CUSTOM UPLOAD ====================
+async function loadBgmTracks() {
+  try {
+    const res = await fetch('/api/bgm-tracks');
+    if (!res.ok) return;
+    const tracks = await res.json();
+    const select = document.getElementById('bgm-track-select');
+    if (!select || !Array.isArray(tracks)) return;
+
+    const currentVal = select.value;
+    select.innerHTML = '';
+    tracks.forEach(tr => {
+      const opt = document.createElement('option');
+      opt.value = tr.id;
+      opt.textContent = tr.name;
+      if (tr.id === currentVal) opt.selected = true;
+      select.appendChild(opt);
+    });
+    if (!select.value && tracks.length > 0) {
+      select.value = tracks[0].id;
+    }
+    updateBgmSelection();
+  } catch (e) {
+    console.warn("[VideoGen] Could not load BGM tracks:", e);
+  }
+}
+
+function updateBgmSelection() {
+  const select = document.getElementById('bgm-track-select');
+  const badge = document.getElementById('custom-bgm-badge');
+  const fname = document.getElementById('custom-bgm-filename');
+  if (select && badge && fname) {
+    const selectedOption = select.options[select.selectedIndex];
+    const val = select.value;
+    if (val && (val.startsWith('custom_') || val.endsWith('.mp3') || val.endsWith('.wav') || val.endsWith('.aac') || val.endsWith('.m4a') || val.endsWith('.ogg'))) {
+      fname.textContent = selectedOption ? selectedOption.text.replace('🎵 ', '') : val;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+}
+
+function updateBgmVolume(val) {
+  const el = document.getElementById('bgm-volume-val');
+  if (el) el.textContent = val;
+}
+
+async function handleBgmUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const btn = document.getElementById('upload-bgm-btn');
+  const originalText = btn ? btn.innerHTML : '➕ Upload BGM';
+  if (btn) btn.innerHTML = '⏳ Uploading...';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch('/api/upload-bgm', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) throw new Error('Upload failed with HTTP status ' + res.status);
+    const data = await res.json();
+
+    await loadBgmTracks();
+
+    const select = document.getElementById('bgm-track-select');
+    if (select && data.bgm_key) {
+      select.value = data.bgm_key;
+      updateBgmSelection();
+    }
+
+    const badge = document.getElementById('custom-bgm-badge');
+    const fname = document.getElementById('custom-bgm-filename');
+    if (badge && fname) {
+      fname.textContent = data.filename || file.name;
+      badge.classList.remove('hidden');
+    }
+
+    showToast(`🎵 Custom BGM uploaded & selected: <strong>${data.filename || file.name}</strong>`);
+  } catch (e) {
+    console.error(e);
+    alert('Failed to upload custom background music: ' + e.message);
+  } finally {
+    if (btn) btn.innerHTML = originalText;
+    event.target.value = '';
+  }
 }
 
 // ==================== SCENE CLIP SWAP MODAL ====================

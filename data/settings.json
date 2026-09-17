@@ -18,7 +18,7 @@
   "video_provider": "all",
   "resolution": "1920x1080",
   "fps": 30,
-  "output_dir": "C:\\Users\\Abid\\Desktop\\VideoGen\\data\\output",
+  "output_dir": "",
   "default_caption_preset": "capcut_yellow",
   "gpu_acceleration": true
 }

@@ -785,16 +785,26 @@
 
           
           <!-- Background Music & Audio Mixing -->
+          <!-- Background Music & Audio Mixing -->
           <div class="inspector-section">
-            <label class="section-title">🎵 Background Music (BGM)</label>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <label class="section-title" style="margin-bottom:0;">🎵 Background Music (BGM)</label>
+              <button class="btn btn-secondary btn-xs" id="upload-bgm-btn" onclick="document.getElementById('bgm-file-input').click()" title="Upload your own custom MP3/WAV background music">
+                ➕ Upload BGM
+              </button>
+              <input type="file" id="bgm-file-input" accept=".mp3,.wav,.aac,.m4a,.ogg" style="display:none;" onchange="handleBgmUpload(event)">
+            </div>
             <div class="form-group">
-              <label class="sub-label">BGM Track Preset</label>
+              <label class="sub-label">BGM Track Selection</label>
               <select id="bgm-track-select" class="form-select" onchange="updateBgmSelection()">
                 <option value="cinematic_ambient" selected>✨ Cinematic Ambient (Soft Chord Pad)</option>
                 <option value="lofi_chill">☕ Lofi Chill Beats (Relaxing Warm 7ths)</option>
                 <option value="deep_focus">🧘 Deep Focus Drone (Atmospheric)</option>
                 <option value="none">🔇 None (Voiceover Only)</option>
               </select>
+            </div>
+            <div id="custom-bgm-badge" class="hidden" style="margin-top:6px;font-size:11px;color:var(--accent-cyan);display:flex;align-items:center;gap:6px;background:rgba(0,240,255,0.08);padding:4px 8px;border-radius:4px;border:1px solid rgba(0,240,255,0.2);">
+              <span>✅ Custom BGM:</span> <strong id="custom-bgm-filename" style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></strong>
             </div>
             <div class="form-row mt-10">
               <div class="form-group flex-1">
