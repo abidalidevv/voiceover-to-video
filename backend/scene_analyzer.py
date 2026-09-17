@@ -122,36 +122,42 @@ def build_scenes(
             is_pacing_split = (group_duration >= split_threshold and (has_comma or has_pause))
             overlong_threshold = max(4.5, 7.0 * pacing_mult)
             is_overlong = (group_duration >= overlong_threshold and len(current_group) >= 5)
+            # A true sentence/clause split condition: requires punctuation, at least 3 words and duration >= 2.0s
+            is_punct_split = (has_period or has_semicolon) and len(current_group) >= 3 and group_duration >= 2.0
+            # A speech pause boundary: only split if group already has at least 5 words and duration >= 2.8s
+            is_pause_split = has_pause and len(current_group) >= 5 and group_duration >= 2.8
             is_last_word = (i == len(all_words) - 1)
 
-            if has_period or has_semicolon or has_pause or is_pacing_split or is_overlong or is_last_word:
-                # Minimum duration filter: scenes should be at least 1.6s to avoid jarring flicker
-                if group_duration >= 1.6 or is_last_word or len(sentence_groups) == 0:
+            if is_punct_split or is_pause_split or is_pacing_split or is_overlong or is_last_word:
+                # Minimum duration filter: scenes should be at least 2.0s and >= 3 words to avoid jarring flicker
+                if (group_duration >= 2.0 and len(current_group) >= 3) or is_last_word or len(sentence_groups) == 0:
                     sentence_groups.append(current_group)
                     current_group = []
 
         if current_group:
-            if sentence_groups and (current_group[-1]["end"] - current_group[0]["start"]) < 1.5:
+            if sentence_groups:
                 sentence_groups[-1].extend(current_group)
             else:
                 sentence_groups.append(current_group)
 
         # NLP Fallback: If punctuation detection found only 1 giant group (Whisper
-        # returned words without any punctuation), use regex sentence splitting on
-        # the full transcript text and cross-reference with word timestamps.
-        if len(sentence_groups) <= 1 and len(all_words) > 8:
-            full_text = " ".join(w["word"] for w in all_words)
-            # Regex sentence splitter: split on .!?; and also on natural clause breaks
+        # returned words without any punctuation), and transcript is long, use regex sentence splitting.
+        full_text = " ".join(w["word"] for w in all_words)
+        has_internal_punct = bool(re.search(r'[.!?]', full_text[:-1]))
+        if len(sentence_groups) <= 1 and (not has_internal_punct and len(all_words) > 10 or len(all_words) > 20):
             nlp_sentences = [s.strip() for s in re.split(r'(?<=[.!?;])\s+', full_text) if s.strip()]
-            
-            # If regex didn't find sentence boundaries either, try splitting on
-            # long pauses or every ~4-6 words for visual pacing
             if len(nlp_sentences) <= 1:
                 nlp_sentences = _split_by_word_count(all_words, target_words=5)
 
             if len(nlp_sentences) > 1:
                 print(f"[SceneAnalyzer] NLP fallback: punctuation-free transcript, split into {len(nlp_sentences)} sentences via regex")
                 sentence_groups = _map_sentences_to_words(nlp_sentences, all_words)
+
+        # Post-pass micro-fragment merging:
+        # Guarantee: ALWAYS run after all segmentation and NLP paths to merge any
+        # fragments (< 4 words or < 2.2s duration) into the preceding scene group.
+        # This completely eliminates isolated 1-word scenes like 'you?...' or 'Right?'
+        sentence_groups = _merge_micro_fragments(sentence_groups)
 
         # 3. Build gapless, continuous scene timestamps
         scenes = []
@@ -167,7 +173,12 @@ def build_scenes(
                 end = round(max(grp[-1]["end"], total_dur), 2)
 
             dur = round(max(0.5, end - start), 2)
-            tags = _extract_tags_rulebased(grp_text, niche)
+            context_window = ""
+            if idx > 0:
+                context_window += " " + " ".join(x["word"] for x in sentence_groups[idx - 1])
+            if idx < len(sentence_groups) - 1:
+                context_window += " " + " ".join(x["word"] for x in sentence_groups[idx + 1])
+            tags = _extract_tags_rulebased(grp_text, niche, surrounding_context=context_window.strip())
 
             scenes.append({
                 "id": idx,
@@ -291,8 +302,39 @@ def _map_sentences_to_words(sentences: List[str], all_words: list) -> list:
     return groups
 
 
-def _extract_tags_rulebased(text: str, niche: str) -> List[str]:
-    """Generates visual tags based on text tokens, emotions, and niche context."""
+def _merge_micro_fragments(groups: list) -> list:
+    """
+    Merges any orphaned fragments (< 4 words or < 2.2s duration) into the preceding group
+    so scenes never have isolated 1-word text like 'you?...' or 'Right?'.
+    """
+    if len(groups) <= 1:
+        return groups
+
+    merged = []
+    for grp in groups:
+        if not grp:
+            continue
+        dur = float(grp[-1].get("end", 0)) - float(grp[0].get("start", 0))
+        word_count = len(grp)
+        # If this group is a tiny fragment (<= 2 words, or < 4 words with short duration < 2.0s, or dur < 1.4s):
+        is_fragment = (word_count <= 2) or (word_count < 4 and dur < 2.0) or (dur < 1.4)
+        if is_fragment and merged:
+            merged[-1].extend(grp)
+        else:
+            merged.append(grp)
+
+    # Check if the very last group became too small
+    if len(merged) > 1:
+        last_dur = float(merged[-1][-1].get("end", 0)) - float(merged[-1][0].get("start", 0))
+        if (len(merged[-1]) <= 2) or (len(merged[-1]) < 4 and last_dur < 2.0) or (last_dur < 1.4):
+            last = merged.pop()
+            merged[-1].extend(last)
+
+    return merged if merged else groups
+
+
+def _extract_tags_rulebased(text: str, niche: str, surrounding_context: str = "") -> List[str]:
+    """Generates visual tags based on text tokens, emotions, niche context, and surrounding sentences."""
     text_lower = text.lower()
     matched_queries = []
 
@@ -302,12 +344,22 @@ def _extract_tags_rulebased(text: str, niche: str) -> List[str]:
             matched_queries.extend(queries[:2])
 
     # Clean words to find salient nouns and verbs
-    clean_words = [w for w in re.findall(r'\b[a-zA-Z]{4,}\b', text_lower)
-                   if w not in {"this", "that", "with", "from", "have", "been", "were", "what", "here", "there", "they", "your"}]
+    stop_words = {"this", "that", "with", "from", "have", "been", "were", "what", "here", "there", "they", "your", "will", "would", "could", "should", "about", "thing"}
+    clean_words = [w for w in re.findall(r'\b[a-zA-Z]{4,}\b', text_lower) if w not in stop_words]
 
     if clean_words:
         keyword_phrase = " ".join(clean_words[:3])
         matched_queries.append(f"{keyword_phrase} cinematic")
+
+    # If sentence is short or lacks rich visual keywords, borrow context from adjacent sentences
+    if len(clean_words) < 2 and surrounding_context:
+        ctx_lower = surrounding_context.lower()
+        for kw, queries in KEYWORD_MAP.items():
+            if re.search(r'\b' + re.escape(kw) + r'\b', ctx_lower):
+                matched_queries.extend(queries[:1])
+        ctx_words = [w for w in re.findall(r'\b[a-zA-Z]{4,}\b', ctx_lower) if w not in stop_words]
+        if ctx_words:
+            matched_queries.append(f"{' '.join(ctx_words[:2])} cinematic")
 
     # Add niche flavored visual tags
     niche_flavor = NICHE_VISUAL_FLAVORS.get(niche, NICHE_VISUAL_FLAVORS["General"])

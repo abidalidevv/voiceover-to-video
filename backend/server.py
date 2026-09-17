@@ -34,8 +34,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage for active projects
+# In-memory storage for active projects and rendering jobs
 ACTIVE_PROJECTS: Dict[str, Dict[str, Any]] = {}
+ACTIVE_RENDER_JOBS: Dict[str, Dict[str, Any]] = {}
 PROJECTS_FILE = DATA_DIR / "projects_history.json"
 
 
@@ -524,6 +525,155 @@ def render_video(req: RenderRequest):
         "output_path": rendered_path,
         "web_url": web_url
     }
+
+
+@app.post("/api/start-render")
+def start_render_job(req: RenderRequest):
+    project = ACTIVE_PROJECTS.get(req.project_id)
+    if not project:
+        history = load_projects_history()
+        project = next((p for p in history if p.get("id") == req.project_id), None)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+    job_id = f"render_{int(time.time() * 1000)}"
+    start_ts = time.time()
+    ACTIVE_RENDER_JOBS[job_id] = {
+        "job_id": job_id,
+        "project_id": req.project_id,
+        "status": "processing",
+        "percent": 5,
+        "stage": "starting",
+        "stage_title": "Starting Multi-Worker Render...",
+        "stage_desc": "Compiling kinetic typography and subtitle timing...",
+        "start_time": start_ts,
+        "elapsed_seconds": 0,
+        "eta_seconds": None,
+        "output_file": None,
+        "output_path": None,
+        "web_url": None,
+        "error": None
+    }
+
+    def run_render():
+        try:
+            job = ACTIVE_RENDER_JOBS[job_id]
+            audio_path = project["audio_path"]
+            scenes = project["scenes"]
+
+            # 1. Generate ASS Subtitles
+            ass_path = str(TEMP_DIR / f"{req.project_id}_subtitles.ass")
+            custom_opts = req.custom_options or {}
+            callouts_on = custom_opts.get("callouts_enabled", project.get("callouts_enabled", False))
+            callout_st = custom_opts.get("callout_style", project.get("callout_style", "badge_yellow"))
+            render_custom_options = {
+                **custom_opts,
+                "callouts_enabled": callouts_on,
+                "callout_style": callout_st
+            }
+            generate_ass_subtitles(
+                scenes=scenes,
+                output_path=ass_path,
+                preset_key=req.preset_key,
+                custom_options=render_custom_options
+            )
+
+            job["percent"] = 10
+            job["stage_desc"] = "Subtitles compiled. Initializing parallel video segments..."
+
+            proj_name = project.get("name") or project.get("id") or "VideoGen"
+            out_filename = f"{proj_name}_FullHD_1080p_{int(time.time())}.mp4"
+            render_opts = {
+                "fps": req.fps,
+                "bgm_track": req.custom_options.get("bgm_track", project.get("bgm_track", "cinematic_ambient")),
+                "bgm_volume": float(req.custom_options.get("bgm_volume", project.get("bgm_volume", 0.10))),
+                "enable_motion": bool(req.custom_options.get("enable_motion", project.get("enable_motion", True))),
+                "enable_vignette": bool(req.custom_options.get("enable_vignette", project.get("enable_vignette", False))),
+                "color_grade": req.custom_options.get("color_grade", project.get("color_grade", "clean")),
+                "transition": req.custom_options.get("transition", project.get("transition", "none")),
+                "transition_mode": req.custom_options.get("transition_mode", project.get("transition_mode", "fixed")),
+                "transition_sfx": req.custom_options.get("transition_sfx", project.get("transition_sfx", None)),
+                "transition_sfx_volume": float(req.custom_options.get("transition_sfx_volume", project.get("transition_sfx_volume", 0.40))),
+                "emphasis_zoom_enabled": bool(req.custom_options.get("emphasis_zoom_enabled", project.get("emphasis_zoom_enabled", False))),
+                "emphasis_zoom_intensity": float(req.custom_options.get("emphasis_zoom_intensity", project.get("emphasis_zoom_intensity", 1.15))),
+                "mute_stock_audio": bool(req.custom_options.get("mute_stock_audio", True)),
+                **req.custom_options
+            }
+
+            def on_render_progress(stage, pct, desc):
+                now = time.time()
+                elapsed = max(0.5, now - start_ts)
+                clamped_pct = max(10, min(99, int(pct)))
+                job["percent"] = clamped_pct
+                job["stage"] = stage
+                job["stage_desc"] = desc
+                job["elapsed_seconds"] = int(elapsed)
+                if stage == "normalizing":
+                    job["stage_title"] = f"Parallel 1080p Normalization ({clamped_pct}%)..."
+                elif stage == "concatenating":
+                    job["stage_title"] = "Timeline Transitions & Stitching..."
+                elif stage == "completed":
+                    job["stage_title"] = "Audio Muxing & Subtitle Burn Complete!"
+
+                if clamped_pct > 12:
+                    total_est = elapsed / (clamped_pct / 100.0)
+                    job["eta_seconds"] = max(1, int(total_est - elapsed))
+
+            with RENDER_LOCK:
+                rendered_path = render_final_video(
+                    audio_path=audio_path,
+                    scenes=scenes,
+                    ass_subtitle_path=ass_path,
+                    output_filename=out_filename,
+                    custom_options=render_opts,
+                    progress_callback=on_render_progress
+                )
+
+            web_url = _to_media_url(rendered_path)
+            project["rendered_video"] = {
+                "filename": out_filename,
+                "file_path": rendered_path,
+                "web_url": web_url,
+                "rendered_at": time.strftime("%b %d, %Y %I:%M %p")
+            }
+            project["status"] = "completed"
+            save_project_to_history(project)
+
+            job["status"] = "completed"
+            job["percent"] = 100
+            job["stage"] = "completed"
+            job["stage_title"] = "Render Complete!"
+            job["stage_desc"] = "Full HD video ready to preview and download."
+            job["output_file"] = out_filename
+            job["output_path"] = rendered_path
+            job["web_url"] = web_url
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            job = ACTIVE_RENDER_JOBS.get(job_id)
+            if job:
+                job["status"] = "error"
+                job["error"] = str(e)
+
+    threading.Thread(target=run_render, daemon=True).start()
+    return {"status": "started", "job_id": job_id}
+
+
+@app.get("/api/render-progress/{job_id}")
+def get_render_progress(job_id: str):
+    job = ACTIVE_RENDER_JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Render job not found")
+    if job.get("status") == "processing":
+        job["elapsed_seconds"] = int(time.time() - job["start_time"])
+    job["progress"] = job.get("percent", 0)
+    job["result"] = {
+        "output_file": job.get("output_file"),
+        "output_path": job.get("output_path"),
+        "web_url": job.get("web_url")
+    }
+    return job
 
 
 # ======================== PROJECTS & SYSTEM HELPERS ========================

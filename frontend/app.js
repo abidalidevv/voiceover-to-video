@@ -27,6 +27,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   captionEngine = new CaptionEngine('subtitle-overlay', 'subtitle-text');
   captionEngine.applyContainerStyles();
 
+  // Connect interactive drag-to-position on video player to bottom margin controls
+  captionEngine.enableDrag((newBottom) => {
+    const slider = document.getElementById('margin-v-slider');
+    const label = document.getElementById('margin-v-val');
+    if (slider) slider.value = newBottom;
+    if (label) label.textContent = newBottom;
+  });
+
   setupDropzone();
   setupBatchDropzone();
   await loadEditingTemplates();
@@ -574,12 +582,21 @@ function loadSceneClip(sceneIdx, autoPlay = true) {
     }
   }
 
-  // Highlight active scene card
+  // Highlight active scene card and smoothly scroll horizontal strip without moving page viewport
   document.querySelectorAll('.scene-card').forEach(c => c.classList.remove('active'));
   const activeCard = document.getElementById(`scene-card-${sceneIdx}`);
   if (activeCard) {
     activeCard.classList.add('active');
-    activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    const strip = document.getElementById('scenes-strip');
+    if (strip) {
+      const cardLeft = activeCard.offsetLeft;
+      const cardWidth = activeCard.offsetWidth;
+      const stripWidth = strip.clientWidth;
+      strip.scrollTo({
+        left: cardLeft - (stripWidth / 2) + (cardWidth / 2),
+        behavior: 'smooth'
+      });
+    }
   }
 }
 
@@ -1056,13 +1073,60 @@ async function startExportRender() {
     transition_duration: parseFloat(document.getElementById('transition-speed-slider')?.value || '0.30')
   };
 
-  const modal = document.getElementById('processing-modal');
-  document.getElementById('modal-status-title').textContent = 'Fast Multi-Worker Video Render...';
-  document.getElementById('modal-status-desc').textContent = 'Normalizing segments in parallel, stitching timeline, and burning CapCut kinetic subtitles...';
-  modal.classList.remove('hidden');
+  const renderModal = document.getElementById('render-progress-modal');
+  const progressBar = document.getElementById('render-progress-bar');
+  const progressPct = document.getElementById('render-progress-pct');
+  const statusMsg = document.getElementById('render-scene-status');
+  const elapsedEl = document.getElementById('render-elapsed-time');
+  const etaEl = document.getElementById('render-eta-time');
+
+  // Reset progress state
+  if (progressBar) progressBar.style.width = '3%';
+  if (progressPct) progressPct.textContent = '3%';
+  if (statusMsg) statusMsg.textContent = 'Initializing background render pipeline...';
+  if (elapsedEl) elapsedEl.textContent = '00:00';
+  if (etaEl) etaEl.textContent = 'Calculating...';
+
+  const updateRenderSteppers = (pct) => {
+    const s1 = document.getElementById('render-step-ass');
+    const s2 = document.getElementById('render-step-filter');
+    const s3 = document.getElementById('render-step-encode');
+    const s4 = document.getElementById('render-step-finalize');
+    if (!s1 || !s2 || !s3 || !s4) return;
+
+    [s1, s2, s3, s4].forEach(s => s.classList.remove('active', 'completed'));
+
+    if (pct < 15) {
+      s1.classList.add('active');
+    } else if (pct < 35) {
+      s1.classList.add('completed');
+      s2.classList.add('active');
+    } else if (pct < 85) {
+      s1.classList.add('completed');
+      s2.classList.add('completed');
+      s3.classList.add('active');
+    } else if (pct < 100) {
+      s1.classList.add('completed');
+      s2.classList.add('completed');
+      s3.classList.add('completed');
+      s4.classList.add('active');
+    } else {
+      [s1, s2, s3, s4].forEach(s => s.classList.add('completed'));
+    }
+  };
+
+  updateRenderSteppers(3);
+  if (renderModal) renderModal.classList.remove('hidden');
+
+  const formatSecs = (sec) => {
+    if (sec === null || sec === undefined || isNaN(sec)) return '--:--';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   try {
-    const res = await fetch('/api/render', {
+    const res = await fetch('/api/start-render', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1075,27 +1139,67 @@ async function startExportRender() {
 
     if (!res.ok) {
       const err = await res.json();
-      throw new Error(err.detail || 'Rendering failed');
+      throw new Error(err.detail || 'Rendering initiation failed');
     }
 
-    const data = await res.json();
-    modal.classList.add('hidden');
+    const startData = await res.json();
+    const jobId = startData.job_id;
 
-    // Show completion modal
-    document.getElementById('export-success-filename').textContent = `File: ${data.output_file}`;
+    // Poll live render status every 500ms
+    const result = await new Promise((resolve, reject) => {
+      const pollTimer = setInterval(async () => {
+        try {
+          const pollRes = await fetch(`/api/render-progress/${jobId}`);
+          if (!pollRes.ok) return;
+          const job = await pollRes.json();
+
+          const pct = Math.max(3, Math.min(100, job.progress || 0));
+          if (progressBar) progressBar.style.width = `${pct}%`;
+          if (progressPct) progressPct.textContent = `${pct}%`;
+          if (statusMsg) statusMsg.textContent = job.stage_desc || job.stage || 'Rendering in progress...';
+          if (elapsedEl) elapsedEl.textContent = formatSecs(job.elapsed_seconds);
+          if (etaEl) {
+            etaEl.textContent = job.eta_seconds !== null ? `~${formatSecs(job.eta_seconds)}` : 'Calculating...';
+          }
+          updateRenderSteppers(pct);
+
+          if (job.status === 'completed') {
+            clearInterval(pollTimer);
+            resolve(job.result);
+          } else if (job.status === 'error') {
+            clearInterval(pollTimer);
+            reject(new Error(job.error || 'Rendering job failed'));
+          }
+        } catch (pollErr) {
+          // Keep polling through transient errors
+        }
+      }, 500);
+    });
+
+    if (renderModal) renderModal.classList.add('hidden');
+
+    // Populate & open export complete modal
+    const outputFileName = result.output_file || 'rendered_video.mp4';
+    const webUrl = result.web_url || '';
+    document.getElementById('export-success-filename').textContent = `File: ${outputFileName}`;
     const exportedPlayer = document.getElementById('exported-video-player');
-    exportedPlayer.src = data.web_url;
-    exportedPlayer.load();
+    if (exportedPlayer) {
+      exportedPlayer.src = webUrl;
+      exportedPlayer.load();
+    }
 
     const dlLink = document.getElementById('export-download-link');
-    dlLink.href = data.web_url;
-    dlLink.setAttribute('download', data.output_file);
+    if (dlLink) {
+      dlLink.href = webUrl;
+      dlLink.setAttribute('download', outputFileName);
+    }
 
     document.getElementById('export-complete-modal').classList.remove('hidden');
-    showToast(`🎉 Video exported successfully: <strong>${data.output_file}</strong>`);
+    showToast(`🎉 Video exported successfully: <strong>${outputFileName}</strong>`);
     loadProjectsLibrary();
+
   } catch (err) {
-    modal.classList.add('hidden');
+    if (renderModal) renderModal.classList.add('hidden');
     alert('Rendering error: ' + err.message);
   }
 }

@@ -83,11 +83,12 @@ class CaptionEngine {
   applyContainerStyles() {
     if (!this.overlay || !this.captionEl) return;
 
-    const marginV = Math.min(this.style.marginV !== undefined ? this.style.marginV : 26, 36);
+    const marginV = this.style.marginV !== undefined ? this.style.marginV : 26;
     this.overlay.style.bottom = `${marginV}px`;
     this.captionEl.style.fontFamily = `'${this.style.fontFamily}', sans-serif`;
-    const baseFontSize = this.style.fontSize || 22;
-    this.captionEl.style.fontSize = `${Math.round(baseFontSize * 1.0)}px`;
+    const baseFontSize = this.style.fontSize || 24;
+    this.captionEl.style.fontSize = `${baseFontSize}px`;
+    this.captionEl.style.setProperty('--caption-font-size', `${baseFontSize}px`);
     this.captionEl.style.color = this.style.primaryColor;
     // Do NOT apply stroke to the container, as it double-strokes child words
     this.captionEl.style.webkitTextStroke = '0px transparent';
@@ -104,6 +105,60 @@ class CaptionEngine {
     } else {
       this.captionEl.style.textTransform = 'none';
     }
+  }
+
+  /**
+   * Enables interactive mouse & touch drag on video player to adjust vertical position
+   */
+  enableDrag(onPositionChange) {
+    if (!this.overlay) return;
+    this.overlay.classList.add('draggable');
+
+    let isDragging = false;
+    let startY = 0;
+    let startBottom = 0;
+
+    const onStart = (e) => {
+      // Allow clicking buttons if any, otherwise start dragging
+      isDragging = true;
+      this.overlay.classList.add('dragging');
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      startY = clientY;
+      startBottom = parseInt(this.overlay.style.bottom || '24', 10);
+      e.stopPropagation();
+    };
+
+    const onMove = (e) => {
+      if (!isDragging) return;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const deltaY = startY - clientY; // dragging upward increases bottom offset
+      const container = this.overlay.parentElement;
+      const containerH = container ? container.clientHeight : 400;
+      const maxBottom = Math.max(120, containerH - 60);
+      const newBottom = Math.max(10, Math.min(maxBottom, Math.round(startBottom + deltaY)));
+
+      this.overlay.style.bottom = `${newBottom}px`;
+      this.style.marginV = newBottom;
+
+      if (onPositionChange) {
+        onPositionChange(newBottom);
+      }
+    };
+
+    const onEnd = () => {
+      if (isDragging) {
+        isDragging = false;
+        this.overlay.classList.remove('dragging');
+      }
+    };
+
+    this.overlay.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+
+    this.overlay.addEventListener('touchstart', onStart, { passive: true });
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('touchend', onEnd);
   }
 
   /**
@@ -150,19 +205,21 @@ class CaptionEngine {
       ? `-webkit-text-stroke: ${this.style.strokeWidth}px ${this.style.strokeColor}; paint-order: stroke fill;`
       : `-webkit-text-stroke: 0px transparent;`;
 
-    // Render HTML words with kinetic styling
+    // Render HTML words with kinetic styling & CSS keyframe animation classes
     const htmlParts = chunk.words.map((w, idx) => {
       const isActive = idx === activeWordIdx;
       const rawText = w.word || '';
 
       if (isActive) {
         if (this.style.animation === 'word_box') {
-          return `<span class="caption-word active box-style" style="background:${this.style.highlightColor}; color:#000000 !important; -webkit-text-fill-color:#000000 !important; -webkit-text-stroke: 0px !important;">${rawText}</span>`;
+          return `<span class="caption-word active box-style anim-box" style="background:${this.style.highlightColor}; color:#000000 !important; -webkit-text-fill-color:#000000 !important; -webkit-text-stroke: 0px !important;">${rawText}</span>`;
         } else if (this.style.animation === 'word_glow') {
-          return `<span class="caption-word active" style="color:${this.style.highlightColor}; -webkit-text-fill-color:${this.style.highlightColor}; ${strokeStyle} text-shadow: 0 0 16px ${this.style.highlightColor}; transform: scale(1.18);">${rawText}</span>`;
+          return `<span class="caption-word active anim-glow" style="color:${this.style.highlightColor}; -webkit-text-fill-color:${this.style.highlightColor}; ${strokeStyle} text-shadow: 0 0 16px ${this.style.highlightColor};">${rawText}</span>`;
+        } else if (this.style.animation === 'fade_in') {
+          return `<span class="caption-word active anim-fade" style="color:${this.style.highlightColor}; -webkit-text-fill-color:${this.style.highlightColor}; ${strokeStyle}">${rawText}</span>`;
         } else {
           // Default: CapCut kinetic pop & bounce
-          return `<span class="caption-word active" style="color:${this.style.highlightColor}; -webkit-text-fill-color:${this.style.highlightColor}; ${strokeStyle} transform: scale(1.2); display: inline-block;">${rawText}</span>`;
+          return `<span class="caption-word active anim-bounce" style="color:${this.style.highlightColor}; -webkit-text-fill-color:${this.style.highlightColor}; ${strokeStyle}">${rawText}</span>`;
         }
       } else {
         return `<span class="caption-word" style="color:${this.style.primaryColor}; -webkit-text-fill-color:${this.style.primaryColor}; ${strokeStyle}">${rawText}</span>`;

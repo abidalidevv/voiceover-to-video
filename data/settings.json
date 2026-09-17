@@ -13,7 +13,7 @@
   "groq_api_key": "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",
   "openai_api_key": "",
   "gemini_api_key": "",
-  "workers": 6,
+  "workers": 8,
   "hardware_encoder": "auto",
   "video_provider": "all",
   "resolution": "1920x1080",
