@@ -94,9 +94,21 @@ class CaptionEngine {
     this.enabled = Boolean(enabled);
     if (!this.overlay) return;
     if (!this.enabled) {
-      this.overlay.style.display = 'none';
+      this.overlay.style.setProperty('display', 'none', 'important');
+      this.overlay.classList.add('hidden');
     } else {
-      this.overlay.style.display = 'flex';
+      this.overlay.classList.remove('hidden');
+      this.overlay.style.setProperty('display', 'flex', 'important');
+      this.overlay.style.justifyContent = 'center';
+      this.overlay.style.alignItems = 'center';
+      this.overlay.style.left = '0';
+      this.overlay.style.right = '0';
+      this.overlay.style.width = '100%';
+      this.overlay.style.textAlign = 'center';
+      if (this.captionEl) {
+        const offX = this.style.offsetX || 0;
+        this.captionEl.style.transform = offX ? `translateX(${offX}px)` : 'none';
+      }
       const curTime = (typeof currentPlaybackTime !== 'undefined') ? currentPlaybackTime : 0.0;
       this.lastRenderedChunkIdx = -1;
       this.lastRenderedWordIdx = -1;
@@ -107,9 +119,26 @@ class CaptionEngine {
   applyContainerStyles() {
     if (!this.overlay || !this.captionEl) return;
 
+    if (!this.enabled) {
+      this.overlay.style.setProperty('display', 'none', 'important');
+      this.overlay.classList.add('hidden');
+    } else {
+      this.overlay.classList.remove('hidden');
+      this.overlay.style.setProperty('display', 'flex', 'important');
+      this.overlay.style.justifyContent = 'center';
+      this.overlay.style.alignItems = 'center';
+      this.overlay.style.left = '0';
+      this.overlay.style.right = '0';
+      this.overlay.style.width = '100%';
+      this.overlay.style.textAlign = 'center';
+    }
+
     const marginV = this.style.marginV !== undefined ? this.style.marginV : 24;
     this.overlay.style.setProperty('bottom', `${marginV}px`, 'important');
     this.overlay.style.setProperty('--caption-bottom', `${marginV}px`);
+
+    const offX = this.style.offsetX || 0;
+    this.captionEl.style.transform = offX ? `translateX(${offX}px)` : 'none';
 
     this.captionEl.style.setProperty('font-family', `'${this.style.fontFamily}', sans-serif`, 'important');
     const baseFontSize = this.style.fontSize || 24;
@@ -134,23 +163,28 @@ class CaptionEngine {
   }
 
   /**
-   * Enables interactive mouse & touch drag on video player to adjust vertical position
+   * Enables interactive 2D mouse & touch drag on video player to adjust vertical and horizontal position
    */
   enableDrag(onPositionChange) {
     if (!this.overlay) return;
     this.overlay.classList.add('draggable');
 
     let isDragging = false;
+    let startX = 0;
     let startY = 0;
     let startBottom = 0;
+    let startOffsetX = 0;
 
     const onStart = (e) => {
       isDragging = true;
       this.overlay.classList.add('dragging');
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      startX = clientX;
       startY = clientY;
       const parsed = parseInt(this.overlay.style.bottom || '', 10);
       startBottom = Number.isFinite(parsed) ? parsed : (this.style.marginV || 24);
+      startOffsetX = this.style.offsetX || 0;
       e.stopPropagation();
       if (e.cancelable && e.type !== 'touchstart') {
         e.preventDefault();
@@ -159,19 +193,31 @@ class CaptionEngine {
 
     const onMove = (e) => {
       if (!isDragging) return;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const deltaX = clientX - startX;
       const deltaY = startY - clientY; // dragging upward increases bottom offset
+
       const container = this.overlay.parentElement;
+      const containerW = container ? container.clientWidth : 640;
       const containerH = container ? container.clientHeight : 368;
       const maxBottom = Math.max(80, containerH - 45);
       const newBottom = Math.max(10, Math.min(maxBottom, Math.round(startBottom + deltaY)));
+
+      const maxOffsetX = Math.max(60, Math.floor(containerW / 2 - 40));
+      const newOffsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, Math.round(startOffsetX + deltaX)));
 
       this.overlay.style.setProperty('bottom', `${newBottom}px`, 'important');
       this.overlay.style.setProperty('--caption-bottom', `${newBottom}px`);
       this.style.marginV = newBottom;
 
+      this.style.offsetX = newOffsetX;
+      if (this.captionEl) {
+        this.captionEl.style.transform = `translateX(${newOffsetX}px)`;
+      }
+
       if (onPositionChange) {
-        onPositionChange(newBottom);
+        onPositionChange(newBottom, newOffsetX);
       }
     };
 
@@ -182,9 +228,25 @@ class CaptionEngine {
       }
     };
 
+    const onDoubleClick = (e) => {
+      e.stopPropagation();
+      this.style.offsetX = 0;
+      if (this.captionEl) {
+        this.captionEl.style.transform = 'none';
+      }
+      if (onPositionChange) {
+        onPositionChange(this.style.marginV || 24, 0);
+      }
+      if (typeof showToast === 'function') {
+        showToast('🎯 Subtitles re-centered horizontally');
+      }
+    };
+
     this.overlay.addEventListener('mousedown', onStart);
+    this.overlay.addEventListener('dblclick', onDoubleClick);
     if (this.captionEl) {
       this.captionEl.addEventListener('mousedown', onStart);
+      this.captionEl.addEventListener('dblclick', onDoubleClick);
     }
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onEnd);
@@ -202,11 +264,20 @@ class CaptionEngine {
    */
   renderAtTime(currentTime) {
     if (!this.enabled) {
-      if (this.overlay) this.overlay.style.display = 'none';
+      if (this.overlay) {
+        this.overlay.style.setProperty('display', 'none', 'important');
+        this.overlay.classList.add('hidden');
+      }
       return;
     }
-    if (this.overlay && this.overlay.style.display === 'none') {
-      this.overlay.style.display = 'flex';
+    if (this.overlay && (this.overlay.style.display === 'none' || this.overlay.classList.contains('hidden'))) {
+      this.overlay.classList.remove('hidden');
+      this.overlay.style.setProperty('display', 'flex', 'important');
+      this.overlay.style.justifyContent = 'center';
+      this.overlay.style.alignItems = 'center';
+      this.overlay.style.left = '0';
+      this.overlay.style.right = '0';
+      this.overlay.style.width = '100%';
     }
     if (!this.captionEl) return;
 

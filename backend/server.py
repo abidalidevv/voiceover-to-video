@@ -959,14 +959,18 @@ def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = N
     abs_path = os.path.normpath(str(target_path.resolve()))
 
     if os.name == "nt":
+        opened = False
         try:
             os.startfile(abs_path)
+            opened = True
         except Exception as e:
-            print(f"[OpenFolder] os.startfile notice: {e}, falling back to explorer.exe")
+            logger.warning(f"[OpenFolder] os.startfile notice: {e}")
+        if not opened:
             try:
-                subprocess.Popen(["explorer.exe", abs_path])
+                subprocess.Popen(f'explorer "{abs_path}"', shell=True)
+                opened = True
             except Exception as e2:
-                print(f"[OpenFolder] explorer.exe failed: {e2}")
+                logger.error(f"[OpenFolder] explorer shell command failed: {e2}")
     return {"status": "success", "path": abs_path}
 
 

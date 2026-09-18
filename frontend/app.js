@@ -254,21 +254,46 @@ function showToast(message) {
 }
 
 async function openOutputFolder(customPath = null) {
+  const btn = document.getElementById('header-btn-outputs');
+  if (btn) {
+    btn.style.opacity = '0.7';
+    btn.style.transform = 'scale(0.96)';
+  }
   try {
-    const res = await fetch('/api/open-folder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: customPath || null })
-    });
+    let res;
+    try {
+      res = await fetch('/api/open-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: customPath || null })
+      });
+    } catch (netErr) {
+      // Fallback: try GET /api/open-output-folder
+      res = await fetch('/api/open-output-folder');
+    }
+
+    if (!res || !res.ok) {
+      // If POST was rejected, try fallback GET
+      res = await fetch('/api/open-output-folder');
+    }
+
     if (!res.ok) {
       throw new Error(`Server returned HTTP ${res.status}`);
     }
     const data = await res.json();
-    const folderName = (data.path ? data.path.split(/[\\/]/).pop() : '') || 'Output';
-    showToast(`📂 Opened folder in Windows Explorer: <strong>${folderName}</strong>`);
+    const folderPath = data.path || 'data/output';
+    const folderName = (folderPath.split(/[\\/]/).pop()) || 'Output';
+    showToast(`📂 Opened folder in Windows Explorer: <strong>${folderName}</strong><br><span style="font-size:11px;color:#94a3b8;word-break:break-all;">${folderPath}</span>`, 4500);
   } catch (e) {
-    console.error(e);
+    console.error('Error opening output folder:', e);
     showToast(`⚠️ Could not open folder: ${e.message}`);
+  } finally {
+    if (btn) {
+      setTimeout(() => {
+        btn.style.opacity = '1';
+        btn.style.transform = 'scale(1)';
+      }, 250);
+    }
   }
 }
 

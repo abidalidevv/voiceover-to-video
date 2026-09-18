@@ -14,11 +14,11 @@
     /* VideoGen Studio - Responsive Pro Layout System */
     .app-header {
       height: 58px;
-      padding: 0 18px;
+      padding: 0 50px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 14px;
       position: sticky;
       top: 0;
       z-index: 100;
@@ -207,6 +207,19 @@
     }
     .subtitle-overlay {
       bottom: var(--caption-bottom, 24px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+      left: 0;
+      right: 0;
+      box-sizing: border-box;
+    }
+    .subtitle-overlay.hidden,
+    .subtitle-overlay[style*="display: none"],
+    .subtitle-overlay[style*="display:none"] {
+      display: none !important;
     }
     .subtitle-caption {
       font-size: var(--caption-font-size, 24px);
@@ -384,7 +397,7 @@
       <a href="docs.html" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
         📖 Docs
       </a>
-      <button class="btn btn-secondary btn-sm" onclick="openOutputFolder()" style="display:inline-flex;align-items:center;gap:4px;">
+      <button id="header-btn-outputs" class="btn btn-secondary btn-sm" onclick="openOutputFolder()" style="display:inline-flex;align-items:center;gap:4px;">
         📂 Outputs
       </button>
     </div>
