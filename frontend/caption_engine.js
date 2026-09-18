@@ -10,6 +10,7 @@ class CaptionEngine {
     
     this.currentScenes = [];
     this.wordChunks = []; // Precomputed chunks with word timestamps
+    this.enabled = true; // Master toggle for captions (Default: ON)
 
     // Active style state
     this.style = {
@@ -87,6 +88,20 @@ class CaptionEngine {
     // Force immediate live re-render at current playback time even when paused
     const curTime = (typeof currentPlaybackTime !== 'undefined') ? currentPlaybackTime : 0.0;
     this.renderAtTime(curTime);
+  }
+
+  setEnabled(enabled) {
+    this.enabled = Boolean(enabled);
+    if (!this.overlay) return;
+    if (!this.enabled) {
+      this.overlay.style.display = 'none';
+    } else {
+      this.overlay.style.display = 'flex';
+      const curTime = (typeof currentPlaybackTime !== 'undefined') ? currentPlaybackTime : 0.0;
+      this.lastRenderedChunkIdx = -1;
+      this.lastRenderedWordIdx = -1;
+      this.renderAtTime(curTime);
+    }
   }
 
   applyContainerStyles() {
@@ -186,6 +201,13 @@ class CaptionEngine {
    * Called on every video timeupdate / animation frame
    */
   renderAtTime(currentTime) {
+    if (!this.enabled) {
+      if (this.overlay) this.overlay.style.display = 'none';
+      return;
+    }
+    if (this.overlay && this.overlay.style.display === 'none') {
+      this.overlay.style.display = 'flex';
+    }
     if (!this.captionEl) return;
 
     if (this.wordChunks.length === 0) {

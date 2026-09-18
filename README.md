@@ -1,92 +1,73 @@
-# VideoGen Studio ⚡
+# ATS Video ⚡ (4K/8K UHD AI Video Engine)
 
-> **Automated 1080p Full HD & 9:16 YouTube Video Generator** with Intelligent Sentence-Level Segmentation, AI Editorial Direction, Dynamic Clip Trimming, Modern Creator Transitions, 3 Optional Editing Effects (Text Callouts, Sound Stings, Emphasis Zoom), Dual-Track BGM Mixing, and CapCut PC Timeline Integration.
-
----
-
-## 🌟 Key Capabilities
-
-### 1. Intelligent Sentence-Level Segmentation & AI Editorial Direction
-- **Word-Level Micro Timestamps**: Powered by Whisper AI (`whisper-large-v3` via Groq) with punctuation parsing (`.`, `!`, `?`, `;`) and speech pause detection (`> 0.45s`).
-- **One Sentence, One Scene**: Every spoken sentence receives its own dedicated scene and visual context tags rather than grouping multiple sentences into clumsy paragraphs.
-- **AI Script Editorial Direction**: Performs a single script-level analysis evaluating tone, energy (`"high" | "medium" | "calm"`), dynamic pacing multipliers (`0.8` to `1.3`), and tags the single most emphatic line (`is_climax = True`).
-- **Dynamic Pacing Splitter**: Long sentences (`> 6s`) are dynamically split at natural pauses into 3–5 second visual cuts to maintain viral creator pacing.
-
-### 2. Three Optional Pro Editing Effects
-- **Phase 1 — Text Callouts**:
-  - Automatically identifies strong claims, key statistics, and list-points via single-pass AI.
-  - Rate-limited to ~1 in every 4–5 scenes, prioritizing climax scenes and numeric stats.
-  - Injects ASS `Style: Callout` badges positioned in the top third of the frame (`badge_yellow`, `badge_cyan`, `badge_dark`) with pop and fade-in/out animations, strictly avoiding bottom caption overlap.
-- **Phase 2 — Sound Stings (SFX)**:
-  - Royalty-free short transition sound effects (`whoosh_soft.mp3`, `pop_punch.mp3`, `click_modern.mp3`, `ding_bell.mp3`) located in `data/sfx/`.
-  - Automatically time-shifted via FFmpeg `adelay` to each exact scene-transition timestamp and mixed natively into voiceover and BGM via `amix`.
-  - Fully optional: skips filter graph completely if `transition_sfx` is null.
-- **Phase 3 — Emphasis Punch Zoom**:
-  - Correlates LLM-identified `emphasis_word` (superlatives, numbers, pivotal nouns) with exact Whisper word micro-timestamps.
-  - Sharp punch-zoom keyframe (fast 0.15s zoom-in, 0.25s hold, 0.20s fall) timed to the clip's local timeline.
-  - **Boundary Conflict Guard**: Automatically skips punch zoom if the emphasis word falls within 0.3s of scene boundaries to prevent visual collision with transition crossfades.
-
-### 3. Stock Clip Trimming & Extra Video Removal
-- **Strict Target Trimming**: Downloaded stock videos (10s–30s) are automatically trimmed and normalized to match the exact duration of each sentence (`sc.duration`).
-- **Content-Aware 40% Action Window**: Trims clips into the most active 40% motion window rather than static clip beginnings.
-- **No Sentence Bleed**: Clips never spill over or leak across subsequent sentences, ensuring 100% video-to-caption correspondence.
-- **Seamless Auto-Looping**: Clips shorter than a scene are seamlessly looped with `-stream_loop -1` to prevent black frames or audio drift.
-
-### 4. Modern Creator Transitions & Randomization
-- **Smooth Whip Pan (Left & Right)** (`smoothleft`, `smoothright`): Creator-style dynamic slide.
-- **Dynamic Zoom Punch** (`zoomin`): Dramatic visual punch on sentence transitions.
-- **Cinematic Crossfade** (`fade`): Atmospheric dissolve.
-- **Fast Flash Fade** (`fadefast`): 0.22s punchy flash cut.
-- **Circle Focus** (`circlecrop`): Iris reveal.
-- **Dynamic Non-Repeating Random Mode**: When set to `"random"`, transitions vary dynamically across scenes without picking the same transition twice in a row.
-
-### 5. Dual-Track Audio Mixing & BGM Ducking
-- **Audio Muxing Guarantee**: Strict stream mapping (`-map 0:v:0 -map 1:a:0` or `[aout]`) ensures voiceover audio is 100% present in exported videos.
-- **Royalty-Free Ambient Tracks**: Built-in loops (*Cinematic Ambient*, *Lofi Chill*, *Deep Focus*).
-- **Template Pools**: Templates support pools (`bgm_track_pool`, `caption_style_pool`) ensuring video variety in bulk batch exports.
-- **Smart Volume Mixing**: Automatic volume attenuation under voiceover speech.
-
-### 6. CapCut Kinetic Subtitles & Dual Export
-- **12 Viral Caption Presets**: CapCut Yellow, Hormozi Green, Neon Cyber, Red Fire, Clean Minimal, MrBeast Punch, Ali Abdaal, Iman Gadzhi, TikTok Glow, Podcast Box, Streamer Lime, Dark Stoic.
-- **Interactive Formatting**: Live letter spacing, word spacing, font size, stroke color, and active word glow highlights.
-- **Dual Export Options**:
-  - **🚀 Export Video**: Directly renders Full HD 1080p MP4 via FFmpeg with burned-in ASS subtitles and sound stings.
-  - **✂️ CapCut Timeline**: Generates a native CapCut desktop draft project with separate video and audio tracks for granular editing inside CapCut PC.
-
-### 7. Multi-Threading & Concurrency Architecture
-- **Multi-Worker Downloads**: 6–8 parallel threads download stock footage simultaneously.
-- **Cascading Stock Fallback**: Pexels queried first; cascades to Pixabay only on 0 results or 429 rate limits, reducing API calls by 85%+.
-- **Render Serialization Lock (`RENDER_LOCK`)**: Strictly serializes FFmpeg GPU renders, eliminating NVENC hardware exhaustion and silent CPU slowdowns.
-- **Cross-Batch Lock (`GLOBAL_BATCH_LOCK`)**: Rejects concurrent batch triggers with HTTP 409 Conflict.
-- **Batch State Persistence**: Saved to `data/batch_jobs.json`, persisting across server restarts with live cancellation support.
+> **All-In-One Automated AI Video Engine, Neural Voiceover Studio, YouTube Thumbnail Studio & CapCut PC Integration**.
+> Generates 1080p Full HD, 4K UHD, and 8K Ultra HD YouTube landscape videos (16:9) and viral vertical Shorts (9:16) from a single script or voiceover audio file.
 
 ---
 
-## 🎬 Master Video Editing Templates
+## 🌟 Core Highlights
 
-| Template ID | Target Format | Cut Pacing | Transition & Mode | Caption Style | Callout | SFX Sting | Emphasis Zoom |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`shorts_viral`** | 9:16 Vertical | Snappy 3.2s | Whip Pan (Random/Fixed) | CapCut Yellow | ✅ `badge_yellow` | `whoosh_soft.mp3` | ✅ 1.15x |
-| **`documentary_cinematic`** | 16:9 1080p | Cinematic 5.0s | Crossfade (Fixed) | Luxury Serif | ✅ `badge_dark` | None | ❌ Off |
-| **`tech_explainer`** | 16:9 1080p | Punchy 3.5s | Zoom Punch (Fixed) | Neon Cyber | ✅ `badge_cyan` | `whoosh_soft.mp3` | ✅ 1.15x |
-| **`stoic_motivation`** | 9:16 / 16:9 | Snappy 3.2s | Flash Fade (Fixed) | Dark Stoic | ✅ `badge_dark` | `whoosh_soft.mp3` | ✅ 1.15x |
-| **`podcast_pill`** | 16:9 1080p | Natural 4.2s | Clean Cut (Fixed) | Vox Pill Box | ❌ Off | None | ❌ Off |
+### 1. 🎙️ In-App Neural AI Voiceover Studio (100% Free & Unlimited)
+- **100% Free Microsoft Edge-TTS Engine**: Pre-configured with 16+ ultra-realistic human neural voices with natural breathing pauses, authentic emotional inflection, and zero API costs.
+  - 🌟 **Andrew V2 & Ava V2**: Ultra-natural narration with human breathing and vocal pauses.
+  - 🌟 **Brian V2 & Emma V2**: Conversational YouTube tech and crisp studio storytelling.
+  - 🎬 **Christopher & Guy**: Deep cinematic documentary and high-retention creator voices.
+  - 🇵🇰 **Asad & Uzma**: Authentic, polished Urdu (Pakistan) male and female voices.
+  - 🇮🇳 **Madhur & Swara**: Engaging, dynamic Hindi (India) male and female voices.
+  - 🇬🇧 **Ryan & Sonia**: Sophisticated British documentary narration.
+  - 🇦🇺 **William**: Relaxed, positive Australian voiceover.
+- **🔊 1-Click Instant Voice Sample Previews**: Pre-cached 3-second audio samples for all curated voices with 0ms instantaneous playback directly in the browser.
+- **💎 ElevenLabs & OpenAI Speech Integration**: Optional user API keys for ElevenLabs (10k chars/mo free tier) and OpenAI TTS (`tts-1`), backed by automatic fallback to Microsoft Neural V2 to guarantee zero downtime.
+
+### 2. 🖼️ YouTube Thumbnail Studio (Viral & Cinematic Mystery)
+- **1-Click High-CTR YouTube Thumbnails (1280×720 HD)**:
+  - **Option 1: Viral High-CTR Style** (*MrBeast / Alex Hormozi Impact*): Electric yellow and white bold typography, heavy 3D drop shadows, red/gold pill badge (`100% PROVEN`), and high-urgency callouts.
+  - **Option 2: Cinematic Mystery Style** (*Magnates Media / Vox Documentary*): Luxury gold border framing, glowing cyan and white typography, cold teal vignette, and category header (`• SPECIAL REPORT •`).
+- **Dynamic Auto-Fit Font Scaling**: Algorithmically scales font sizes down to prevent text overflow regardless of headline length.
+
+### 3. 🏷️ YouTube SEO Title, Description & Tags Suite
+- **High-CTR YouTube Titles**: Generates 3 curiosity-gap titles crafted for algorithmic click-through rate.
+- **Full Video Description**: Auto-generates structured description with key takeaways, chapter markers, and channel hashtags.
+- **Optimized Video Tags**: Formats ranked comma-separated tags ready for 1-click clipboard copying.
+
+### 4. 🎬 4K & 8K UHD Resolution Profiles
+- **Ultra High Definition Profiles**: Supports Full HD (1080p), 4K UHD (3840×2160), and 8K Ultra HD (7680×4320) output for high-res displays and TVs.
+- **Aspect Ratio Switching**: Seamlessly toggle between 16:9 Landscape (YouTube) and 9:16 Vertical (Shorts, TikTok, Reels).
+
+### 5. 🔊 Scene Transitions & Auto SFX Stings
+- **Royalty-Free Sound Effects**: Automatic insertion of transition stings (`whoosh_soft.mp3`, `pop_punch.mp3`, `click_modern.mp3`, `ding_bell.mp3`) with FFmpeg `adelay` time-alignment.
+- **Custom Background Music (BGM)**: 1-click upload of custom audio with automatic looping and volume ducking under speech.
+
+### 6. 💬 CapCut Kinetic Subtitles & Interactive Positioning
+- **12 Viral Typography Presets**: CapCut Yellow, Hormozi Green, Neon Cyber, Red Fire, Clean Minimal, MrBeast Punch, Ali Abdaal, Iman Gadzhi, TikTok Glow, Podcast Box, Streamer Lime, Dark Stoic.
+- **Mouse Drag-to-Positioning**: Drag subtitles directly on the video player to adjust vertical position in real time.
+- **1-Click Subtitle Toggle**: Easily toggle captions on/off for video-only exports.
+
+### 7. ✂️ CapCut PC Timeline Draft Integration
+- **Native Desktop Project Generation**: Exports video cuts, voiceover timeline, and kinetic caption tracks directly into `%LOCALAPPDATA%\CapCut\User Data\Projects\com.lveditor.draft\`.
+- **Auto-Launch**: Automatically opens the generated project inside CapCut PC for final polish.
+
+### 8. ⚡ High-Speed Concurrency & GPU Acceleration
+- **2 to 32 Parallel Workers**: Hardware power slider tuned for dual-core CPUs up to multi-core Threadrippers.
+- **Hardware Acceleration**: Auto-detects NVIDIA NVENC (`h264_nvenc`), AMD AMF (`h264_amf`), and Intel QuickSync (`h264_qsv`).
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.10+
-- FFmpeg 6.0+ (FFmpeg with NVENC/QSV/AMF hardware encoder support detected)
-- Windows / macOS / Linux
-
-### Quick Launch
-Run the automated launcher:
+### Standalone Executable (Zero Setup)
+Double-click:
 ```cmd
-start.bat
+Start-VideoGen-Exe.bat
 ```
-Or start the Python server directly:
+*(No Python, Git, or FFmpeg installation required. Everything is self-contained in the portable package).*
+
+### Developer / Source Code Mode
+Run:
+```cmd
+Start-SourceCode.bat
+```
+Or start via Python:
 ```bash
 python main.py
 ```
@@ -97,58 +78,49 @@ http://127.0.0.1:8765/
 
 ---
 
-## 📁 Repository Structure
+## 📁 Clean Repository Structure
 
 ```
-VideoGen/
+ATS-Video/
 ├── backend/                  # Core Python modules
 │   ├── server.py             # Active FastAPI backend endpoints & WebSocket progress
-│   ├── transcriber.py        # Groq Whisper speech-to-text with word timestamps
+│   ├── tts_generator.py      # Edge-TTS Neural, ElevenLabs, and OpenAI voice engines
+│   ├── thumbnail_generator.py# YouTube Thumbnail Studio (Viral & Cinematic styles)
+│   ├── seo_generator.py      # YouTube SEO title, description & tag generator
+│   ├── transcriber.py        # Groq Whisper speech-to-text with word micro-timestamps
 │   ├── scene_analyzer.py     # Sentence segmentation, editorial direction & tag enhancement
 │   ├── stock_downloader.py   # Multi-worker concurrent Pexels/Pixabay downloader
-│   ├── video_renderer.py     # FFmpeg normalization, xfade, SFX mixing & punch zoom
+│   ├── video_renderer.py     # FFmpeg normalization, transitions, SFX mixing & punch zoom
 │   ├── subtitle_generator.py # ASS kinetic subtitles & callout badge generator
 │   ├── templates.py          # Master templates, pools & variant resolution
 │   ├── capcut_exporter.py    # Native CapCut desktop draft project generator
 │   └── config.py             # Global settings, paths, SFX library & defaults
-├── frontend/                 # Web application interface
-│   ├── index.html            # Studio, Preview Editor, Batch Queue, and Settings tabs
-│   ├── styles.css            # Dark mode UI, responsive rules, 100% wide player
-│   ├── app.js                # Frontend controllers, preview audio sync, WebSockets
-│   ├── caption_engine.js     # Word-level kinetic subtitle animator
-│   └── docs.html             # Built-in User Guide & operational manual
-├── test/                     # Dedicated test scripts and verification artifacts
-│   ├── test_editing_effects.py      # Unit tests for Callouts, SFX & Emphasis Zoom
-│   ├── test_18s_sample_voiceover.py # 18s sample voiceover end-to-end render test
-│   ├── test_editorial_direction.py  # Script tone, energy, and climax tagging tests
-│   ├── test_template_pools.py       # BGM & caption variant pool distribution tests
-│   ├── test_random_transitions.py   # Non-repeating transition tests
-│   └── test_bottlenecks_and_fixes.py # Concurrency locks & ranking tests
-├── data/                     # Local SQLite DB, media cache, and exported videos
-│   ├── sfx/                  # Royalty-free sound effects (whoosh, pop, click, ding)
-│   ├── assets/bgm/           # Background music loops (lofi, ambient, focus)
-│   ├── settings.json         # Local on-device JSON API credentials (unshared)
-│   ├── batch_jobs.json       # Persistent batch queue state
-│   ├── cache/                # Downloaded stock videos and audio clips
-│   └── output/               # Rendered 1080p MP4 videos and CapCut drafts
-├── main.py                   # Server entrypoint (port 8765)
-├── start.bat                 # 1-Click launcher script
+├── frontend/                 # Glassmorphic Obsidian Web application
+│   ├── index.html            # Studio, Preview, Thumbnail, Projects, Settings tabs
+│   ├── styles.css            # Dark mode UI, responsive breakpoints, sleek textareas
+│   ├── app.js                # Frontend controllers, live audio preview, settings sync
+│   ├── caption_engine.js     # Word-level kinetic subtitle animator & drag positioning
+│   ├── docs.html             # Built-in User Guide & operational manual
+│   ├── favicon.ico           # Application icon
+│   └── favicon.png           # Nano ATS brand badge
+├── data/                     # Persistent application data
+│   ├── assets/bgm/           # Background music loops (ambient, lofi, focus)
+│   └── sfx/                  # Sound effects & pre-cached voice preview MP3s
+├── extra/                    # Master blueprints, architecture docs & build helpers
+├── test/                     # Verification test scripts & test media
+├── Start-VideoGen-Exe.bat    # 1-Click launcher for compiled executable
+├── Start-SourceCode.bat      # 1-Click launcher for Python source code
+├── build_exe.bat             # PyInstaller standalone executable compiler
+├── desktop_launcher.py       # Desktop browser window launcher
+├── main.py                   # Root application entrypoint
 └── requirements.txt          # Python dependencies
 ```
 
 ---
 
-## 🔑 API Configuration
-
-Configure your API keys in the **Settings & APIs** tab in the UI or directly in `data/settings.json`:
-- **Groq API Key**: `gsk_...` (Ultra-fast Whisper transcription in ~1.5s & LLM tag enhancement)
-- **Pexels API Key**: For 1080p Full HD landscape stock footage
-- **Pixabay API Key**: For secondary high-resolution video candidates
-*(All keys remain strictly stored on your local disk in data/settings.json and are never transmitted to third-party telemetry).*
+## 📜 Interactive Documentation
+Access the comprehensive user guide by clicking **📖 Docs** in the top navigation header or visiting:
+`http://127.0.0.1:8765/docs.html`
 
 ---
-
-## 📜 Documentation & User Guide
-- Open the interactive **User Guide** by clicking **📖 Guide** in the top navigation header or visiting:
-  `http://127.0.0.1:8765/docs.html`
-- Technical task and walkthrough records are persisted in `walkthrough.md` and `task.md`.
+*Maintained by Antigravity AI • ATS Video 4K/8K UHD AI Video Engine*

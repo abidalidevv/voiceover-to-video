@@ -45,6 +45,10 @@ hidden_imports = [
     "python_multipart",
     "PIL",
     "PIL.Image",
+    "PIL.ImageDraw",
+    "PIL.ImageFont",
+    "PIL.ImageFilter",
+    "PIL.ImageEnhance",
     "backend",
     "backend.config",
     "backend.server",
@@ -54,13 +58,19 @@ hidden_imports = [
     "backend.subtitle_generator",
     "backend.video_renderer",
     "backend.capcut_exporter",
-    "backend.templates"
+    "backend.templates",
+    "backend.thumbnail_generator",
+    "backend.tts_generator",
+    "backend.seo_generator",
+    "edge_tts",
+    "tabulate"
 ]
 
 hidden_imports += collect_submodules("backend")
 hidden_imports += collect_submodules("uvicorn")
 hidden_imports += collect_submodules("starlette")
 hidden_imports += collect_submodules("fastapi")
+hidden_imports += collect_submodules("edge_tts")
 
 # Collect static web assets & clean data assets (excluding heavy user exports/cache)
 datas = [
@@ -108,6 +118,7 @@ exe = EXE(
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
+    icon="frontend/favicon.ico",
     entitlements_file=None,
 )
 

@@ -3,12 +3,22 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Temporary, Caches & Generated Media
+# Tests & Extra Folders (Ignored per user request)
+test/
+extra/
+scratch/
+
+# Temporary, Caches & Generated Media (Stock & Rendered)
 data/cache/
 data/temp/
 data/output/
 data/exports/
 data/projects/
+data/thumbnails/
+data/seo/
+data/sfx/tts_samples/
+data/projects_history.json
+data/settings.json
 data/batch_jobs.json
 *.db
 *.db-wal
@@ -26,12 +36,6 @@ build/
 bin/*.exe
 .venv/
 *.zip
-
-# Test generated binary outputs
-test/*.mp4
-test/*.ass
-test/*.jpg
-test/*.png
 
 # System & Editor
 .vscode/

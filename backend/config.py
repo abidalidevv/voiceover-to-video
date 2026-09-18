@@ -54,6 +54,7 @@ DEFAULT_SETTINGS = {
     "groq_api_key": "",
     "openai_api_key": "",
     "gemini_api_key": "",
+    "elevenlabs_api_key": "",
 
     # Performance & Concurrency Settings (GPU / CPU Tuner)
     "workers": 8,                     # 2 to 32 worker threads

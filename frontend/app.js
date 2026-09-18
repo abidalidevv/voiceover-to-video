@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupBatchDropzone();
   await loadBgmTracks();
   await loadEditingTemplates();
+  await loadTTSVoices();
   await loadSettings();
   await checkApiStatus();
   await loadProjectsLibrary();
@@ -66,6 +67,8 @@ function switchTab(tabId) {
 
   if (tabId === 'library') {
     loadProjectsLibrary();
+  } else if (tabId === 'thumbnails') {
+    loadProjectThumbnails(currentProject);
   }
 }
 
@@ -138,6 +141,7 @@ async function loadSettings() {
     // AI & Transcription
     if (document.getElementById('input-groq-key')) document.getElementById('input-groq-key').value = data.groq_api_key || '';
     if (document.getElementById('input-openai-key')) document.getElementById('input-openai-key').value = data.openai_api_key || '';
+    if (document.getElementById('input-elevenlabs-key')) document.getElementById('input-elevenlabs-key').value = data.elevenlabs_api_key || '';
 
     // Tuner & Strategy
     if (document.getElementById('input-hardware-encoder')) document.getElementById('input-hardware-encoder').value = data.hardware_encoder || 'auto';
@@ -172,6 +176,7 @@ async function saveAppSettings() {
     // AI & Transcription
     groq_api_key: document.getElementById('input-groq-key')?.value.trim() || '',
     openai_api_key: document.getElementById('input-openai-key')?.value.trim() || '',
+    elevenlabs_api_key: document.getElementById('input-elevenlabs-key')?.value.trim() || '',
 
     // Performance & Hardware
     hardware_encoder: document.getElementById('input-hardware-encoder')?.value || 'auto',
@@ -384,7 +389,8 @@ async function startGeneration() {
       body: JSON.stringify({
         audio_filename: uploadedAudioData.filename,
         niche: niche,
-        pipeline: activePipeline
+        pipeline: activePipeline,
+        target_resolution: document.getElementById('target-resolution-select')?.value || '1080p'
       })
     });
 
@@ -1220,7 +1226,11 @@ async function startExportRender() {
     color_grade: document.getElementById('color-grade-select')?.value || 'clean',
     transition: document.getElementById('transition-select')?.value || 'none',
     transition_mode: document.getElementById('transition-select')?.value === 'random' ? 'random' : 'fixed',
-    transition_duration: parseFloat(document.getElementById('transition-speed-slider')?.value || '0.30')
+    transition_duration: parseFloat(document.getElementById('transition-speed-slider')?.value || '0.30'),
+    enable_captions: document.getElementById('enable-captions-toggle')?.checked ?? true,
+    target_resolution: document.getElementById('export-resolution')?.value || '1080p',
+    transition_sfx: document.getElementById('sfx-track-select')?.value || 'whoosh_soft',
+    transition_sfx_volume: parseFloat(document.getElementById('sfx-volume-slider')?.value || '40') / 100
   };
 
   const renderModal = document.getElementById('render-progress-modal');
@@ -1335,7 +1345,13 @@ async function startExportRender() {
     const exportedPlayer = document.getElementById('exported-video-player');
     if (exportedPlayer) {
       exportedPlayer.src = webUrl;
+      if (currentProject && currentProject.id) {
+        exportedPlayer.poster = `/media/thumbnails/${currentProject.id}_thumb1.jpg`;
+      }
       exportedPlayer.load();
+      exportedPlayer.addEventListener('loadedmetadata', () => {
+        try { exportedPlayer.currentTime = 0.1; } catch (e) {}
+      }, { once: true });
     }
 
     const dlLink = document.getElementById('export-download-link');
@@ -1347,6 +1363,14 @@ async function startExportRender() {
     document.getElementById('export-complete-modal').classList.remove('hidden');
     showToast(`🎉 Video exported successfully: <strong>${outputFileName}</strong>`);
     loadProjectsLibrary();
+
+    // Auto-open output folder in Windows Explorer immediately
+    openOutputFolder();
+
+    // Load newly generated thumbnails in Thumbnail Studio
+    if (currentProject) {
+      loadProjectThumbnails(currentProject);
+    }
 
   } catch (err) {
     if (renderModal) renderModal.classList.add('hidden');
@@ -1484,13 +1508,18 @@ async function loadProjectsLibrary() {
             <button class="btn btn-secondary btn-sm flex-1" onclick="openProjectInPreview('${p.id}')">
               🎬 Studio
             </button>
+            <button class="btn btn-warning btn-sm" onclick="openProjectThumbnails('${p.id}', event)" title="View YouTube Thumbnails">
+              🖼️
+            </button>
             <button class="btn btn-capcut btn-sm" onclick="exportProjectCardToCapCut('${p.id}')" title="Open in CapCut Timeline">
               ✂️ CapCut
             </button>
             <button class="btn btn-outline btn-sm" onclick="openOutputFolder()" title="Open Output Folder">
               📂
             </button>
-            ${rendered ? `<a href="${rendered.web_url}" download class="btn btn-success btn-sm">💾 MP4</a>` : ''}
+            <button class="btn btn-danger btn-sm" onclick="deleteProject('${p.id}', event)" title="Delete Project">
+              🗑️
+            </button>
           </div>
         </div>
       `;
@@ -1513,6 +1542,235 @@ async function openProjectInPreview(projectId) {
     }
   } catch (err) {
     alert('Failed to load project: ' + err.message);
+  }
+}
+
+async function deleteProject(projectId, event) {
+  if (event) event.stopPropagation();
+  if (!confirm('Are you sure you want to delete this project?')) return;
+  try {
+    const res = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete project');
+    showToast('🗑️ Project deleted successfully');
+    await loadProjectsLibrary();
+    if (currentProject && currentProject.id === projectId) {
+      currentProject = null;
+    }
+  } catch (err) {
+    alert('Error deleting project: ' + err.message);
+  }
+}
+
+async function clearAllProjects() {
+  if (!confirm('⚠️ Are you sure you want to delete ALL projects from your library? This action cannot be undone.')) return;
+  try {
+    const res = await fetch('/api/projects/all', { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete all projects');
+    showToast('🗑️ All projects cleared successfully');
+    currentProject = null;
+    await loadProjectsLibrary();
+  } catch (err) {
+    alert('Error deleting projects: ' + err.message);
+  }
+}
+
+// ==================== CAPTIONS TOGGLE & RESOLUTION HELPERS ====================
+
+function onToggleCaptions(enabled) {
+  if (captionEngine) {
+    captionEngine.setEnabled(enabled);
+  }
+  const controls = document.getElementById('caption-customizer-controls');
+  if (controls) {
+    if (enabled) {
+      controls.classList.remove('disabled');
+    } else {
+      controls.classList.add('disabled');
+    }
+  }
+  if (currentProject) {
+    currentProject.enable_captions = enabled;
+  }
+  showToast(enabled ? '💬 Subtitles Enabled for preview and export' : '🔇 Subtitles Disabled (Video only)');
+}
+
+function onTargetResolutionChange(val) {
+  const badge = document.getElementById('studio-res-badge');
+  if (badge) {
+    if (val === '8k') {
+      badge.textContent = '8K Ultra HD (7680x4320)';
+      badge.className = 'badge badge-warning';
+    } else if (val === '4k') {
+      badge.textContent = '4K Ultra HD (3840x2160)';
+      badge.className = 'badge badge-success';
+    } else {
+      badge.textContent = 'Full HD 1080p';
+      badge.className = 'badge badge-info';
+    }
+  }
+  const exportSel = document.getElementById('export-resolution');
+  if (exportSel && exportSel.value !== val) {
+    exportSel.value = val;
+  }
+}
+
+function onExportResolutionChange(val) {
+  const studioSel = document.getElementById('target-resolution-select');
+  if (studioSel && studioSel.value !== val) {
+    studioSel.value = val;
+  }
+  onTargetResolutionChange(val);
+}
+
+// ==================== YOUTUBE THUMBNAILS STUDIO ====================
+
+function switchToThumbnails() {
+  closeExportModal();
+  switchTab('thumbnails');
+}
+
+async function openProjectThumbnails(projectId, event) {
+  if (event) event.stopPropagation();
+  try {
+    const res = await fetch('/api/projects');
+    const projects = await res.json();
+    const proj = projects.find(p => p.id === projectId);
+    if (proj) {
+      currentProject = proj;
+      switchTab('thumbnails');
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function loadProjectThumbnails(project) {
+  const nameEl = document.getElementById('thumb-active-project-name');
+  const nicheEl = document.getElementById('thumb-active-niche');
+  const img1 = document.getElementById('thumb-img-1');
+  const img2 = document.getElementById('thumb-img-2');
+  const skel1 = document.getElementById('thumb-skeleton-1');
+  const skel2 = document.getElementById('thumb-skeleton-2');
+  const dl1 = document.getElementById('thumb-download-1');
+  const dl2 = document.getElementById('thumb-download-2');
+  const headlineInput = document.getElementById('thumb-custom-headline');
+
+  if (!project) {
+    if (nameEl) nameEl.textContent = 'No Project Loaded';
+    if (nicheEl) nicheEl.textContent = 'None';
+    if (img1) img1.style.display = 'none';
+    if (img2) img2.style.display = 'none';
+    if (skel1) { skel1.style.display = 'flex'; skel1.querySelector('span').textContent = 'Render a video to generate thumbnails...'; }
+    if (skel2) { skel2.style.display = 'flex'; skel2.querySelector('span').textContent = 'Render a video to generate thumbnails...'; }
+    if (dl1) dl1.classList.add('disabled');
+    if (dl2) dl2.classList.add('disabled');
+    return;
+  }
+
+  if (nameEl) nameEl.textContent = project.name || project.id || 'Active Video';
+  if (nicheEl) nicheEl.textContent = project.niche || 'General';
+
+  try {
+    const res = await fetch(`/api/thumbnails/${project.id}`);
+    if (res.ok) {
+      const data = await res.json();
+      const thumbs = data.thumbnails;
+      if (thumbs) {
+        project.thumbnails = thumbs;
+        if (img1 && thumbs.thumb1_url) {
+          img1.src = `${thumbs.thumb1_url}?v=${Date.now()}`;
+          img1.style.display = 'block';
+          if (skel1) skel1.style.display = 'none';
+          if (dl1) {
+            dl1.href = thumbs.thumb1_url;
+            dl1.setAttribute('download', `${project.name || 'Video'}_Thumb_Viral.jpg`);
+            dl1.classList.remove('disabled');
+          }
+        }
+        if (img2 && thumbs.thumb2_url) {
+          img2.src = `${thumbs.thumb2_url}?v=${Date.now()}`;
+          img2.style.display = 'block';
+          if (skel2) skel2.style.display = 'none';
+          if (dl2) {
+            dl2.href = thumbs.thumb2_url;
+            dl2.setAttribute('download', `${project.name || 'Video'}_Thumb_Cinematic.jpg`);
+            dl2.classList.remove('disabled');
+          }
+        }
+        if (headlineInput && thumbs.headline_line1) {
+          headlineInput.value = `${thumbs.headline_line1} ${thumbs.headline_line2 || ''}`.trim();
+        }
+      }
+    }
+    // Also load SEO metadata for this project
+    loadProjectSEO(project);
+  } catch (err) {
+    console.error('Error loading thumbnails:', err);
+  }
+}
+
+async function regenerateThumbnails() {
+  if (!currentProject) {
+    alert('Please select or create a project first!');
+    return;
+  }
+  const btn = document.getElementById('regen-thumb-btn');
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Generating...';
+  }
+
+  try {
+    const res = await fetch('/api/generate-thumbnails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: currentProject.id })
+    });
+    if (!res.ok) throw new Error('Thumbnail generation failed');
+    const data = await res.json();
+    currentProject.thumbnails = data.thumbnails;
+    await loadProjectThumbnails(currentProject);
+    showToast('✨ 2 YouTube Thumbnails re-generated successfully!');
+  } catch (err) {
+    alert('Failed to re-generate thumbnails: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  }
+}
+
+async function applyCustomThumbnailHeadline() {
+  if (!currentProject) {
+    alert('Please select or create a project first!');
+    return;
+  }
+  const input = document.getElementById('thumb-custom-headline');
+  const headline = input ? input.value.trim() : '';
+  if (!headline) {
+    alert('Please enter a headline hook first!');
+    return;
+  }
+
+  showToast('⚡ Generating custom thumbnails...');
+  try {
+    const res = await fetch('/api/generate-thumbnails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: currentProject.id,
+        custom_headline: headline
+      })
+    });
+    if (!res.ok) throw new Error('Failed to generate with custom headline');
+    const data = await res.json();
+    currentProject.thumbnails = data.thumbnails;
+    await loadProjectThumbnails(currentProject);
+    showToast('🎉 Thumbnails updated with your custom headline!');
+  } catch (err) {
+    alert('Error: ' + err.message);
   }
 }
 
@@ -1926,4 +2184,348 @@ async function startBatchGeneration() {
     alert('Failed to start batch generation: ' + err.message);
     document.getElementById('batch-start-btn').disabled = false;
   }
+}
+
+// ==================== AUDIO INPUT MODE SWITCHER & TTS ====================
+
+function switchAudioMode(mode) {
+  const uploadBtn = document.getElementById('mode-btn-upload');
+  const ttsBtn = document.getElementById('mode-btn-tts');
+  const uploadPanel = document.getElementById('audio-upload-panel');
+  const ttsPanel = document.getElementById('audio-tts-panel');
+
+  if (mode === 'upload') {
+    uploadBtn?.classList.add('active');
+    ttsBtn?.classList.remove('active');
+    uploadPanel?.classList.remove('hidden');
+    ttsPanel?.classList.add('hidden');
+  } else {
+    uploadBtn?.classList.remove('active');
+    ttsBtn?.classList.add('active');
+    uploadPanel?.classList.add('hidden');
+    ttsPanel?.classList.remove('hidden');
+  }
+}
+
+function onTTSScriptInput() {
+  const text = document.getElementById('tts-script-input')?.value || '';
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const estSec = Math.round(words / 2.5);
+  const wcEl = document.getElementById('tts-word-count');
+  const durEl = document.getElementById('tts-est-dur');
+  if (wcEl) wcEl.textContent = words;
+  if (durEl) durEl.textContent = `~${estSec}s`;
+}
+
+let activeSampleAudio = null;
+
+async function loadTTSVoices() {
+  try {
+    const res = await fetch('/api/tts-voices');
+    if (!res.ok) return;
+    const data = await res.json();
+    const voices = data.voices || [];
+    const select = document.getElementById('tts-voice-select');
+    if (!select || voices.length === 0) return;
+
+    select.innerHTML = '';
+
+    const edgeVoices = voices.filter(v => v.provider === 'edge');
+    const elevenVoices = voices.filter(v => v.provider === 'elevenlabs');
+    const openaiVoices = voices.filter(v => v.provider === 'openai');
+
+    if (edgeVoices.length > 0) {
+      const group = document.createElement('optgroup');
+      group.label = '🌟 100% Free Human Neural Voices (Zero Setup / Unlimited)';
+      edgeVoices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = `${v.flag || '🎙️'} ${v.name} - ${v.style}`;
+        opt.dataset.sampleUrl = v.sample_url;
+        if (v.id === 'en-US-AndrewMultilingualNeural') opt.selected = true;
+        group.appendChild(opt);
+      });
+      select.appendChild(group);
+    }
+
+    if (elevenVoices.length > 0) {
+      const group = document.createElement('optgroup');
+      group.label = '💎 ElevenLabs Voices (Free Tier Supported in Settings)';
+      elevenVoices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = `${v.flag || '💎'} ${v.name} - ${v.style}`;
+        opt.dataset.sampleUrl = v.sample_url;
+        group.appendChild(opt);
+      });
+      select.appendChild(group);
+    }
+
+    if (openaiVoices.length > 0) {
+      const group = document.createElement('optgroup');
+      group.label = '🤖 OpenAI Speech Voices (API Key in Settings)';
+      openaiVoices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = `${v.flag || '🤖'} ${v.name} - ${v.style}`;
+        opt.dataset.sampleUrl = v.sample_url;
+        group.appendChild(opt);
+      });
+      select.appendChild(group);
+    }
+  } catch (e) {
+    console.warn('Could not load dynamic TTS voices:', e);
+  }
+}
+
+function previewSelectedVoice() {
+  const select = document.getElementById('tts-voice-select');
+  const selectedOption = select?.options[select.selectedIndex];
+  const voiceId = select?.value || 'en-US-AndrewMultilingualNeural';
+  const sampleUrl = selectedOption?.dataset?.sampleUrl || `/media/sfx/tts_samples/${voiceId}.mp3`;
+  const btn = document.getElementById('btn-preview-voice');
+
+  if (activeSampleAudio) {
+    activeSampleAudio.pause();
+    activeSampleAudio.currentTime = 0;
+  }
+
+  if (btn) {
+    btn.innerHTML = '🔊 Playing...';
+    btn.classList.add('btn-primary');
+    btn.classList.remove('btn-secondary');
+  }
+
+  activeSampleAudio = new Audio(sampleUrl);
+
+  activeSampleAudio.onended = () => {
+    if (btn) {
+      btn.innerHTML = '🔊 Listen Sample';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-secondary');
+    }
+  };
+
+  activeSampleAudio.onerror = () => {
+    if (btn) {
+      btn.innerHTML = '🔊 Listen Sample';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-secondary');
+    }
+  };
+
+  activeSampleAudio.play().catch(e => {
+    console.warn('Voice preview error:', e);
+    if (btn) {
+      btn.innerHTML = '🔊 Listen Sample';
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-secondary');
+    }
+  });
+}
+
+function onTTSVoiceChange() {
+  previewSelectedVoice();
+}
+
+function onTTSRateChange(val) {
+  const el = document.getElementById('tts-rate-val');
+  if (el) {
+    const num = parseInt(val, 10);
+    el.textContent = num === 0 ? 'Normal' : (num > 0 ? `+${num}%` : `${num}%`);
+  }
+}
+
+function loadSampleScript() {
+  const sample = "Artificial intelligence is quietly revolutionizing how YouTube videos are created in 2026. Creators who leverage automated video pipelines are publishing high-retention content in minutes rather than days. In this video, we reveal the top three strategies used by modern cash-cow channels to dominate the algorithm.";
+  const input = document.getElementById('tts-script-input');
+  if (input) {
+    input.value = sample;
+    onTTSScriptInput();
+  }
+}
+
+async function generateAIVoiceover() {
+  const text = document.getElementById('tts-script-input')?.value.trim();
+  if (!text) {
+    alert('Please enter or paste your video script first!');
+    return;
+  }
+
+  const voice = document.getElementById('tts-voice-select')?.value || 'en-US-ChristopherNeural';
+  const rateVal = parseInt(document.getElementById('tts-rate-slider')?.value || '0', 10);
+  const rate = rateVal >= 0 ? `+${rateVal}%` : `${rateVal}%`;
+
+  const btn = document.getElementById('btn-gen-tts');
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Generating Voiceover...';
+  }
+
+  try {
+    const res = await fetch('/api/generate-voiceover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, voice, rate })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'TTS generation failed');
+    }
+
+    const data = await res.json();
+    uploadedAudioFilename = data.filename;
+
+    // Show preview audio player
+    const previewBox = document.getElementById('tts-preview-box');
+    const player = document.getElementById('tts-audio-player');
+    const durEl = document.getElementById('tts-audio-dur');
+
+    if (previewBox) previewBox.classList.remove('hidden');
+    if (durEl) durEl.textContent = `${Math.floor(data.duration / 60)}:${Math.floor(data.duration % 60).toString().padStart(2, '0')}`;
+    if (player) {
+      player.src = data.url;
+      player.load();
+    }
+
+    // Enable Start Generation button in Single Studio
+    const startBtn = document.getElementById('start-generate-btn');
+    if (startBtn) startBtn.disabled = false;
+
+    showToast(`🎉 AI Voiceover ready (${data.duration}s)! You can now click <strong>Generate Complete Video</strong>.`);
+  } catch (err) {
+    alert('AI Voiceover Error: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  }
+}
+
+// ==================== TRANSITION SFX ====================
+
+function updateSfxSelection() {
+  const select = document.getElementById('sfx-track-select');
+  if (currentProject && select) {
+    currentProject.transition_sfx = select.value;
+  }
+}
+
+function updateSfxVolume(val) {
+  const el = document.getElementById('sfx-volume-val');
+  if (el) el.textContent = val;
+  if (currentProject) {
+    currentProject.transition_sfx_volume = parseFloat(val) / 100;
+  }
+}
+
+// ==================== YOUTUBE SEO SUITE ====================
+
+async function loadProjectSEO(project) {
+  if (!project || !project.id) return;
+  try {
+    const res = await fetch(`/api/seo/${project.id}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.status === 'success') {
+        populateSEOUi(data);
+        return;
+      }
+    }
+    // Auto-generate if not present
+    regenerateSEO();
+  } catch (e) {
+    console.error('Error loading SEO metadata:', e);
+  }
+}
+
+async function regenerateSEO() {
+  if (!currentProject) {
+    alert('Please select or create a project first!');
+    return;
+  }
+  const btn = document.getElementById('btn-regen-seo');
+  const origText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Generating SEO...';
+  }
+
+  try {
+    const res = await fetch('/api/generate-seo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: currentProject.id })
+    });
+
+    if (!res.ok) {
+      throw new Error(`Server returned HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    populateSEOUi(data);
+    showToast('🚀 YouTube SEO titles, description & tags generated!');
+  } catch (err) {
+    console.error(err);
+    showToast('⚠️ Could not generate SEO: ' + err.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = origText;
+    }
+  }
+}
+
+function populateSEOUi(data) {
+  if (!data) return;
+  const titles = data.titles || [];
+  for (let i = 1; i <= 3; i++) {
+    const tEl = document.getElementById(`seo-title-${i}`);
+    if (tEl) {
+      tEl.textContent = titles[i - 1] || 'No title generated';
+    }
+  }
+
+  const descEl = document.getElementById('seo-description-text');
+  if (descEl) {
+    descEl.value = data.description || '';
+  }
+
+  const tagsEl = document.getElementById('seo-tags-text');
+  if (tagsEl) {
+    tagsEl.value = data.tags_string || (data.tags_list || []).join(', ');
+  }
+}
+
+function copyTitleText(idx) {
+  const tEl = document.getElementById(`seo-title-${idx}`);
+  if (tEl && tEl.textContent) {
+    copyText(tEl.textContent, 'Title copied to clipboard!');
+  }
+}
+
+function copyElementText(elemId, toastMsg) {
+  const el = document.getElementById(elemId);
+  if (el) {
+    const val = el.value || el.textContent;
+    copyText(val, toastMsg || 'Copied to clipboard!');
+  }
+}
+
+function copyText(text, toastMsg) {
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(`📋 ${toastMsg || 'Copied to clipboard!'}`);
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(`📋 ${toastMsg || 'Copied to clipboard!'}`);
+  });
 }

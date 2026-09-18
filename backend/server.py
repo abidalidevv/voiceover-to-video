@@ -234,6 +234,50 @@ async def upload_audio(file: UploadFile = File(...)):
     }
 
 
+class VoiceoverRequest(BaseModel):
+    text: str
+    voice: str = "en-US-ChristopherNeural"
+    rate: str = "+0%"
+    pitch: str = "+0Hz"
+
+
+@app.get("/api/tts-voices")
+def list_tts_voices():
+    from backend.tts_generator import get_curated_voices
+    return {"status": "success", "voices": get_curated_voices()}
+
+
+@app.post("/api/generate-voiceover")
+async def generate_voiceover_endpoint(req: VoiceoverRequest):
+    from backend.tts_generator import generate_speech_async
+    if not req.text or not req.text.strip():
+        raise HTTPException(status_code=400, detail="Script text cannot be empty.")
+
+    filename = f"voiceover_{int(time.time())}.mp3"
+    dest = TEMP_DIR / filename
+    try:
+        meta = await generate_speech_async(
+            text=req.text,
+            voice=req.voice,
+            rate=req.rate,
+            pitch=req.pitch,
+            output_path=str(dest)
+        )
+        duration = get_audio_duration(str(dest))
+        return {
+            "status": "success",
+            "filename": filename,
+            "original_name": f"{meta['voice']}_script.mp3",
+            "duration": round(duration, 2),
+            "word_count": meta["word_count"],
+            "approx_duration": meta["approx_duration"],
+            "url": f"/media/temp/{filename}",
+            "cleaned_text": meta["cleaned_text"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"TTS generation failed: {str(e)}")
+
+
 import threading
 
 ACTIVE_JOBS: Dict[str, Dict[str, Any]] = {}
@@ -243,6 +287,7 @@ class GenerateRequest(BaseModel):
     audio_filename: str
     niche: str = "Motivation Psychology"
     pipeline: str = "Main"
+    target_resolution: str = "1080p"
 
 
 @app.post("/api/start-generate")
@@ -289,7 +334,7 @@ def start_generation_job(req: GenerateRequest):
             total_scenes = len(scenes)
             ACTIVE_JOBS[job_id]["total_scenes"] = total_scenes
 
-            # 3. Parallel Downloads with live progress callback
+            # 3. Parallel Downloads with live progress callback and target resolution
             ACTIVE_JOBS[job_id]["stage"] = "downloading"
             ACTIVE_JOBS[job_id]["stage_title"] = f"Multi-Worker Parallel Download (0 / {total_scenes})..."
             ACTIVE_JOBS[job_id]["stage_desc"] = f"Querying stock APIs concurrently across workers..."
@@ -303,7 +348,11 @@ def start_generation_job(req: GenerateRequest):
                 ACTIVE_JOBS[job_id]["stage_title"] = f"Downloading Stock Videos ({done} / {total})..."
                 ACTIVE_JOBS[job_id]["stage_desc"] = f"Worker downloaded Scene #{scene_item.get('scene_number')}: \"{scene_item.get('text','')[:35]}...\""
 
-            processed_scenes = download_scenes_concurrently(scenes, progress_callback=on_progress)
+            processed_scenes = download_scenes_concurrently(
+                scenes,
+                progress_callback=on_progress,
+                target_resolution=req.target_resolution
+            )
 
             # Web URLs
             for sc in processed_scenes:
@@ -316,6 +365,7 @@ def start_generation_job(req: GenerateRequest):
                 "name": req.audio_filename.rsplit('.', 1)[0],
                 "niche": req.niche,
                 "pipeline": req.pipeline,
+                "target_resolution": req.target_resolution,
                 "audio_filename": req.audio_filename,
                 "audio_path": str(audio_path),
                 "audio_url": f"/media/temp/{req.audio_filename}",
@@ -464,27 +514,36 @@ def render_video(req: RenderRequest):
     audio_path = project["audio_path"]
     scenes = project["scenes"]
 
-    # 1. Generate ASS Subtitles
-    ass_path = str(TEMP_DIR / f"{req.project_id}_subtitles.ass")
+    # 1. Check captions toggle and target resolution
     custom_opts = req.custom_options or {}
-    callouts_on = custom_opts.get("callouts_enabled", project.get("callouts_enabled", False))
-    callout_st = custom_opts.get("callout_style", project.get("callout_style", "badge_yellow"))
-    render_custom_options = {
-        **custom_opts,
-        "callouts_enabled": callouts_on,
-        "callout_style": callout_st
-    }
-    generate_ass_subtitles(
-        scenes=scenes,
-        output_path=ass_path,
-        preset_key=req.preset_key,
-        custom_options=render_custom_options
-    )
+    enable_captions = bool(custom_opts.get("enable_captions", project.get("enable_captions", True)))
+    target_res = str(custom_opts.get("target_resolution", project.get("target_resolution", "1080p"))).lower().strip()
 
-    # 2. Render Full HD MP4 Video with BGM, Ken Burns FX, Modern Transitions, and Audio Muxing
-    out_filename = f"{project['name']}_FullHD_1080p_{int(time.time())}.mp4"
+    if enable_captions:
+        ass_path = str(TEMP_DIR / f"{req.project_id}_subtitles.ass")
+        callouts_on = custom_opts.get("callouts_enabled", project.get("callouts_enabled", False))
+        callout_st = custom_opts.get("callout_style", project.get("callout_style", "badge_yellow"))
+        render_custom_options = {
+            **custom_opts,
+            "callouts_enabled": callouts_on,
+            "callout_style": callout_st
+        }
+        generate_ass_subtitles(
+            scenes=scenes,
+            output_path=ass_path,
+            preset_key=req.preset_key,
+            custom_options=render_custom_options
+        )
+        final_ass_path = ass_path
+    else:
+        final_ass_path = None
+
+    # 2. Render Video with BGM, Ken Burns FX, Modern Transitions, and Audio Muxing
+    res_tag = "8K_UHD" if target_res == "8k" else ("4K_UHD" if target_res == "4k" else "FullHD_1080p")
+    out_filename = f"{project['name']}_{res_tag}_{int(time.time())}.mp4"
     render_opts = {
         "fps": req.fps,
+        "target_resolution": target_res,
         "bgm_track": req.custom_options.get("bgm_track", project.get("bgm_track", "cinematic_ambient")),
         "bgm_volume": float(req.custom_options.get("bgm_volume", project.get("bgm_volume", 0.10))),
         "enable_motion": bool(req.custom_options.get("enable_motion", project.get("enable_motion", True))),
@@ -503,11 +562,10 @@ def render_video(req: RenderRequest):
         rendered_path = render_final_video(
             audio_path=audio_path,
             scenes=scenes,
-            ass_subtitle_path=ass_path,
+            ass_subtitle_path=final_ass_path,
             output_filename=out_filename,
             custom_options=render_opts
         )
-
 
     web_url = _to_media_url(rendered_path)
     project["rendered_video"] = {
@@ -517,13 +575,23 @@ def render_video(req: RenderRequest):
         "rendered_at": time.strftime("%b %d, %Y %I:%M %p")
     }
     project["status"] = "completed"
+
+    # Auto-generate 2 YouTube Thumbnails (Viral & Cinematic)
+    try:
+        from backend.thumbnail_generator import generate_youtube_thumbnails
+        thumb_res = generate_youtube_thumbnails(project, target_dir=DATA_DIR / "thumbnails")
+        project["thumbnails"] = thumb_res
+    except Exception as th_err:
+        print(f"[ThumbnailGenerator] Auto-generation notice: {th_err}")
+
     save_project_to_history(project)
 
     return {
         "status": "success",
         "output_file": out_filename,
         "output_path": rendered_path,
-        "web_url": web_url
+        "web_url": web_url,
+        "thumbnails": project.get("thumbnails")
     }
 
 
@@ -561,30 +629,39 @@ def start_render_job(req: RenderRequest):
             audio_path = project["audio_path"]
             scenes = project["scenes"]
 
-            # 1. Generate ASS Subtitles
-            ass_path = str(TEMP_DIR / f"{req.project_id}_subtitles.ass")
+            # 1. Check captions toggle and target resolution
             custom_opts = req.custom_options or {}
-            callouts_on = custom_opts.get("callouts_enabled", project.get("callouts_enabled", False))
-            callout_st = custom_opts.get("callout_style", project.get("callout_style", "badge_yellow"))
-            render_custom_options = {
-                **custom_opts,
-                "callouts_enabled": callouts_on,
-                "callout_style": callout_st
-            }
-            generate_ass_subtitles(
-                scenes=scenes,
-                output_path=ass_path,
-                preset_key=req.preset_key,
-                custom_options=render_custom_options
-            )
+            enable_captions = bool(custom_opts.get("enable_captions", project.get("enable_captions", True)))
+            target_res = str(custom_opts.get("target_resolution", project.get("target_resolution", "1080p"))).lower().strip()
+
+            if enable_captions:
+                ass_path = str(TEMP_DIR / f"{req.project_id}_subtitles.ass")
+                callouts_on = custom_opts.get("callouts_enabled", project.get("callouts_enabled", False))
+                callout_st = custom_opts.get("callout_style", project.get("callout_style", "badge_yellow"))
+                render_custom_options = {
+                    **custom_opts,
+                    "callouts_enabled": callouts_on,
+                    "callout_style": callout_st
+                }
+                generate_ass_subtitles(
+                    scenes=scenes,
+                    output_path=ass_path,
+                    preset_key=req.preset_key,
+                    custom_options=render_custom_options
+                )
+                final_ass_path = ass_path
+            else:
+                final_ass_path = None
 
             job["percent"] = 10
-            job["stage_desc"] = "Subtitles compiled. Initializing parallel video segments..."
+            job["stage_desc"] = "Ready. Initializing parallel video normalization..."
 
             proj_name = project.get("name") or project.get("id") or "VideoGen"
-            out_filename = f"{proj_name}_FullHD_1080p_{int(time.time())}.mp4"
+            res_tag = "8K_UHD" if target_res == "8k" else ("4K_UHD" if target_res == "4k" else "FullHD_1080p")
+            out_filename = f"{proj_name}_{res_tag}_{int(time.time())}.mp4"
             render_opts = {
                 "fps": req.fps,
+                "target_resolution": target_res,
                 "bgm_track": req.custom_options.get("bgm_track", project.get("bgm_track", "cinematic_ambient")),
                 "bgm_volume": float(req.custom_options.get("bgm_volume", project.get("bgm_volume", 0.10))),
                 "enable_motion": bool(req.custom_options.get("enable_motion", project.get("enable_motion", True))),
@@ -609,11 +686,11 @@ def start_render_job(req: RenderRequest):
                 job["stage_desc"] = desc
                 job["elapsed_seconds"] = int(elapsed)
                 if stage == "normalizing":
-                    job["stage_title"] = f"Parallel 1080p Normalization ({clamped_pct}%)..."
+                    job["stage_title"] = f"Parallel Normalization ({clamped_pct}%)..."
                 elif stage == "concatenating":
                     job["stage_title"] = "Timeline Transitions & Stitching..."
                 elif stage == "completed":
-                    job["stage_title"] = "Audio Muxing & Subtitle Burn Complete!"
+                    job["stage_title"] = "Audio Muxing & Video Export Complete!"
 
                 if clamped_pct > 12:
                     total_est = elapsed / (clamped_pct / 100.0)
@@ -623,7 +700,7 @@ def start_render_job(req: RenderRequest):
                 rendered_path = render_final_video(
                     audio_path=audio_path,
                     scenes=scenes,
-                    ass_subtitle_path=ass_path,
+                    ass_subtitle_path=final_ass_path,
                     output_filename=out_filename,
                     custom_options=render_opts,
                     progress_callback=on_render_progress
@@ -637,13 +714,36 @@ def start_render_job(req: RenderRequest):
                 "rendered_at": time.strftime("%b %d, %Y %I:%M %p")
             }
             project["status"] = "completed"
+
+            # Auto-generate 2 YouTube Thumbnails (Viral & Cinematic)
+            try:
+                from backend.thumbnail_generator import generate_youtube_thumbnails
+                thumb_res = generate_youtube_thumbnails(project, target_dir=DATA_DIR / "thumbnails")
+                project["thumbnails"] = thumb_res
+                job["thumbnails"] = thumb_res
+            except Exception as th_err:
+                print(f"[ThumbnailGenerator] Auto-generation notice: {th_err}")
+
+            # Auto-generate YouTube SEO Suite metadata in background
+            try:
+                from backend.seo_generator import generate_youtube_seo
+                full_text = " ".join([sc.get("narration", "") for sc in project.get("scenes", [])])
+                seo_meta = generate_youtube_seo(text=full_text, scenes=project.get("scenes", []), topic=project.get("name"))
+                project["seo"] = seo_meta
+                seo_dir = DATA_DIR / "seo"
+                seo_dir.mkdir(parents=True, exist_ok=True)
+                with open(seo_dir / f"{project['id']}_seo.json", "w", encoding="utf-8") as f:
+                    json.dump(seo_meta, f, indent=2)
+            except Exception as seo_err:
+                print(f"[SEOGenerator] Auto-generation notice: {seo_err}")
+
             save_project_to_history(project)
 
             job["status"] = "completed"
             job["percent"] = 100
             job["stage"] = "completed"
             job["stage_title"] = "Render Complete!"
-            job["stage_desc"] = "Full HD video ready to preview and download."
+            job["stage_desc"] = "Ultra HD video ready in output folder."
             job["output_file"] = out_filename
             job["output_path"] = rendered_path
             job["web_url"] = web_url
@@ -681,6 +781,153 @@ def get_render_progress(job_id: str):
 @app.get("/api/projects")
 def get_projects():
     return load_projects_history()
+
+
+@app.delete("/api/projects/all")
+def delete_all_projects():
+    global ACTIVE_PROJECTS
+    ACTIVE_PROJECTS.clear()
+    with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
+        json.dump([], f, indent=2)
+    return {"status": "success", "message": "All projects cleared successfully"}
+
+
+@app.delete("/api/projects/{project_id}")
+def delete_single_project(project_id: str):
+    global ACTIVE_PROJECTS
+    if project_id in ACTIVE_PROJECTS:
+        del ACTIVE_PROJECTS[project_id]
+
+    history = load_projects_history()
+    new_history = [p for p in history if p.get("id") != project_id]
+    with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
+        json.dump(new_history, f, indent=2)
+
+    return {"status": "success", "message": f"Project {project_id} deleted successfully"}
+
+
+# ======================== YOUTUBE THUMBNAIL STUDIO ========================
+
+class GenerateThumbnailRequest(BaseModel):
+    project_id: str
+    custom_headline: Optional[str] = None
+
+
+@app.post("/api/generate-thumbnails")
+def generate_thumbnails_endpoint(req: GenerateThumbnailRequest):
+    project = ACTIVE_PROJECTS.get(req.project_id)
+    if not project:
+        history = load_projects_history()
+        project = next((p for p in history if p.get("id") == req.project_id), None)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+    from backend.thumbnail_generator import generate_youtube_thumbnails
+    thumb_res = generate_youtube_thumbnails(project, custom_headline=req.custom_headline, target_dir=DATA_DIR / "thumbnails")
+    project["thumbnails"] = thumb_res
+    save_project_to_history(project)
+    return {"status": "success", "thumbnails": thumb_res}
+
+
+@app.get("/api/thumbnails/{project_id}")
+def get_thumbnails_endpoint(project_id: str):
+    project = ACTIVE_PROJECTS.get(project_id)
+    if not project:
+        history = load_projects_history()
+        project = next((p for p in history if p.get("id") == project_id), None)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+    thumbs = project.get("thumbnails")
+    if not thumbs:
+        from backend.thumbnail_generator import generate_youtube_thumbnails
+        thumbs = generate_youtube_thumbnails(project, target_dir=DATA_DIR / "thumbnails")
+        project["thumbnails"] = thumbs
+        save_project_to_history(project)
+
+    return {"status": "success", "thumbnails": thumbs}
+
+
+# ======================== TRANSITION SFX & YOUTUBE SEO SUITE ========================
+
+@app.get("/api/sfx-tracks")
+def list_sfx_tracks():
+    sfx_dir = DATA_DIR / "sfx"
+    sfx_dir.mkdir(parents=True, exist_ok=True)
+    tracks = [
+        {"id": "whoosh_soft", "name": "💨 Cinematic Whoosh", "recommended": True},
+        {"id": "pop_punch", "name": "🥊 Punchy Pop", "recommended": True},
+        {"id": "click_modern", "name": "📸 Modern Click", "recommended": False},
+        {"id": "ding_bell", "name": "🔔 Ding Bell", "recommended": False},
+        {"id": "none", "name": "🚫 Silent (No SFX)", "recommended": False}
+    ]
+    for t in tracks:
+        if t["id"] != "none":
+            fpath = sfx_dir / f"{t['id']}.mp3"
+            t["exists"] = fpath.exists()
+            t["web_url"] = f"/media/sfx/{t['id']}.mp3" if fpath.exists() else None
+        else:
+            t["exists"] = True
+            t["web_url"] = None
+    return {"status": "success", "tracks": tracks}
+
+
+class GenerateSEORequest(BaseModel):
+    project_id: Optional[str] = None
+    text: Optional[str] = None
+    topic: Optional[str] = None
+
+
+@app.post("/api/generate-seo")
+def generate_seo_endpoint(req: GenerateSEORequest):
+    from backend.seo_generator import generate_youtube_seo
+    text = (req.text or "").strip()
+    scenes = None
+    proj_id = req.project_id
+
+    if proj_id:
+        proj = ACTIVE_PROJECTS.get(proj_id)
+        if not proj:
+            history = load_projects_history()
+            proj = next((p for p in history if p.get("id") == proj_id), None)
+        if proj:
+            if not text:
+                text = " ".join([sc.get("narration", "") for sc in proj.get("scenes", [])])
+            scenes = proj.get("scenes", [])
+
+    if not text:
+        text = "YouTube automated viral video breakdown and high value tips."
+
+    seo_data = generate_youtube_seo(text=text, scenes=scenes, topic=req.topic)
+
+    if proj_id:
+        seo_dir = DATA_DIR / "seo"
+        seo_dir.mkdir(parents=True, exist_ok=True)
+        seo_file = seo_dir / f"{proj_id}_seo.json"
+        with open(seo_file, "w", encoding="utf-8") as f:
+            json.dump(seo_data, f, indent=2)
+
+        proj = ACTIVE_PROJECTS.get(proj_id)
+        if proj:
+            proj["seo"] = seo_data
+            save_project_to_history(proj)
+
+    return seo_data
+
+
+@app.get("/api/seo/{project_id}")
+def get_seo_for_project(project_id: str):
+    seo_file = DATA_DIR / "seo" / f"{project_id}_seo.json"
+    if seo_file.exists():
+        try:
+            with open(seo_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    proj = ACTIVE_PROJECTS.get(project_id)
+    if proj and "seo" in proj:
+        return proj["seo"]
+    return {"status": "not_found"}
 
 
 class OpenFolderRequest(BaseModel):
@@ -1171,6 +1418,14 @@ def cancel_batch(batch_id: str):
     return {"status": "success", "message": "Batch cancellation requested", "batch_id": batch_id}
 
 
+@app.get("/favicon.ico")
+def get_favicon():
+    ico_file = FRONTEND_DIR / "favicon.ico"
+    if ico_file.exists():
+        return FileResponse(str(ico_file), media_type="image/x-icon")
+    raise HTTPException(status_code=404, detail="Favicon not found")
+
+
 # Mount data folder to serve audio, video clips, and exported MP4s
 app.mount("/media", StaticFiles(directory=str(DATA_DIR)), name="media")
 
@@ -1178,3 +1433,8 @@ app.mount("/media", StaticFiles(directory=str(DATA_DIR)), name="media")
 frontend_dir = FRONTEND_DIR
 if frontend_dir.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8765, log_level="warning")

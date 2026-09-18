@@ -151,6 +151,21 @@ def render_final_video(
     emphasis_zoom_enabled = bool(custom_options.get("emphasis_zoom_enabled", False))
     emphasis_zoom_intensity = float(custom_options.get("emphasis_zoom_intensity", 1.15))
 
+    # Resolution Configuration (1080p, 4K UHD, 8K UHD)
+    target_res = str(custom_options.get("target_resolution", "1080p")).lower().strip()
+    if target_res == "8k":
+        target_w, target_h = 7680, 4320
+        motion_w1, motion_h1 = 8832, 4968
+        motion_w2, motion_h2 = 8192, 4608
+    elif target_res == "4k":
+        target_w, target_h = 3840, 2160
+        motion_w1, motion_h1 = 4416, 2484
+        motion_w2, motion_h2 = 4096, 2304
+    else:
+        target_w, target_h = 1920, 1080
+        motion_w1, motion_h1 = 2208, 1242
+        motion_w2, motion_h2 = 2048, 1152
+
     # Detect fastest hardware or CPU encoder once
     encoder, encoder_args = get_best_video_encoder(ffmpeg_exe, use_gpu=use_gpu)
 
@@ -256,16 +271,16 @@ def render_final_video(
         # Build filter pipeline:
         if enable_motion:
             if has_punch_zoom:
-                vf_scale = f"scale=2208:1242:force_original_aspect_ratio=increase,crop=w='1920/(1+{zoom_term})':h='1080/(1+{zoom_term})':x='(in_w-out_w)/2+(in_w-out_w)/6*sin(2*PI*t/{max(0.5, dur)})':y='(in_h-out_h)/2+(in_h-out_h)/6*cos(2*PI*t/{max(0.5, dur)})',scale=1920:1080"
+                vf_scale = f"scale={motion_w1}:{motion_h1}:force_original_aspect_ratio=increase,crop=w='{target_w}/(1+{zoom_term})':h='{target_h}/(1+{zoom_term})':x='(in_w-out_w)/2+(in_w-out_w)/6*sin(2*PI*t/{max(0.5, dur)})':y='(in_h-out_h)/2+(in_h-out_h)/6*cos(2*PI*t/{max(0.5, dur)})',scale={target_w}:{target_h}"
             elif item_idx % 2 == 0:
-                vf_scale = f"scale=2048:1152:force_original_aspect_ratio=increase,crop=1920:1080:(in_w-out_w)/2+(in_w-out_w)/4*sin(2*PI*t/{max(0.5, dur)}):(in_h-out_h)/2+(in_h-out_h)/4*cos(2*PI*t/{max(0.5, dur)})"
+                vf_scale = f"scale={motion_w2}:{motion_h2}:force_original_aspect_ratio=increase,crop={target_w}:{target_h}:(in_w-out_w)/2+(in_w-out_w)/4*sin(2*PI*t/{max(0.5, dur)}):(in_h-out_h)/2+(in_h-out_h)/4*cos(2*PI*t/{max(0.5, dur)})"
             else:
-                vf_scale = f"scale=2048:1152:force_original_aspect_ratio=increase,crop=1920:1080:(in_w-out_w)*(t/{max(0.5, dur)}):(in_h-out_h)/2"
+                vf_scale = f"scale={motion_w2}:{motion_h2}:force_original_aspect_ratio=increase,crop={target_w}:{target_h}:(in_w-out_w)*(t/{max(0.5, dur)}):(in_h-out_h)/2"
         else:
             if has_punch_zoom:
-                vf_scale = f"scale=2208:1242:force_original_aspect_ratio=increase,crop=w='1920/(1+{zoom_term})':h='1080/(1+{zoom_term})':x='(in_w-out_w)/2':y='(in_h-out_h)/2',scale=1920:1080"
+                vf_scale = f"scale={motion_w1}:{motion_h1}:force_original_aspect_ratio=increase,crop=w='{target_w}/(1+{zoom_term})':h='{target_h}/(1+{zoom_term})':x='(in_w-out_w)/2':y='(in_h-out_h)/2',scale={target_w}:{target_h}"
             else:
-                vf_scale = "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080"
+                vf_scale = f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,crop={target_w}:{target_h}"
 
         vf_parts = [vf_scale, "setsar=1", f"fps={fps}"]
         
@@ -321,7 +336,7 @@ def render_final_video(
             fb_cmd = [
                 ffmpeg_exe, "-y",
                 "-f", "lavfi",
-                "-i", f"color=c=0x111726:s=1920x1080:d={clip_target_dur:.2f}:r={fps}",
+                "-i", f"color=c=0x111726:s={target_w}x{target_h}:d={clip_target_dur:.2f}:r={fps}",
                 "-c:v", "libx264",
                 "-preset", "ultrafast",
                 "-pix_fmt", "yuv420p",

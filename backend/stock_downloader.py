@@ -15,12 +15,12 @@ VIDEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 import threading
 
 
-def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int) -> str:
+def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int, target_resolution: str = "1080p") -> str:
     """
     Intelligently crops and trims a downloaded stock video to the EXACT scene duration.
     - Strips all excess video beyond the sentence duration so clips never spill into next sentences.
     - If the clip is shorter than the sentence, applies seamless looping (-stream_loop -1).
-    - Enforces clean 1920x1080 16:9 Full HD center-crop, 30fps, setsar=1.
+    - Enforces target resolution (1080p Full HD, 4K UHD, or 8K UHD) 16:9 center-crop, 30fps, setsar=1.
     - Strips native audio (-an) to prevent ambient noise clash.
     """
     if not raw_path or not os.path.exists(raw_path):
@@ -28,6 +28,13 @@ def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int) -> str:
 
     ffmpeg_exe = find_ffmpeg()
     target_dur = max(0.5, round(float(target_dur), 2))
+    res_str = str(target_resolution or "1080p").lower().strip()
+    if res_str == "8k":
+        w, h = 7680, 4320
+    elif res_str == "4k":
+        w, h = 3840, 2160
+    else:
+        w, h = 1920, 1080
     
     probe_dur = 0.0
     ffprobe_exe = find_ffprobe()
@@ -41,8 +48,8 @@ def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int) -> str:
     scene_clip_dir = CACHE_DIR / "scene_clips"
     scene_clip_dir.mkdir(parents=True, exist_ok=True)
     
-    path_hash = hashlib.md5(f"{raw_path}_{target_dur}".encode("utf-8")).hexdigest()[:8]
-    out_name = f"sc_{scene_id:04d}_{path_hash}.mp4"
+    path_hash = hashlib.md5(f"{raw_path}_{target_dur}_{res_str}".encode("utf-8")).hexdigest()[:8]
+    out_name = f"sc_{scene_id:04d}_{res_str}_{path_hash}.mp4"
     out_path = scene_clip_dir / out_name
 
     if out_path.exists() and out_path.stat().st_size > 1000:
@@ -66,10 +73,11 @@ def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int) -> str:
     if start_offset > 0:
         cmd.extend(["-ss", f"{start_offset:.2f}"])
 
+    scale_filter = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},setsar=1,fps=30"
     cmd.extend([
         "-i", str(raw_path),
         "-t", f"{target_dur:.2f}",
-        "-vf", "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,fps=30",
+        "-vf", scale_filter,
         "-c:v", "libx264",
         "-preset", "ultrafast",
         "-crf", "18",
@@ -86,7 +94,7 @@ def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int) -> str:
         return raw_path
 
 
-def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback=None) -> List[Dict[str, Any]]:
+def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback=None, target_resolution: str = "1080p") -> List[Dict[str, Any]]:
     """
     Downloads stock videos for all scenes in parallel using a ThreadPoolExecutor.
     Includes visual diversity tracking to prevent adjacent scenes from getting identical clips.
@@ -94,7 +102,7 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
     settings = load_settings()
     num_workers = int(settings.get("workers", 6))
     
-    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers...")
+    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers (Resolution: {target_resolution})...")
 
     completed_scenes = [None] * len(scenes)
     completed_count = 0
@@ -114,7 +122,7 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
         sentence_text = scene_item.get("text", "")
         search_candidates = [selected_tag] + [t for t in tags if t != selected_tag]
         for candidate in search_candidates:
-            clip_data = find_and_download_stock_video(candidate, min_duration=duration, sentence_context=sentence_text)
+            clip_data = find_and_download_stock_video(candidate, min_duration=duration, sentence_context=sentence_text, target_resolution=target_resolution)
             if clip_data:
                 vid_id = clip_data.get("video_id")
                 # Visual diversity check: if this video was already used recently,
@@ -132,7 +140,7 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
 
         # Intelligently trim the clip to the exact sentence duration (stripping excess video)
         if clip_data and clip_data.get("file_path"):
-            trimmed_path = trim_and_fit_clip(clip_data["file_path"], duration, scene_idx)
+            trimmed_path = trim_and_fit_clip(clip_data["file_path"], duration, scene_idx, target_resolution=target_resolution)
             clip_data["raw_file_path"] = clip_data["file_path"]
             clip_data["file_path"] = trimmed_path
             clip_data["duration"] = duration
@@ -183,16 +191,30 @@ SESSION.mount("https://", adapter)
 SESSION.mount("http://", adapter)
 
 
-def _score_candidate(duration: float, width: int, height: int, target_dur: float, query_words: List[str], metadata_text: str) -> float:
+def _score_candidate(duration: float, width: int, height: int, target_dur: float, query_words: List[str], metadata_text: str, target_resolution: str = "1080p") -> float:
     """Ranks candidate video clips based on resolution, duration headroom, and keyword match."""
     score = 0.0
-    # 1. Orientation & Resolution (40 pts)
-    if width >= 1920 and height == 1080:
-        score += 40.0
-    elif width >= 1280 and width > height:
-        score += 25.0
-    elif width > 0 and width < height:
-        score -= 60.0  # Penalize vertical clips in 16:9 widescreen mode
+    res_str = str(target_resolution or "1080p").lower().strip()
+
+    # 1. Orientation & Resolution (40-45 pts)
+    if res_str in ("4k", "8k"):
+        if width >= 3840 and height >= 2160:
+            score += 45.0
+        elif width >= 2560 and width > height:
+            score += 35.0
+        elif width >= 1920 and width > height:
+            score += 25.0
+        elif width >= 1280 and width > height:
+            score += 15.0
+        elif width > 0 and width < height:
+            score -= 60.0
+    else:
+        if width >= 1920 and height == 1080:
+            score += 40.0
+        elif width >= 1280 and width > height:
+            score += 25.0
+        elif width > 0 and width < height:
+            score -= 60.0  # Penalize vertical clips in 16:9 widescreen mode
 
     # 2. Duration Headroom Fit (30 pts)
     # Sweet spot: clip is 1.5x - 3.5x target_dur so action window trimming captures the peak movement
@@ -213,7 +235,7 @@ def _score_candidate(duration: float, width: int, height: int, target_dur: float
     return score
 
 
-def find_and_download_stock_video(query: str, min_duration: float = 3.0, sentence_context: str = "") -> Optional[Dict[str, Any]]:
+def find_and_download_stock_video(query: str, min_duration: float = 3.0, sentence_context: str = "", target_resolution: str = "1080p") -> Optional[Dict[str, Any]]:
     """
     Cascading Fallback Provider Architecture:
     1. Queries primary provider (Pexels). If candidates match, returns immediately!
@@ -234,13 +256,13 @@ def find_and_download_stock_video(query: str, min_duration: float = 3.0, sentenc
 
     # Priority 1: Pexels (best quality)
     if (provider_pref in ("all", "pexels")) and pexels_key:
-        clip = _search_pexels(query, pexels_key, min_duration, sentence_context)
+        clip = _search_pexels(query, pexels_key, min_duration, sentence_context, target_resolution=target_resolution)
         if clip:
             return clip
 
     # Priority 2: Pixabay (fast secondary fallback)
     if (provider_pref in ("all", "pixabay")) and pixabay_key:
-        clip = _search_pixabay(query, pixabay_key, min_duration, sentence_context)
+        clip = _search_pixabay(query, pixabay_key, min_duration, sentence_context, target_resolution=target_resolution)
         if clip:
             return clip
 
@@ -277,7 +299,7 @@ def find_and_download_stock_video(query: str, min_duration: float = 3.0, sentenc
     return None
 
 
-def _search_pexels(query: str, api_key: str, min_duration: float, sentence_context: str = "") -> Optional[Dict[str, Any]]:
+def _search_pexels(query: str, api_key: str, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p") -> Optional[Dict[str, Any]]:
     clean_query = re.sub(r'#', '', query).strip()
     url = f"https://api.pexels.com/videos/search?query={requests.utils.quote(clean_query)}&orientation=landscape&size=large&per_page=15"
     headers = {"Authorization": api_key, "User-Agent": "VideoGen/1.0"}
@@ -305,11 +327,18 @@ def _search_pexels(query: str, api_key: str, min_duration: float, sentence_conte
                 h = vf.get("height") or 0
                 link = vf.get("link")
                 if link and w >= 1280 and (w > h):
-                    if w == 1920 and h == 1080:
-                        best_file = vf
-                        break
-                    if best_file is None or w > (best_file.get("width") or 0):
-                        best_file = vf
+                    if target_resolution in ("4k", "8k"):
+                        if w >= 3840 and h >= 2160:
+                            best_file = vf
+                            break
+                        if best_file is None or w > (best_file.get("width") or 0):
+                            best_file = vf
+                    else:
+                        if w == 1920 and h == 1080:
+                            best_file = vf
+                            break
+                        if best_file is None or w > (best_file.get("width") or 0):
+                            best_file = vf
 
             if best_file and best_file.get("link"):
                 vid_dur = float(vid.get("duration", min_duration))
@@ -321,7 +350,8 @@ def _search_pexels(query: str, api_key: str, min_duration: float, sentence_conte
                     height=best_file.get("height", 1080),
                     target_dur=min_duration,
                     query_words=query_tokens,
-                    metadata_text=meta_text
+                    metadata_text=meta_text,
+                    target_resolution=target_resolution
                 )
                 scored.append((score, vid, best_file))
 
@@ -347,7 +377,7 @@ def _search_pexels(query: str, api_key: str, min_duration: float, sentence_conte
     return None
 
 
-def _search_pixabay(query: str, api_key: str, min_duration: float, sentence_context: str = "") -> Optional[Dict[str, Any]]:
+def _search_pixabay(query: str, api_key: str, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p") -> Optional[Dict[str, Any]]:
     clean_query = re.sub(r'#', '', query).strip()
     url = f"https://pixabay.com/api/videos/?key={api_key}&q={requests.utils.quote(clean_query)}&video_type=film&orientation=horizontal&per_page=15"
     headers = {"User-Agent": "VideoGen/1.0"}
@@ -368,7 +398,10 @@ def _search_pixabay(query: str, api_key: str, min_duration: float, sentence_cont
         scored = []
         for h in hits:
             vid_files = h.get("videos", {})
-            selected = vid_files.get("large") or vid_files.get("medium")
+            if target_resolution in ("4k", "8k"):
+                selected = vid_files.get("large") or vid_files.get("medium")
+            else:
+                selected = vid_files.get("large") or vid_files.get("medium")
             if not selected or not selected.get("url"):
                 continue
             w = selected.get("width") or 0
@@ -383,7 +416,8 @@ def _search_pixabay(query: str, api_key: str, min_duration: float, sentence_cont
                 height=h_val,
                 target_dur=min_duration,
                 query_words=query_tokens,
-                metadata_text=tags_text
+                metadata_text=tags_text,
+                target_resolution=target_resolution
             )
             scored.append((score, h, selected))
 
