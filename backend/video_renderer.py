@@ -659,20 +659,23 @@ def _render_xfade_single(ffmpeg_exe, seg_files, valid_clips, transition, trans_d
     for i in range(len(valid_clips) - 1):
         dur_i = valid_clips[i][2]
         cum_offset += dur_i
-        trans_offset = max(0.01, cum_offset - (trans_dur / 2.0))
+
+        # Safe adaptive transition duration: prevent xfade crash if scene is shorter than transition
+        eff_trans = min(trans_dur, max(0.08, dur_i * 0.40))
+        trans_offset = max(0.01, round(cum_offset - eff_trans, 2))
 
         # Pick transition type (random or fixed) with no consecutive repeats
         trans_type = _pick_transition(i, mode=transition_mode, fallback=transition, last_picked=last_picked)
         last_picked = trans_type
 
-        print(f"[Renderer] Scene boundary {i} -> {i+1}: transition '{trans_type}' (mode: {transition_mode}, offset: {trans_offset:.2f}s, duration: {trans_dur:.2f}s)")
+        print(f"[Renderer] Scene boundary {i} -> {i+1}: transition '{trans_type}' (mode: {transition_mode}, offset: {trans_offset:.2f}s, duration: {eff_trans:.2f}s)")
 
         in_label = "[0:v]" if i == 0 else f"[v{i}]"
         next_label = f"[{i+1}:v]"
         out_label = f"[v{i+1}]"
 
         filter_chains.append(
-            f"{in_label}{next_label}xfade=transition={trans_type}:duration={trans_dur:.2f}:offset={trans_offset:.2f}{out_label}"
+            f"{in_label}{next_label}xfade=transition={trans_type}:duration={eff_trans:.2f}:offset={trans_offset:.2f}{out_label}"
         )
 
     final_filter = ";".join(filter_chains)
@@ -746,20 +749,23 @@ def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_
         for i in range(len(batch_clips) - 1):
             dur_i = batch_clips[i][2]
             cum_offset += dur_i
-            trans_offset = max(0.01, cum_offset - (trans_dur / 2.0))
+
+            # Safe adaptive transition duration for batches
+            eff_trans = min(trans_dur, max(0.08, dur_i * 0.40))
+            trans_offset = max(0.01, round(cum_offset - eff_trans, 2))
 
             boundary_idx = batch_start + i
             trans_type = _pick_transition(boundary_idx, mode=transition_mode, fallback=transition, last_picked=last_picked)
             last_picked = trans_type
 
-            print(f"[Renderer] Batch scene boundary {boundary_idx} -> {boundary_idx+1}: transition '{trans_type}' (mode: {transition_mode}, offset: {trans_offset:.2f}s, duration: {trans_dur:.2f}s)")
+            print(f"[Renderer] Batch scene boundary {boundary_idx} -> {boundary_idx+1}: transition '{trans_type}' (mode: {transition_mode}, offset: {trans_offset:.2f}s, duration: {eff_trans:.2f}s)")
 
             in_label = "[0:v]" if i == 0 else f"[v{i}]"
             next_label = f"[{i+1}:v]"
             out_label = f"[v{i+1}]"
 
             filter_chains.append(
-                f"{in_label}{next_label}xfade=transition={trans_type}:duration={trans_dur:.2f}:offset={trans_offset:.2f}{out_label}"
+                f"{in_label}{next_label}xfade=transition={trans_type}:duration={eff_trans:.2f}:offset={trans_offset:.2f}{out_label}"
             )
 
         final_filter = ";".join(filter_chains)

@@ -94,15 +94,76 @@ def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int, target_re
         return raw_path
 
 
+class ApiKeyPool:
+    """
+    Thread-safe round-robin API key pool with automatic rate-limit (429) cooldown.
+    Distributes scene queries across multiple accounts so limits are never exceeded.
+    """
+    def __init__(self, keys: List[str], provider_name: str = "Pexels"):
+        self.keys = [str(k).strip() for k in keys if k and str(k).strip()]
+        self.provider_name = provider_name
+        self.index = 0
+        self.lock = threading.Lock()
+        self.cooldowns: Dict[str, float] = {}
+
+    def has_keys(self) -> bool:
+        return len(self.keys) > 0
+
+    def get_candidate_keys(self) -> List[str]:
+        """Returns ordered candidate keys prioritizing active non-cooldown keys."""
+        with self.lock:
+            if not self.keys:
+                return []
+            now = time.time()
+            active = [k for k in self.keys if self.cooldowns.get(k, 0.0) <= now]
+            cooling = [k for k in self.keys if self.cooldowns.get(k, 0.0) > now]
+            if active:
+                start_idx = self.index % len(active)
+                ordered_active = active[start_idx:] + active[:start_idx]
+                self.index = (self.index + 1) % len(active)
+                return ordered_active + cooling
+            else:
+                cooling.sort(key=lambda k: self.cooldowns.get(k, 0.0))
+                return cooling
+
+    def mark_rate_limited(self, key: str, cooldown_seconds: int = 300):
+        with self.lock:
+            k_mask = f"...{key[-6:]}" if len(key) >= 6 else key
+            print(f"[StockDownloader] ⚠️ {self.provider_name} Key {k_mask} hit rate limit (429). Cooldown {cooldown_seconds}s. Load-balancing to next account key...")
+            self.cooldowns[key] = time.time() + cooldown_seconds
+
+
+from urllib3.util import Retry
+from requests.adapters import HTTPAdapter
+import time
+
+# Create high-performance persistent session with connection pooling
+SESSION = requests.Session()
+retries = Retry(total=2, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504], raise_on_status=False)
+adapter = HTTPAdapter(pool_connections=64, pool_maxsize=64, max_retries=retries)
+SESSION.mount("https://", adapter)
+SESSION.mount("http://", adapter)
+
+
 def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback=None, target_resolution: str = "1080p") -> List[Dict[str, Any]]:
     """
     Downloads stock videos for all scenes in parallel using a ThreadPoolExecutor.
+    Load-balances queries across multiple API keys (Pexels, Pixabay, etc.).
     Includes visual diversity tracking to prevent adjacent scenes from getting identical clips.
     """
     settings = load_settings()
-    num_workers = int(settings.get("workers", 6))
-    
-    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers (Resolution: {target_resolution})...")
+    configured_workers = int(settings.get("workers", 8))
+
+    # Initialize shared key pools for this batch of scenes
+    p_keys = settings.get("pexels_api_keys") or ([settings.get("pexels_api_key")] if settings.get("pexels_api_key") else [])
+    pb_keys = settings.get("pixabay_api_keys") or ([settings.get("pixabay_api_key")] if settings.get("pixabay_api_key") else [])
+    pexels_pool = ApiKeyPool(p_keys, "Pexels")
+    pixabay_pool = ApiKeyPool(pb_keys, "Pixabay")
+
+    total_keys = len(p_keys) + len(pb_keys)
+    num_workers = max(configured_workers, min(16, max(4, total_keys * 2)))
+
+    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers (Resolution: {target_resolution}, Pexels Accounts: {len(p_keys)}, Pixabay Accounts: {len(pb_keys)})...")
 
     completed_scenes = [None] * len(scenes)
     completed_count = 0
@@ -122,7 +183,14 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
         sentence_text = scene_item.get("text", "")
         search_candidates = [selected_tag] + [t for t in tags if t != selected_tag]
         for candidate in search_candidates:
-            clip_data = find_and_download_stock_video(candidate, min_duration=duration, sentence_context=sentence_text, target_resolution=target_resolution)
+            clip_data = find_and_download_stock_video(
+                candidate,
+                min_duration=duration,
+                sentence_context=sentence_text,
+                target_resolution=target_resolution,
+                pexels_pool=pexels_pool,
+                pixabay_pool=pixabay_pool
+            )
             if clip_data:
                 vid_id = clip_data.get("video_id")
                 # Visual diversity check: if this video was already used recently,
@@ -180,17 +248,6 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
     return completed_scenes
 
 
-from urllib3.util import Retry
-from requests.adapters import HTTPAdapter
-
-# Create persistent session with connection pooling and 429 rate limit backoff
-SESSION = requests.Session()
-retries = Retry(total=2, backoff_factor=0.8, status_forcelist=[429, 500, 502, 503, 504], raise_on_status=False)
-adapter = HTTPAdapter(pool_connections=32, pool_maxsize=32, max_retries=retries)
-SESSION.mount("https://", adapter)
-SESSION.mount("http://", adapter)
-
-
 def _score_candidate(duration: float, width: int, height: int, target_dur: float, query_words: List[str], metadata_text: str, target_resolution: str = "1080p") -> float:
     """Ranks candidate video clips based on resolution, duration headroom, and keyword match."""
     score = 0.0
@@ -217,7 +274,6 @@ def _score_candidate(duration: float, width: int, height: int, target_dur: float
             score -= 60.0  # Penalize vertical clips in 16:9 widescreen mode
 
     # 2. Duration Headroom Fit (30 pts)
-    # Sweet spot: clip is 1.5x - 3.5x target_dur so action window trimming captures the peak movement
     if target_dur <= duration <= (target_dur * 3.5):
         score += 30.0
     elif (target_dur * 3.5) < duration <= 35.0:
@@ -225,7 +281,7 @@ def _score_candidate(duration: float, width: int, height: int, target_dur: float
     elif duration > 35.0:
         score += 5.0
     elif duration < target_dur:
-        score += 0.0  # Shorter than sentence requires looping
+        score += 0.0
 
     # 3. Keyword / Semantic Overlap (30 pts)
     meta_lower = metadata_text.lower()
@@ -235,19 +291,31 @@ def _score_candidate(duration: float, width: int, height: int, target_dur: float
     return score
 
 
-def find_and_download_stock_video(query: str, min_duration: float = 3.0, sentence_context: str = "", target_resolution: str = "1080p") -> Optional[Dict[str, Any]]:
+def find_and_download_stock_video(
+    query: str,
+    min_duration: float = 3.0,
+    sentence_context: str = "",
+    target_resolution: str = "1080p",
+    pexels_pool: Optional[ApiKeyPool] = None,
+    pixabay_pool: Optional[ApiKeyPool] = None
+) -> Optional[Dict[str, Any]]:
     """
-    Cascading Fallback Provider Architecture:
-    1. Queries primary provider (Pexels). If candidates match, returns immediately!
-    2. Only if primary returns 0 results or encounters a 429 rate limit, cascades to Pixabay.
+    Cascading Fallback Provider Architecture with Multi-Account Pools:
+    1. Queries primary provider (Pexels) across configured account keys. If candidates match, returns immediately!
+    2. Only if all Pexels keys fail or rate-limit, cascades to Pixabay multi-account pool.
     3. If Pixabay fails, cascades to free archives (Coverr / NASA / Wikimedia).
-    Eliminates uncontrolled API fan-out, stops blocking threads, and preserves API quotas.
     """
     settings = load_settings()
     provider_pref = settings.get("video_provider", "all")
-    
-    pexels_key = settings.get("pexels_api_key", "").strip()
-    pixabay_key = settings.get("pixabay_api_key", "").strip()
+
+    if pexels_pool is None:
+        p_keys = settings.get("pexels_api_keys") or ([settings.get("pexels_api_key")] if settings.get("pexels_api_key") else [])
+        pexels_pool = ApiKeyPool(p_keys, "Pexels")
+
+    if pixabay_pool is None:
+        pb_keys = settings.get("pixabay_api_keys") or ([settings.get("pixabay_api_key")] if settings.get("pixabay_api_key") else [])
+        pixabay_pool = ApiKeyPool(pb_keys, "Pixabay")
+
     coverr_key = settings.get("coverr_api_key", "").strip()
     videvo_key = settings.get("videvo_api_key", "").strip()
     nasa_enabled = bool(settings.get("nasa_api_key") or settings.get("nasa_enabled", True))
@@ -255,14 +323,14 @@ def find_and_download_stock_video(query: str, min_duration: float = 3.0, sentenc
     webhook_url = settings.get("custom_stock_webhook", "").strip()
 
     # Priority 1: Pexels (best quality)
-    if (provider_pref in ("all", "pexels")) and pexels_key:
-        clip = _search_pexels(query, pexels_key, min_duration, sentence_context, target_resolution=target_resolution)
+    if (provider_pref in ("all", "pexels")) and pexels_pool.has_keys():
+        clip = _search_pexels(query, pexels_pool, min_duration, sentence_context, target_resolution=target_resolution)
         if clip:
             return clip
 
     # Priority 2: Pixabay (fast secondary fallback)
-    if (provider_pref in ("all", "pixabay")) and pixabay_key:
-        clip = _search_pixabay(query, pixabay_key, min_duration, sentence_context, target_resolution=target_resolution)
+    if (provider_pref in ("all", "pixabay")) and pixabay_pool.has_keys():
+        clip = _search_pixabay(query, pixabay_pool, min_duration, sentence_context, target_resolution=target_resolution)
         if clip:
             return clip
 
@@ -299,148 +367,161 @@ def find_and_download_stock_video(query: str, min_duration: float = 3.0, sentenc
     return None
 
 
-def _search_pexels(query: str, api_key: str, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p") -> Optional[Dict[str, Any]]:
+def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p") -> Optional[Dict[str, Any]]:
     clean_query = re.sub(r'#', '', query).strip()
-    url = f"https://api.pexels.com/videos/search?query={requests.utils.quote(clean_query)}&orientation=landscape&size=large&per_page=15"
-    headers = {"Authorization": api_key, "User-Agent": "VideoGen/1.0"}
-    try:
-        r = SESSION.get(url, headers=headers, timeout=7)
-        if r.status_code == 429:
-            print(f"[StockDownloader] ⚠️ Pexels API rate limit (429) hit for '{clean_query}'. Gracefully cascading to Pixabay...")
-            return None
-        if r.status_code != 200:
-            return None
-        data = r.json()
-        videos = data.get("videos", [])
-        if not videos:
-            return None
+    candidate_keys = pool.get_candidate_keys()
+    if not candidate_keys:
+        return None
 
-        query_tokens = re.findall(r'\b[a-zA-Z]{3,}\b', (clean_query + " " + sentence_context).lower())
+    query_tokens = re.findall(r'\b[a-zA-Z]{3,}\b', (clean_query + " " + sentence_context).lower())
 
-        # Candidate Scoring & Ranking across all 15 results
-        scored = []
-        for vid in videos:
-            vfiles = vid.get("video_files", [])
-            best_file = None
-            for vf in vfiles:
-                w = vf.get("width") or 0
-                h = vf.get("height") or 0
-                link = vf.get("link")
-                if link and w >= 1280 and (w > h):
-                    if target_resolution in ("4k", "8k"):
-                        if w >= 3840 and h >= 2160:
-                            best_file = vf
-                            break
-                        if best_file is None or w > (best_file.get("width") or 0):
-                            best_file = vf
-                    else:
-                        if w == 1920 and h == 1080:
-                            best_file = vf
-                            break
-                        if best_file is None or w > (best_file.get("width") or 0):
-                            best_file = vf
+    for api_key in candidate_keys:
+        url = f"https://api.pexels.com/videos/search?query={requests.utils.quote(clean_query)}&orientation=landscape&size=large&per_page=15"
+        headers = {"Authorization": api_key, "User-Agent": "VideoGen/1.0"}
+        try:
+            r = SESSION.get(url, headers=headers, timeout=7)
+            if r.status_code == 429:
+                pool.mark_rate_limited(api_key, 300)
+                continue  # Retry immediately with next account key in pool!
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            videos = data.get("videos", [])
+            if not videos:
+                return None  # Legitimate 0 results, no need to burn other keys
 
-            if best_file and best_file.get("link"):
-                vid_dur = float(vid.get("duration", min_duration))
-                url_slug = vid.get("url", "")
-                meta_text = f"{url_slug} {' '.join(vid.get('tags', []))}"
+            # Candidate Scoring & Ranking across all 15 results
+            scored = []
+            for vid in videos:
+                vfiles = vid.get("video_files", [])
+                best_file = None
+                for vf in vfiles:
+                    w = vf.get("width") or 0
+                    h = vf.get("height") or 0
+                    link = vf.get("link")
+                    if link and w >= 1280 and (w > h):
+                        if target_resolution in ("4k", "8k"):
+                            if w >= 3840 and h >= 2160:
+                                best_file = vf
+                                break
+                            if best_file is None or w > (best_file.get("width") or 0):
+                                best_file = vf
+                        else:
+                            if w == 1920 and h == 1080:
+                                best_file = vf
+                                break
+                            if best_file is None or w > (best_file.get("width") or 0):
+                                best_file = vf
+
+                if best_file and best_file.get("link"):
+                    vid_dur = float(vid.get("duration", min_duration))
+                    url_slug = vid.get("url", "")
+                    meta_text = f"{url_slug} {' '.join(vid.get('tags', []))}"
+                    score = _score_candidate(
+                        duration=vid_dur,
+                        width=best_file.get("width", 1920),
+                        height=best_file.get("height", 1080),
+                        target_dur=min_duration,
+                        query_words=query_tokens,
+                        metadata_text=meta_text,
+                        target_resolution=target_resolution
+                    )
+                    scored.append((score, vid, best_file))
+
+            scored.sort(key=lambda x: x[0], reverse=True)
+
+            for score, vid, best_file in scored:
+                download_url = best_file["link"]
+                local_path = _download_file_cached(download_url, f"pexels_{vid['id']}.mp4")
+                if local_path and os.path.exists(local_path):
+                    return {
+                        "provider": "pexels",
+                        "video_id": vid["id"],
+                        "query": clean_query,
+                        "file_path": str(local_path),
+                        "thumbnail_url": vid.get("image", ""),
+                        "duration": float(vid.get("duration", min_duration)),
+                        "width": best_file.get("width", 1920),
+                        "height": best_file.get("height", 1080),
+                        "is_fallback": False
+                    }
+        except Exception as e:
+            print(f"[StockDownloader] Pexels error for '{clean_query}': {e}")
+            continue
+
+    return None
+
+
+def _search_pixabay(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p") -> Optional[Dict[str, Any]]:
+    clean_query = re.sub(r'#', '', query).strip()
+    candidate_keys = pool.get_candidate_keys()
+    if not candidate_keys:
+        return None
+
+    query_tokens = re.findall(r'\b[a-zA-Z]{3,}\b', (clean_query + " " + sentence_context).lower())
+
+    for api_key in candidate_keys:
+        url = f"https://pixabay.com/api/videos/?key={api_key}&q={requests.utils.quote(clean_query)}&video_type=film&orientation=horizontal&per_page=15"
+        headers = {"User-Agent": "VideoGen/1.0"}
+        try:
+            r = SESSION.get(url, headers=headers, timeout=7)
+            if r.status_code == 429:
+                pool.mark_rate_limited(api_key, 300)
+                continue  # Retry with next Pixabay key in pool!
+            if r.status_code != 200:
+                continue
+            data = r.json()
+            hits = data.get("hits", [])
+            if not hits:
+                return None
+
+            scored = []
+            for h in hits:
+                vid_files = h.get("videos", {})
+                if target_resolution in ("4k", "8k"):
+                    selected = vid_files.get("large") or vid_files.get("medium")
+                else:
+                    selected = vid_files.get("large") or vid_files.get("medium")
+                if not selected or not selected.get("url"):
+                    continue
+                w = selected.get("width") or 0
+                h_val = selected.get("height") or 0
+                if h_val > w and w > 0:
+                    continue  # Skip vertical clips
+                vid_dur = float(h.get("duration", min_duration))
+                tags_text = h.get("tags", "")
                 score = _score_candidate(
                     duration=vid_dur,
-                    width=best_file.get("width", 1920),
-                    height=best_file.get("height", 1080),
+                    width=w,
+                    height=h_val,
                     target_dur=min_duration,
                     query_words=query_tokens,
-                    metadata_text=meta_text,
+                    metadata_text=tags_text,
                     target_resolution=target_resolution
                 )
-                scored.append((score, vid, best_file))
+                scored.append((score, h, selected))
 
-        scored.sort(key=lambda x: x[0], reverse=True)
+            scored.sort(key=lambda x: x[0], reverse=True)
 
-        for score, vid, best_file in scored:
-            download_url = best_file["link"]
-            local_path = _download_file_cached(download_url, f"pexels_{vid['id']}.mp4")
-            if local_path and os.path.exists(local_path):
-                return {
-                    "provider": "pexels",
-                    "video_id": vid["id"],
-                    "query": clean_query,
-                    "file_path": str(local_path),
-                    "thumbnail_url": vid.get("image", ""),
-                    "duration": float(vid.get("duration", min_duration)),
-                    "width": best_file.get("width", 1920),
-                    "height": best_file.get("height", 1080),
-                    "is_fallback": False
-                }
-    except Exception as e:
-        print(f"[StockDownloader] Pexels error for '{clean_query}': {e}")
-    return None
+            for score, h, selected in scored:
+                dl_url = selected["url"]
+                local_path = _download_file_cached(dl_url, f"pixabay_{h['id']}.mp4")
+                if local_path and os.path.exists(local_path):
+                    return {
+                        "provider": "pixabay",
+                        "video_id": h["id"],
+                        "query": clean_query,
+                        "file_path": str(local_path),
+                        "thumbnail_url": h.get("picture_id", ""),
+                        "duration": float(h.get("duration", min_duration)),
+                        "width": selected.get("width", 1920),
+                        "height": selected.get("height", 1080),
+                        "is_fallback": False
+                    }
+        except Exception as e:
+            print(f"[StockDownloader] Pixabay error for '{clean_query}': {e}")
+            continue
 
-
-def _search_pixabay(query: str, api_key: str, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p") -> Optional[Dict[str, Any]]:
-    clean_query = re.sub(r'#', '', query).strip()
-    url = f"https://pixabay.com/api/videos/?key={api_key}&q={requests.utils.quote(clean_query)}&video_type=film&orientation=horizontal&per_page=15"
-    headers = {"User-Agent": "VideoGen/1.0"}
-    try:
-        r = SESSION.get(url, headers=headers, timeout=7)
-        if r.status_code == 429:
-            print(f"[StockDownloader] ⚠️ Pixabay API rate limit (429) hit for '{clean_query}'. Cascading to backup provider...")
-            return None
-        if r.status_code != 200:
-            return None
-        data = r.json()
-        hits = data.get("hits", [])
-        if not hits:
-            return None
-
-        query_tokens = re.findall(r'\b[a-zA-Z]{3,}\b', (clean_query + " " + sentence_context).lower())
-
-        scored = []
-        for h in hits:
-            vid_files = h.get("videos", {})
-            if target_resolution in ("4k", "8k"):
-                selected = vid_files.get("large") or vid_files.get("medium")
-            else:
-                selected = vid_files.get("large") or vid_files.get("medium")
-            if not selected or not selected.get("url"):
-                continue
-            w = selected.get("width") or 0
-            h_val = selected.get("height") or 0
-            if h_val > w and w > 0:
-                continue  # Skip vertical clips
-            vid_dur = float(h.get("duration", min_duration))
-            tags_text = h.get("tags", "")
-            score = _score_candidate(
-                duration=vid_dur,
-                width=w,
-                height=h_val,
-                target_dur=min_duration,
-                query_words=query_tokens,
-                metadata_text=tags_text,
-                target_resolution=target_resolution
-            )
-            scored.append((score, h, selected))
-
-        scored.sort(key=lambda x: x[0], reverse=True)
-
-        for score, h, selected in scored:
-            dl_url = selected["url"]
-            local_path = _download_file_cached(dl_url, f"pixabay_{h['id']}.mp4")
-            if local_path and os.path.exists(local_path):
-                return {
-                    "provider": "pixabay",
-                    "video_id": h["id"],
-                    "query": clean_query,
-                    "file_path": str(local_path),
-                    "thumbnail_url": h.get("picture_id", ""),
-                    "duration": float(h.get("duration", min_duration)),
-                    "width": selected.get("width", 1920),
-                    "height": selected.get("height", 1080),
-                    "is_fallback": False
-                }
-    except Exception as e:
-        print(f"[StockDownloader] Pixabay error for '{clean_query}': {e}")
-    return None
     return None
 
 
@@ -603,15 +684,18 @@ def _search_custom_webhook(query: str, webhook_url: str, api_key: str, min_durat
 def search_alternative_clips(query: str, limit: int = 8) -> List[Dict[str, Any]]:
     """Returns candidate video clips for a search query so user can pick an alternative in UI."""
     settings = load_settings()
-    pexels_key = settings.get("pexels_api_key", "").strip()
-    pixabay_key = settings.get("pixabay_api_key", "").strip()
+    p_keys = settings.get("pexels_api_keys") or ([settings.get("pexels_api_key")] if settings.get("pexels_api_key") else [])
+    pb_keys = settings.get("pixabay_api_keys") or ([settings.get("pixabay_api_key")] if settings.get("pixabay_api_key") else [])
     clean_query = re.sub(r'#', '', query).strip()
     results = []
 
-    if pexels_key:
+    # 1. Pexels alternative search across keys
+    for p_key in p_keys:
+        if not p_key:
+            continue
         try:
             url = f"https://api.pexels.com/videos/search?query={requests.utils.quote(clean_query)}&orientation=landscape&size=large&per_page={limit}"
-            r = requests.get(url, headers={"Authorization": pexels_key}, timeout=10)
+            r = SESSION.get(url, headers={"Authorization": p_key}, timeout=8)
             if r.status_code == 200:
                 for vid in r.json().get("videos", []):
                     vfiles = vid.get("video_files", [])
@@ -626,36 +710,43 @@ def search_alternative_clips(query: str, limit: int = 8) -> List[Dict[str, Any]]
                             "width": best.get("width", 1920),
                             "height": best.get("height", 1080)
                         })
+                if results:
+                    break
         except Exception as e:
             print(f"[StockDownloader] Alternative search Pexels error: {e}")
 
-    if pixabay_key and len(results) < limit:
-        try:
-            url = f"https://pixabay.com/api/videos/?key={pixabay_key}&q={requests.utils.quote(clean_query)}&video_type=film&per_page={limit}"
-            r = requests.get(url, timeout=10)
-            if r.status_code == 200:
-                for h in r.json().get("hits", []):
-                    vids = h.get("videos", {})
-                    chosen = vids.get("large") or vids.get("medium")
-                    if chosen and chosen.get("url"):
-                        results.append({
-                            "provider": "pixabay",
-                            "id": h["id"],
-                            "download_url": chosen["url"],
-                            "thumbnail_url": f"https://i.vimeocdn.com/video/{h.get('picture_id')}_640x360.jpg",
-                            "duration": h.get("duration", 5),
-                            "width": chosen.get("width", 1920),
-                            "height": chosen.get("height", 1080)
-                        })
-        except Exception as e:
-            print(f"[StockDownloader] Alternative search Pixabay error: {e}")
+    # 2. Pixabay alternative search
+    if len(results) < limit:
+        for pb_key in pb_keys:
+            if not pb_key:
+                continue
+            try:
+                url = f"https://pixabay.com/api/videos/?key={pb_key}&q={requests.utils.quote(clean_query)}&video_type=film&per_page={limit}"
+                r = SESSION.get(url, timeout=8)
+                if r.status_code == 200:
+                    for h in r.json().get("hits", []):
+                        vids = h.get("videos", {})
+                        chosen = vids.get("large") or vids.get("medium")
+                        if chosen and chosen.get("url"):
+                            results.append({
+                                "provider": "pixabay",
+                                "id": h["id"],
+                                "download_url": chosen["url"],
+                                "thumbnail_url": f"https://i.vimeocdn.com/video/{h.get('picture_id')}_640x360.jpg",
+                                "duration": h.get("duration", 5),
+                                "width": chosen.get("width", 1920),
+                                "height": chosen.get("height", 1080)
+                            })
+                    if results:
+                        break
+            except Exception as e:
+                print(f"[StockDownloader] Alternative search Pixabay error: {e}")
 
     return results
 
 
 def _download_file_cached(url: str, filename: str) -> Path:
-    """Downloads a file if not already in local cache."""
-    # Hash the URL to avoid collision
+    """Downloads a file if not already in local cache with 1MB high-speed streaming chunks."""
     url_hash = hashlib.md5(url.encode('utf-8')).hexdigest()[:10]
     out_path = VIDEO_CACHE_DIR / f"{url_hash}_{filename}"
     if out_path.exists() and out_path.stat().st_size > 10000:
@@ -665,7 +756,7 @@ def _download_file_cached(url: str, filename: str) -> Path:
         with SESSION.get(url, stream=True, timeout=30) as r:
             r.raise_for_status()
             with open(out_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=262144):
+                for chunk in r.iter_content(chunk_size=1048576):  # 1MB buffer for max throughput
                     if chunk:
                         f.write(chunk)
         return out_path

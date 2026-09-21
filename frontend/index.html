@@ -1475,22 +1475,54 @@
           <p class="help-text">Connect multiple stock footage providers. When you generate a video, workers query all configured APIs concurrently to grab 1080p landscape clips.</p>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="mt-16">
-            <!-- 1. Pexels -->
+            <!-- 1. Pexels (Multi-Account Pool) -->
             <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
-              <label class="form-label" style="display:flex;justify-content:space-between;">
-                <span>1. Pexels API Key <span style="font-size:10px;color:var(--accent-green);">(20k Free/mo)</span></span>
-                <a href="https://www.pexels.com/api/" target="_blank" class="external-link">Get Key ↗</a>
-              </label>
-              <input type="password" id="input-pexels-key" class="form-input" placeholder="Paste Pexels API Key...">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <label class="form-label" style="margin-bottom:0;">
+                  <span>1. Pexels API Pool <span style="font-size:10px;color:var(--accent-green);">(Multi-Account 20k/mo each)</span></span>
+                </label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <button type="button" class="btn btn-xs btn-outline" onclick="document.getElementById('pexels-extra-keys').style.display = document.getElementById('pexels-extra-keys').style.display === 'none' ? 'block' : 'none'" style="font-size:11px;padding:2px 8px;">
+                    ➕ Pool (5 Accounts)
+                  </button>
+                  <a href="https://www.pexels.com/api/" target="_blank" class="external-link">Get Key ↗</a>
+                </div>
+              </div>
+              <input type="password" id="input-pexels-key" class="form-input mt-8" placeholder="Account #1 API Key (Primary)...">
+              
+              <div id="pexels-extra-keys" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.1);">
+                <span style="font-size:11px;color:var(--accent-blue);font-weight:600;">⚡ Load-Balanced Multi-Account Pool (Up to 5 Accounts):</span>
+                <input type="password" id="input-pexels-key-2" class="form-input mt-4" placeholder="Account #2 API Key (Optional)...">
+                <input type="password" id="input-pexels-key-3" class="form-input mt-4" placeholder="Account #3 API Key (Optional)...">
+                <input type="password" id="input-pexels-key-4" class="form-input mt-4" placeholder="Account #4 API Key (Optional)...">
+                <input type="password" id="input-pexels-key-5" class="form-input mt-4" placeholder="Account #5 API Key (Optional)...">
+                <p style="font-size:10px;color:var(--text-muted);margin-top:4px;">Queries are distributed evenly across all accounts. No single key hits the 200/hr limit.</p>
+              </div>
             </div>
 
-            <!-- 2. Pixabay -->
+            <!-- 2. Pixabay (Multi-Account Pool) -->
             <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
-              <label class="form-label" style="display:flex;justify-content:space-between;">
-                <span>2. Pixabay API Key <span style="font-size:10px;color:var(--accent-green);">(Free Unlimited)</span></span>
-                <a href="https://pixabay.com/api/docs/" target="_blank" class="external-link">Get Key ↗</a>
-              </label>
-              <input type="password" id="input-pixabay-key" class="form-input" placeholder="Paste Pixabay API Key...">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <label class="form-label" style="margin-bottom:0;">
+                  <span>2. Pixabay API Pool <span style="font-size:10px;color:var(--accent-green);">(Free Unlimited)</span></span>
+                </label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <button type="button" class="btn btn-xs btn-outline" onclick="document.getElementById('pixabay-extra-keys').style.display = document.getElementById('pixabay-extra-keys').style.display === 'none' ? 'block' : 'none'" style="font-size:11px;padding:2px 8px;">
+                    ➕ Pool (5 Accounts)
+                  </button>
+                  <a href="https://pixabay.com/api/docs/" target="_blank" class="external-link">Get Key ↗</a>
+                </div>
+              </div>
+              <input type="password" id="input-pixabay-key" class="form-input mt-8" placeholder="Account #1 API Key (Primary)...">
+
+              <div id="pixabay-extra-keys" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.1);">
+                <span style="font-size:11px;color:var(--accent-blue);font-weight:600;">⚡ Load-Balanced Multi-Account Pool (Up to 5 Accounts):</span>
+                <input type="password" id="input-pixabay-key-2" class="form-input mt-4" placeholder="Account #2 API Key (Optional)...">
+                <input type="password" id="input-pixabay-key-3" class="form-input mt-4" placeholder="Account #3 API Key (Optional)...">
+                <input type="password" id="input-pixabay-key-4" class="form-input mt-4" placeholder="Account #4 API Key (Optional)...">
+                <input type="password" id="input-pixabay-key-5" class="form-input mt-4" placeholder="Account #5 API Key (Optional)...">
+                <p style="font-size:10px;color:var(--text-muted);margin-top:4px;">Queries and downloads run across all accounts in parallel with automatic rate-limit cascade.</p>
+              </div>
             </div>
 
             <!-- 3. Coverr -->

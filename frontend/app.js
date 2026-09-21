@@ -126,9 +126,27 @@ async function loadSettings() {
     const res = await fetch('/api/settings');
     const data = await res.json();
 
-    // 10+ Stock Video APIs
-    if (document.getElementById('input-pexels-key')) document.getElementById('input-pexels-key').value = data.pexels_api_key || '';
-    if (document.getElementById('input-pixabay-key')) document.getElementById('input-pixabay-key').value = data.pixabay_api_key || '';
+    // 10+ Stock Video APIs - Multi-Account Pools
+    const pKeys = data.pexels_api_keys || (data.pexels_api_key ? [data.pexels_api_key] : []);
+    if (document.getElementById('input-pexels-key')) document.getElementById('input-pexels-key').value = pKeys[0] || '';
+    if (document.getElementById('input-pexels-key-2')) document.getElementById('input-pexels-key-2').value = pKeys[1] || '';
+    if (document.getElementById('input-pexels-key-3')) document.getElementById('input-pexels-key-3').value = pKeys[2] || '';
+    if (document.getElementById('input-pexels-key-4')) document.getElementById('input-pexels-key-4').value = pKeys[3] || '';
+    if (document.getElementById('input-pexels-key-5')) document.getElementById('input-pexels-key-5').value = pKeys[4] || '';
+    if (pKeys.length > 1 && document.getElementById('pexels-extra-keys')) {
+      document.getElementById('pexels-extra-keys').style.display = 'block';
+    }
+
+    const pbKeys = data.pixabay_api_keys || (data.pixabay_api_key ? [data.pixabay_api_key] : []);
+    if (document.getElementById('input-pixabay-key')) document.getElementById('input-pixabay-key').value = pbKeys[0] || '';
+    if (document.getElementById('input-pixabay-key-2')) document.getElementById('input-pixabay-key-2').value = pbKeys[1] || '';
+    if (document.getElementById('input-pixabay-key-3')) document.getElementById('input-pixabay-key-3').value = pbKeys[2] || '';
+    if (document.getElementById('input-pixabay-key-4')) document.getElementById('input-pixabay-key-4').value = pbKeys[3] || '';
+    if (document.getElementById('input-pixabay-key-5')) document.getElementById('input-pixabay-key-5').value = pbKeys[4] || '';
+    if (pbKeys.length > 1 && document.getElementById('pixabay-extra-keys')) {
+      document.getElementById('pixabay-extra-keys').style.display = 'block';
+    }
+
     if (document.getElementById('input-coverr-key')) document.getElementById('input-coverr-key').value = data.coverr_api_key || '';
     if (document.getElementById('input-videvo-key')) document.getElementById('input-videvo-key').value = data.videvo_api_key || '';
     if (document.getElementById('input-nasa-key')) document.getElementById('input-nasa-key').value = data.nasa_api_key || '';
@@ -160,10 +178,42 @@ async function loadSettings() {
 }
 
 async function saveAppSettings() {
+  // Gather all non-empty Pexels keys
+  const rawPexels = [
+    document.getElementById('input-pexels-key')?.value || '',
+    document.getElementById('input-pexels-key-2')?.value || '',
+    document.getElementById('input-pexels-key-3')?.value || '',
+    document.getElementById('input-pexels-key-4')?.value || '',
+    document.getElementById('input-pexels-key-5')?.value || '',
+  ];
+  const pexelsKeys = [];
+  rawPexels.forEach(val => {
+    val.split(/[\r\n,;]+/).map(k => k.trim()).filter(Boolean).forEach(k => {
+      if (!pexelsKeys.includes(k)) pexelsKeys.push(k);
+    });
+  });
+
+  // Gather all non-empty Pixabay keys
+  const rawPixabay = [
+    document.getElementById('input-pixabay-key')?.value || '',
+    document.getElementById('input-pixabay-key-2')?.value || '',
+    document.getElementById('input-pixabay-key-3')?.value || '',
+    document.getElementById('input-pixabay-key-4')?.value || '',
+    document.getElementById('input-pixabay-key-5')?.value || '',
+  ];
+  const pixabayKeys = [];
+  rawPixabay.forEach(val => {
+    val.split(/[\r\n,;]+/).map(k => k.trim()).filter(Boolean).forEach(k => {
+      if (!pixabayKeys.includes(k)) pixabayKeys.push(k);
+    });
+  });
+
   const payload = {
-    // 10+ Stock Video APIs
-    pexels_api_key: document.getElementById('input-pexels-key')?.value.trim() || '',
-    pixabay_api_key: document.getElementById('input-pixabay-key')?.value.trim() || '',
+    // 10+ Stock Video APIs - Multi-Account Pool
+    pexels_api_key: pexelsKeys[0] || '',
+    pexels_api_keys: pexelsKeys,
+    pixabay_api_key: pixabayKeys[0] || '',
+    pixabay_api_keys: pixabayKeys,
     coverr_api_key: document.getElementById('input-coverr-key')?.value.trim() || '',
     videvo_api_key: document.getElementById('input-videvo-key')?.value.trim() || '',
     nasa_api_key: document.getElementById('input-nasa-key')?.value.trim() || '',
@@ -192,7 +242,8 @@ async function saveAppSettings() {
       body: JSON.stringify(payload)
     });
     const data = await res.json();
-    showToast(`💾 Settings and API keys saved successfully! (${payload.workers} Workers Active)`);
+    const poolInfo = `Pexels: ${pexelsKeys.length} keys, Pixabay: ${pixabayKeys.length} keys`;
+    showToast(`💾 Settings and API keys saved! (${poolInfo}, ${payload.workers} Workers Active)`);
     const badge = document.getElementById('worker-count-badge');
     if (badge) badge.textContent = `${payload.workers} Workers Ready`;
   } catch (err) {

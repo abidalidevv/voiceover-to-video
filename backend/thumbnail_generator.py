@@ -110,34 +110,42 @@ def extract_hook_text(project: Dict[str, Any], custom_headline: Optional[str] = 
 
 
 def _extract_frame_from_video(video_path: str, output_image_path: str) -> bool:
-    """Extracts a high quality frame from a video clip at 1.0s."""
+    """Extracts a high quality frame from a video clip with boundary fallback for short clips."""
     if not video_path or not os.path.exists(video_path):
         return False
     ffmpeg_exe = find_ffmpeg()
-    cmd = [
-        ffmpeg_exe, "-y",
-        "-ss", "00:00:01.000",
-        "-i", str(video_path),
-        "-vframes", "1",
-        "-q:v", "2",
-        "-vf", "scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720",
-        str(output_image_path)
-    ]
-    try:
-        res = subprocess.run(cmd, capture_output=True, timeout=8)
-        return res.returncode == 0 and os.path.exists(output_image_path) and os.path.getsize(output_image_path) > 1000
-    except Exception:
-        return False
+
+    # Try 1.0s first, fallback to 0.2s or 0.0s for short scenes (< 1.5s)
+    for ss_time in ["00:00:01.000", "00:00:00.200", "00:00:00.000"]:
+        cmd = [
+            ffmpeg_exe, "-y",
+            "-ss", ss_time,
+            "-i", str(video_path),
+            "-vframes", "1",
+            "-q:v", "2",
+            "-vf", "scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720",
+            str(output_image_path)
+        ]
+        try:
+            res = subprocess.run(cmd, capture_output=True, timeout=8)
+            if res.returncode == 0 and os.path.exists(output_image_path) and os.path.getsize(output_image_path) > 1000:
+                return True
+        except Exception:
+            pass
+
+    return False
 
 
 def _fetch_stock_photo(query: str, settings: Dict[str, Any], output_path: str) -> bool:
-    """Fetches high-res stock photo from Pexels or Pixabay."""
+    """Fetches high-res stock photo from Pexels or Pixabay using multi-account keys."""
     import requests
     clean_q = re.sub(r'[^a-zA-Z0-9\s]', ' ', query).strip()
-    
-    # 1. Try Pexels Photo API
-    p_key = settings.get("pexels_api_key", "").strip()
-    if p_key:
+
+    # 1. Try Pexels Photo API across keys
+    p_keys = settings.get("pexels_api_keys") or ([settings.get("pexels_api_key")] if settings.get("pexels_api_key") else [])
+    for p_key in p_keys:
+        if not p_key:
+            continue
         try:
             url = f"https://api.pexels.com/v1/search?query={requests.utils.quote(clean_q)}&orientation=landscape&per_page=3"
             r = requests.get(url, headers={"Authorization": p_key}, timeout=5)
@@ -155,9 +163,11 @@ def _fetch_stock_photo(query: str, settings: Dict[str, Any], output_path: str) -
         except Exception:
             pass
 
-    # 2. Try Pixabay Photo API
-    pb_key = settings.get("pixabay_api_key", "").strip()
-    if pb_key:
+    # 2. Try Pixabay Photo API across keys
+    pb_keys = settings.get("pixabay_api_keys") or ([settings.get("pixabay_api_key")] if settings.get("pixabay_api_key") else [])
+    for pb_key in pb_keys:
+        if not pb_key:
+            continue
         try:
             url = f"https://pixabay.com/api/?key={pb_key}&q={requests.utils.quote(clean_q)}&image_type=photo&orientation=horizontal&per_page=3"
             r = requests.get(url, timeout=5)

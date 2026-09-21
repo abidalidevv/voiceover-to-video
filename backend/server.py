@@ -85,38 +85,80 @@ def update_settings(payload: Dict[str, Any]):
     return {"status": "success", "settings": updated}
 
 
+def _cleanup_old_temp_files():
+    """Cleans up leftover segments and temporary render folders older than 12 hours."""
+    try:
+        cutoff = time.time() - (12 * 3600)
+        for item in TEMP_DIR.iterdir():
+            try:
+                if item.stat().st_mtime < cutoff:
+                    if item.is_dir():
+                        shutil.rmtree(item, ignore_errors=True)
+                    else:
+                        item.unlink()
+            except Exception:
+                pass
+    except Exception as e:
+        print(f"[Server] Notice during temp cleanup: {e}")
+
+# Trigger non-blocking temp cleanup on startup
+threading.Thread(target=_cleanup_old_temp_files, daemon=True).start()
+
+
 @app.post("/api/test-apis")
 def test_apis():
     import requests
     settings = load_settings()
     results = {}
 
-    # 1. Test Pexels
-    p_key = settings.get("pexels_api_key", "").strip()
-    if p_key:
-        try:
-            r = requests.get(
-                "https://api.pexels.com/videos/search?query=nature&per_page=1",
-                headers={"Authorization": p_key},
-                timeout=6
-            )
-            results["pexels"] = {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
-        except Exception as e:
-            results["pexels"] = {"status": "error", "error": str(e)}
+    # 1. Test Pexels (Multi-Account Pool Verification)
+    p_keys = settings.get("pexels_api_keys") or ([settings.get("pexels_api_key")] if settings.get("pexels_api_key") else [])
+    p_keys = [k for k in p_keys if k.strip()]
+    if p_keys:
+        valid_p = 0
+        last_err = ""
+        for pk in p_keys:
+            try:
+                r = requests.get(
+                    "https://api.pexels.com/videos/search?query=nature&per_page=1",
+                    headers={"Authorization": pk},
+                    timeout=5
+                )
+                if r.status_code == 200:
+                    valid_p += 1
+                elif r.status_code == 429:
+                    last_err = "429 Rate Limit"
+            except Exception as e:
+                last_err = str(e)
+        if valid_p > 0:
+            results["pexels"] = {"status": "ok", "active_keys": valid_p, "total_keys": len(p_keys), "code": 200}
+        else:
+            results["pexels"] = {"status": "error", "error": last_err or "All keys failed"}
     else:
         results["pexels"] = {"status": "unconfigured"}
 
-    # 2. Test Pixabay
-    pix_key = settings.get("pixabay_api_key", "").strip()
-    if pix_key:
-        try:
-            r = requests.get(
-                f"https://pixabay.com/api/videos/?key={pix_key}&q=nature&per_page=3",
-                timeout=6
-            )
-            results["pixabay"] = {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
-        except Exception as e:
-            results["pixabay"] = {"status": "error", "error": str(e)}
+    # 2. Test Pixabay (Multi-Account Pool Verification)
+    pb_keys = settings.get("pixabay_api_keys") or ([settings.get("pixabay_api_key")] if settings.get("pixabay_api_key") else [])
+    pb_keys = [k for k in pb_keys if k.strip()]
+    if pb_keys:
+        valid_pb = 0
+        last_err = ""
+        for pbk in pb_keys:
+            try:
+                r = requests.get(
+                    f"https://pixabay.com/api/videos/?key={pbk}&q=nature&per_page=3",
+                    timeout=5
+                )
+                if r.status_code == 200:
+                    valid_pb += 1
+                elif r.status_code == 429:
+                    last_err = "429 Rate Limit"
+            except Exception as e:
+                last_err = str(e)
+        if valid_pb > 0:
+            results["pixabay"] = {"status": "ok", "active_keys": valid_pb, "total_keys": len(pb_keys), "code": 200}
+        else:
+            results["pixabay"] = {"status": "error", "error": last_err or "All keys failed"}
     else:
         results["pixabay"] = {"status": "unconfigured"}
 

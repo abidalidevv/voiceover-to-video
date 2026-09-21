@@ -39,7 +39,9 @@ def list_sfx_files() -> list:
 DEFAULT_SETTINGS = {
     # Stock Video APIs (10+ Providers & Endpoints)
     "pexels_api_key": "",
+    "pexels_api_keys": [],            # Multi-account pool (supports 5-10 accounts)
     "pixabay_api_key": "",
+    "pixabay_api_keys": [],           # Multi-account pool
     "coverr_api_key": "",
     "mixkit_api_key": "",
     "videvo_api_key": "",
@@ -127,21 +129,80 @@ def find_ffprobe() -> str:
     return "ffprobe"
 
 
+def _clean_key_list(val) -> list:
+    """Normalizes string or list into a list of clean, unique API keys."""
+    if isinstance(val, str):
+        # Support comma, newline, or semicolon separation
+        parts = [k.strip() for k in re.split(r'[\r\n,;]+', val) if k.strip()]
+        return list(dict.fromkeys(parts))
+    if isinstance(val, (list, tuple)):
+        cleaned = []
+        for item in val:
+            if isinstance(item, str):
+                for k in re.split(r'[\r\n,;]+', item):
+                    k_s = k.strip()
+                    if k_s and k_s not in cleaned:
+                        cleaned.append(k_s)
+        return cleaned
+    return []
+
+
 def load_settings() -> dict:
+    import re
+    data = {}
     if SETTINGS_FILE.exists():
         try:
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                merged = {**DEFAULT_SETTINGS, **data}
-                return merged
         except Exception:
             pass
-    return DEFAULT_SETTINGS.copy()
+
+    merged = {**DEFAULT_SETTINGS, **data}
+
+    # Normalize Pexels key pool
+    p_keys = _clean_key_list(merged.get("pexels_api_keys", []))
+    single_p = str(merged.get("pexels_api_key", "")).strip()
+    if single_p and single_p not in p_keys:
+        p_keys.insert(0, single_p)
+    merged["pexels_api_keys"] = p_keys
+    merged["pexels_api_key"] = p_keys[0] if p_keys else ""
+
+    # Normalize Pixabay key pool
+    pb_keys = _clean_key_list(merged.get("pixabay_api_keys", []))
+    single_pb = str(merged.get("pixabay_api_key", "")).strip()
+    if single_pb and single_pb not in pb_keys:
+        pb_keys.insert(0, single_pb)
+    merged["pixabay_api_keys"] = pb_keys
+    merged["pixabay_api_key"] = pb_keys[0] if pb_keys else ""
+
+    return merged
 
 
 def save_settings(new_settings: dict) -> dict:
+    import re
     current = load_settings()
+
+    # Process and normalize incoming key pools
+    if "pexels_api_keys" in new_settings or "pexels_api_key" in new_settings:
+        raw_keys = new_settings.get("pexels_api_keys", current.get("pexels_api_keys", []))
+        single_k = new_settings.get("pexels_api_key", current.get("pexels_api_key", ""))
+        all_k = _clean_key_list(raw_keys)
+        if single_k and single_k.strip() not in all_k:
+            all_k.insert(0, single_k.strip())
+        new_settings["pexels_api_keys"] = all_k
+        new_settings["pexels_api_key"] = all_k[0] if all_k else ""
+
+    if "pixabay_api_keys" in new_settings or "pixabay_api_key" in new_settings:
+        raw_keys = new_settings.get("pixabay_api_keys", current.get("pixabay_api_keys", []))
+        single_k = new_settings.get("pixabay_api_key", current.get("pixabay_api_key", ""))
+        all_k = _clean_key_list(raw_keys)
+        if single_k and single_k.strip() not in all_k:
+            all_k.insert(0, single_k.strip())
+        new_settings["pixabay_api_keys"] = all_k
+        new_settings["pixabay_api_key"] = all_k[0] if all_k else ""
+
     current.update(new_settings)
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
         json.dump(current, f, indent=2)
     return current
+

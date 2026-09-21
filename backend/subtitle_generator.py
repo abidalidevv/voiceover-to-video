@@ -370,7 +370,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             if callout and str(callout).strip():
                 c_start = format_ass_time(float(scene.get("start", 0)))
                 c_end = format_ass_time(float(scene.get("end", 0)))
-                c_clean = str(callout).strip().upper()
+                c_clean = str(callout).strip().replace('{', '(').replace('}', ')').upper()
                 anim = r"{\fad(180,180)\t(0,120,\fscx106\fscy106)\t(120,240,\fscx100\fscy100)}"
                 dialogue_lines.append(f"Dialogue: 1,{c_start},{c_end},Callout,,0,0,0,,{anim}{c_clean}")
 
@@ -380,7 +380,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             # Fallback if no word level timestamps: display whole sentence for scene duration
             t_start = format_ass_time(float(scene.get("start", 0)))
             t_end = format_ass_time(float(scene.get("end", 0)))
-            stext = scene.get("text", "")
+            stext = scene.get("text", "").replace('{', '(').replace('}', ')')
             if uppercase:
                 stext = stext.upper()
             dialogue_lines.append(f"Dialogue: 0,{t_start},{t_end},Default,,0,0,0,,{stext}")
@@ -401,7 +401,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 # Build styled line
                 line_parts = []
                 for idx, w in enumerate(chunk):
-                    raw_word = w["word"].strip()
+                    raw_word = w["word"].strip().replace('{', '(').replace('}', ')')
                     if uppercase:
                         raw_word = raw_word.upper()
 
