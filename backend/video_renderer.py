@@ -127,7 +127,8 @@ def render_final_video(
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         output_filename = f"VideoGen_{timestamp}.mp4"
 
-    out_dir = Path(settings.get("output_dir", str(OUTPUT_DIR)))
+    conf_out = str(settings.get("output_dir", "")).strip()
+    out_dir = Path(conf_out) if conf_out else OUTPUT_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     final_output_path = out_dir / output_filename
 
@@ -212,7 +213,11 @@ def render_final_video(
 
     # ==================== STAGE 1: PARALLEL SEGMENT NORMALIZATION (16:9 FULL HD) ====================
     seg_files = [None] * len(valid_clips)
-    num_workers = min(8, max(4, os.cpu_count() or 4))
+    # Concurrency tuned for maximum speed without hardware driver exhaustion
+    if use_gpu and encoder != "libx264":
+        num_workers = 2  # Hardware encoders (QSV / NVENC) perform best with 2 concurrent tasks
+    else:
+        num_workers = min(4, max(2, (os.cpu_count() or 4) // 2))
 
     def normalize_clip(item_idx, sc_id, fpath, dur, sc):
         # File extension
@@ -237,7 +242,7 @@ def render_final_video(
 
         # OPTIMIZATION: Skip heavy re-encoding if clip was already pre-processed
         # by trim_and_fit_clip (filename starts with 'sc_'). Only apply motion/FX
-        # if those features are actually enabled, otherwise just stream-copy duration.
+        # if those features are actually enabled, otherwise just stream-copy duration in < 0.05s.
         fname = Path(fpath).name
         is_pretrimmed = fname.startswith("sc_")
         needs_fx = enable_motion or enable_vignette or color_grade != "clean" or has_punch_zoom
@@ -254,7 +259,8 @@ def render_final_video(
             ]
             try:
                 subprocess.run(cmd, capture_output=True, check=True)
-                return (item_idx, seg_out)
+                if seg_out.exists() and seg_out.stat().st_size > 1000:
+                    return (item_idx, seg_out)
             except subprocess.CalledProcessError:
                 pass  # Fall through to full re-encode
 
@@ -268,14 +274,14 @@ def render_final_video(
             dz = round(emphasis_zoom_intensity - 1.0, 3)
             zoom_term = f"if(between(t,{t0:.2f},{t1:.2f}),{dz:.3f}*(t-{t0:.2f})/0.15,if(between(t,{t1:.2f},{t2:.2f}),{dz:.3f},if(between(t,{t2:.2f},{t3:.2f}),{dz:.3f}*(1-(t-{t2:.2f})/0.20),0)))"
 
-        # Build filter pipeline:
+        # Build filter pipeline with high-speed linear expressions:
         if enable_motion:
             if has_punch_zoom:
-                vf_scale = f"scale={motion_w1}:{motion_h1}:force_original_aspect_ratio=increase,crop=w='{target_w}/(1+{zoom_term})':h='{target_h}/(1+{zoom_term})':x='(in_w-out_w)/2+(in_w-out_w)/6*sin(2*PI*t/{max(0.5, dur)})':y='(in_h-out_h)/2+(in_h-out_h)/6*cos(2*PI*t/{max(0.5, dur)})',scale={target_w}:{target_h}"
+                vf_scale = f"scale={motion_w1}:{motion_h1}:force_original_aspect_ratio=increase,crop=w='{target_w}/(1+{zoom_term})':h='{target_h}/(1+{zoom_term})':x='(in_w-out_w)/2':y='(in_h-out_h)/2',scale={target_w}:{target_h}"
             elif item_idx % 2 == 0:
-                vf_scale = f"scale={motion_w2}:{motion_h2}:force_original_aspect_ratio=increase,crop={target_w}:{target_h}:(in_w-out_w)/2+(in_w-out_w)/4*sin(2*PI*t/{max(0.5, dur)}):(in_h-out_h)/2+(in_h-out_h)/4*cos(2*PI*t/{max(0.5, dur)})"
+                vf_scale = f"scale={motion_w2}:{motion_h2}:force_original_aspect_ratio=increase,crop={target_w}:{target_h}:'(in_w-out_w)*(t/{max(0.5, dur)})':'(in_h-out_h)/2'"
             else:
-                vf_scale = f"scale={motion_w2}:{motion_h2}:force_original_aspect_ratio=increase,crop={target_w}:{target_h}:(in_w-out_w)*(t/{max(0.5, dur)}):(in_h-out_h)/2"
+                vf_scale = f"scale={motion_w2}:{motion_h2}:force_original_aspect_ratio=increase,crop={target_w}:{target_h}:'(in_w-out_w)*(1-t/{max(0.5, dur)})':'(in_h-out_h)/2'"
         else:
             if has_punch_zoom:
                 vf_scale = f"scale={motion_w1}:{motion_h1}:force_original_aspect_ratio=increase,crop=w='{target_w}/(1+{zoom_term})':h='{target_h}/(1+{zoom_term})':x='(in_w-out_w)/2':y='(in_h-out_h)/2',scale={target_w}:{target_h}"
@@ -323,7 +329,7 @@ def render_final_video(
                     "-preset", "ultrafast",
                     "-crf", "20",
                     "-pix_fmt", "yuv420p",
-                    "-threads", "0",
+                    "-threads", "2",
                     "-an",
                     str(seg_out)
                 ]

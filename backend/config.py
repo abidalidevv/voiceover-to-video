@@ -65,6 +65,7 @@ DEFAULT_SETTINGS = {
     "resolution": "1920x1080",
     "fps": 30,
     "output_dir": str(OUTPUT_DIR),
+    "thumbnail_output_dir": str(DATA_DIR / "thumbnails"),
     "default_caption_preset": "capcut_yellow",
     "gpu_acceleration": True
 }
@@ -174,6 +175,12 @@ def load_settings() -> dict:
         pb_keys.insert(0, single_pb)
     merged["pixabay_api_keys"] = pb_keys
     merged["pixabay_api_key"] = pb_keys[0] if pb_keys else ""
+
+    # Ensure output directories are never empty
+    if not str(merged.get("output_dir", "")).strip():
+        merged["output_dir"] = str(OUTPUT_DIR)
+    if not str(merged.get("thumbnail_output_dir", "")).strip():
+        merged["thumbnail_output_dir"] = str(DATA_DIR / "thumbnails")
 
     return merged
 

@@ -606,7 +606,7 @@ def render_video(req: RenderRequest):
         "target_resolution": target_res,
         "bgm_track": req.custom_options.get("bgm_track", project.get("bgm_track", "cinematic_ambient")),
         "bgm_volume": float(req.custom_options.get("bgm_volume", project.get("bgm_volume", 0.10))),
-        "enable_motion": bool(req.custom_options.get("enable_motion", project.get("enable_motion", True))),
+        "enable_motion": bool(req.custom_options.get("enable_motion", project.get("enable_motion", False))),
         "enable_vignette": bool(req.custom_options.get("enable_vignette", project.get("enable_vignette", False))),
         "color_grade": req.custom_options.get("color_grade", project.get("color_grade", "clean")),
         "transition": req.custom_options.get("transition", project.get("transition", "none")),
@@ -639,7 +639,10 @@ def render_video(req: RenderRequest):
     # Auto-generate 2 YouTube Thumbnails (Viral & Cinematic)
     try:
         from backend.thumbnail_generator import generate_youtube_thumbnails
-        thumb_res = generate_youtube_thumbnails(project, target_dir=DATA_DIR / "thumbnails")
+        conf_thumb = str(load_settings().get("thumbnail_output_dir", "")).strip()
+        thumb_dir = Path(conf_thumb) if conf_thumb else (DATA_DIR / "thumbnails")
+        thumb_dir.mkdir(parents=True, exist_ok=True)
+        thumb_res = generate_youtube_thumbnails(project, target_dir=thumb_dir)
         project["thumbnails"] = thumb_res
     except Exception as th_err:
         print(f"[ThumbnailGenerator] Auto-generation notice: {th_err}")
@@ -724,7 +727,7 @@ def start_render_job(req: RenderRequest):
                 "target_resolution": target_res,
                 "bgm_track": req.custom_options.get("bgm_track", project.get("bgm_track", "cinematic_ambient")),
                 "bgm_volume": float(req.custom_options.get("bgm_volume", project.get("bgm_volume", 0.10))),
-                "enable_motion": bool(req.custom_options.get("enable_motion", project.get("enable_motion", True))),
+                "enable_motion": bool(req.custom_options.get("enable_motion", project.get("enable_motion", False))),
                 "enable_vignette": bool(req.custom_options.get("enable_vignette", project.get("enable_vignette", False))),
                 "color_grade": req.custom_options.get("color_grade", project.get("color_grade", "clean")),
                 "transition": req.custom_options.get("transition", project.get("transition", "none")),
@@ -778,7 +781,10 @@ def start_render_job(req: RenderRequest):
             # Auto-generate 2 YouTube Thumbnails (Viral & Cinematic)
             try:
                 from backend.thumbnail_generator import generate_youtube_thumbnails
-                thumb_res = generate_youtube_thumbnails(project, target_dir=DATA_DIR / "thumbnails")
+                conf_thumb = str(load_settings().get("thumbnail_output_dir", "")).strip()
+                thumb_dir = Path(conf_thumb) if conf_thumb else (DATA_DIR / "thumbnails")
+                thumb_dir.mkdir(parents=True, exist_ok=True)
+                thumb_res = generate_youtube_thumbnails(project, target_dir=thumb_dir)
                 project["thumbnails"] = thumb_res
                 job["thumbnails"] = thumb_res
             except Exception as th_err:
@@ -994,6 +1000,29 @@ class OpenFolderRequest(BaseModel):
     path: Optional[str] = None
 
 
+class BrowseDirectoryRequest(BaseModel):
+    initial_dir: Optional[str] = None
+
+
+@app.post("/api/browse-directory")
+def browse_directory(req: Optional[BrowseDirectoryRequest] = None):
+    """Opens a native Windows directory picker dialog and returns the selected path."""
+    settings = load_settings()
+    init_dir = (req.initial_dir if req and req.initial_dir else None) or str(settings.get("output_dir", OUTPUT_DIR))
+    selected_dir = ""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        selected_dir = filedialog.askdirectory(initialdir=init_dir)
+        root.destroy()
+    except Exception as e:
+        print(f"[BrowseDirectory] Native picker notice: {e}")
+    return {"status": "success", "path": selected_dir or ""}
+
+
 @app.get("/api/open-output-folder")
 @app.post("/api/open-output-folder")
 @app.get("/api/open-folder")
@@ -1006,14 +1035,14 @@ def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = N
     elif path:
         req_path = path
 
-    if req_path:
-        target_path = Path(req_path)
+    if req_path in ("thumbnails", "thumbnail"):
+        conf_thumb = str(settings.get("thumbnail_output_dir", "")).strip()
+        target_path = Path(conf_thumb) if conf_thumb else (DATA_DIR / "thumbnails")
+    elif req_path in ("videos", "video", "output", "outputs") or not req_path:
+        conf = str(settings.get("output_dir", "")).strip()
+        target_path = Path(conf) if conf else OUTPUT_DIR
     else:
-        conf = settings.get("output_dir", "")
-        if conf and Path(conf).exists():
-            target_path = Path(conf)
-        else:
-            target_path = OUTPUT_DIR
+        target_path = Path(req_path)
 
     target_path.mkdir(parents=True, exist_ok=True)
     abs_path = os.path.normpath(str(target_path.resolve()))
@@ -1024,13 +1053,13 @@ def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = N
             os.startfile(abs_path)
             opened = True
         except Exception as e:
-            logger.warning(f"[OpenFolder] os.startfile notice: {e}")
+            print(f"[OpenFolder] os.startfile notice: {e}")
         if not opened:
             try:
                 subprocess.Popen(f'explorer "{abs_path}"', shell=True)
                 opened = True
             except Exception as e2:
-                logger.error(f"[OpenFolder] explorer shell command failed: {e2}")
+                print(f"[OpenFolder] explorer shell command failed: {e2}")
     return {"status": "success", "path": abs_path}
 
 
@@ -1380,7 +1409,7 @@ def start_batch_generation(req: BatchGenerateRequest):
                             "transition_sfx_volume": item_tmpl.get("transition_sfx_volume", 0.40),
                             "emphasis_zoom_enabled": item_tmpl.get("emphasis_zoom_enabled", False),
                             "emphasis_zoom_intensity": item_tmpl.get("emphasis_zoom_intensity", 1.15),
-                            "enable_motion": True,
+                            "enable_motion": item_tmpl.get("enable_motion", False),
                             "mute_stock_audio": True
                         }
 

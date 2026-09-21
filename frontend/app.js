@@ -165,6 +165,14 @@ async function loadSettings() {
     if (document.getElementById('input-hardware-encoder')) document.getElementById('input-hardware-encoder').value = data.hardware_encoder || 'auto';
     if (document.getElementById('input-video-provider')) document.getElementById('input-video-provider').value = data.video_provider || 'all';
     
+    // Output Directories
+    if (document.getElementById('input-output-dir')) {
+      document.getElementById('input-output-dir').value = data.output_dir || '';
+    }
+    if (document.getElementById('input-thumbnail-output-dir')) {
+      document.getElementById('input-thumbnail-output-dir').value = data.thumbnail_output_dir || '';
+    }
+
     const workers = data.workers || 8;
     if (document.getElementById('input-workers-slider')) {
       document.getElementById('input-workers-slider').value = workers;
@@ -228,6 +236,10 @@ async function saveAppSettings() {
     openai_api_key: document.getElementById('input-openai-key')?.value.trim() || '',
     elevenlabs_api_key: document.getElementById('input-elevenlabs-key')?.value.trim() || '',
 
+    // Output Directories
+    output_dir: document.getElementById('input-output-dir')?.value.trim() || '',
+    thumbnail_output_dir: document.getElementById('input-thumbnail-output-dir')?.value.trim() || '',
+
     // Performance & Hardware
     hardware_encoder: document.getElementById('input-hardware-encoder')?.value || 'auto',
     video_provider: document.getElementById('input-video-provider')?.value || 'all',
@@ -248,6 +260,39 @@ async function saveAppSettings() {
     if (badge) badge.textContent = `${payload.workers} Workers Ready`;
   } catch (err) {
     alert('Error saving settings: ' + err.message);
+  }
+}
+
+async function browseFolderFor(inputId) {
+  const currentVal = document.getElementById(inputId)?.value || '';
+  try {
+    const res = await fetch('/api/browse-directory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initial_dir: currentVal })
+    });
+    const data = await res.json();
+    if (data.path) {
+      document.getElementById(inputId).value = data.path;
+      showToast(`📁 Selected: <strong>${data.path}</strong>`);
+    }
+  } catch (e) {
+    console.warn('Browse directory failed:', e);
+  }
+}
+
+async function openOutputFolderCustom(type = 'videos') {
+  try {
+    const res = await fetch('/api/open-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: type })
+    });
+    const data = await res.json();
+    const folderName = (data.path || '').split(/[\\/]/).pop() || type;
+    showToast(`📂 Opened folder in Windows Explorer: <strong>${folderName}</strong><br><span style="font-size:11px;color:#94a3b8;word-break:break-all;">${data.path}</span>`, 4000);
+  } catch (e) {
+    showToast(`⚠️ Could not open folder: ${e.message}`);
   }
 }
 

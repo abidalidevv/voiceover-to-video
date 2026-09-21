@@ -74,9 +74,10 @@ def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int, target_re
         cmd.extend(["-ss", f"{start_offset:.2f}"])
 
     scale_filter = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},setsar=1,fps=30"
+    trim_dur = target_dur + 1.0  # 1.0s headroom for smooth zero-re-encode transitions
     cmd.extend([
         "-i", str(raw_path),
-        "-t", f"{target_dur:.2f}",
+        "-t", f"{trim_dur:.2f}",
         "-vf", scale_filter,
         "-c:v", "libx264",
         "-preset", "ultrafast",

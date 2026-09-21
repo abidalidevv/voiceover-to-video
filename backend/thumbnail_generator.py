@@ -454,7 +454,9 @@ def generate_youtube_thumbnails(
     }
     """
     settings = load_settings()
-    out_dir = target_dir or THUMBNAILS_DIR
+    conf_thumb = str(settings.get("thumbnail_output_dir", "")).strip()
+    thumb_default = Path(conf_thumb) if conf_thumb else THUMBNAILS_DIR
+    out_dir = target_dir or thumb_default
     out_dir.mkdir(parents=True, exist_ok=True)
 
     proj_id = project.get("id", f"proj_{int(time.time())}")
@@ -530,14 +532,17 @@ def generate_youtube_thumbnails(
     thumb1.save(str(t1_path), "JPEG", quality=95)
     thumb2.save(str(t2_path), "JPEG", quality=95)
 
-    # 4. Also copy directly to OUTPUT_DIR alongside rendered video
+    # 4. Also copy directly to configured video output dir alongside rendered video
     try:
-        out_dest1 = OUTPUT_DIR / f"{safe_name}_Thumbnail_Style1_ViralPunch.jpg"
-        out_dest2 = OUTPUT_DIR / f"{safe_name}_Thumbnail_Style2_CinematicMystery.jpg"
+        conf_out = str(settings.get("output_dir", "")).strip()
+        dest_dir = Path(conf_out) if conf_out else OUTPUT_DIR
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        out_dest1 = dest_dir / f"{safe_name}_Thumbnail_Style1_ViralPunch.jpg"
+        out_dest2 = dest_dir / f"{safe_name}_Thumbnail_Style2_CinematicMystery.jpg"
         shutil.copy2(t1_path, out_dest1)
         shutil.copy2(t2_path, out_dest2)
     except Exception as e:
-        print(f"[ThumbnailGenerator] Warning copying to OUTPUT_DIR: {e}")
+        print(f"[ThumbnailGenerator] Warning copying to output dir: {e}")
 
     # Web URLs
     url1 = f"/media/thumbnails/{t1_filename}"

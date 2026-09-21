@@ -1466,6 +1466,51 @@
           </div>
         </div>
 
+        <!-- Output Directories Configuration Card -->
+        <div class="settings-card mt-24">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>📁 Output Folders (Videos & Thumbnails)</h3>
+            <span class="badge badge-success">Saved to Local Disk</span>
+          </div>
+          <p class="help-text">Set custom destination paths for your exported Full HD/4K videos and YouTube thumbnails.</p>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="mt-16">
+            <!-- Video Output Folder -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
+                <span>🎬 Video Export Folder</span>
+                <button type="button" class="btn btn-xs btn-outline" onclick="openOutputFolderCustom('videos')" style="font-size:11px;padding:2px 8px;">
+                  📂 Open Folder
+                </button>
+              </label>
+              <div style="display:flex;gap:8px;" class="mt-8">
+                <input type="text" id="input-output-dir" class="form-input flex-1" placeholder="C:\Users\...\data\output">
+                <button type="button" class="btn btn-secondary" onclick="browseFolderFor('input-output-dir')" title="Browse Folder">
+                  📁 Browse...
+                </button>
+              </div>
+              <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">Rendered MP4 videos will be saved directly into this folder.</p>
+            </div>
+
+            <!-- Thumbnail Output Folder -->
+            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+              <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
+                <span>🖼️ Thumbnail Export Folder</span>
+                <button type="button" class="btn btn-xs btn-outline" onclick="openOutputFolderCustom('thumbnails')" style="font-size:11px;padding:2px 8px;">
+                  📂 Open Folder
+                </button>
+              </label>
+              <div style="display:flex;gap:8px;" class="mt-8">
+                <input type="text" id="input-thumbnail-output-dir" class="form-input flex-1" placeholder="C:\Users\...\data\thumbnails">
+                <button type="button" class="btn btn-secondary" onclick="browseFolderFor('input-thumbnail-output-dir')" title="Browse Folder">
+                  📁 Browse...
+                </button>
+              </div>
+              <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">Viral and cinematic YouTube thumbnails will be saved into this folder.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- 10+ Stock Video APIs Grid -->
         <div class="settings-card mt-24">
           <div style="display:flex;justify-content:space-between;align-items:center;">
