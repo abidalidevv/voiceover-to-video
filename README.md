@@ -58,14 +58,14 @@
 ### Standalone Executable (Zero Setup)
 Double-click:
 ```cmd
-Start-VideoGen-Exe.bat
+2_RUN_APP_Standalone_EXE.bat
 ```
 *(No Python, Git, or FFmpeg installation required. Everything is self-contained in the portable package).*
 
 ### Developer / Source Code Mode
 Run:
 ```cmd
-Start-SourceCode.bat
+1_RUN_APP_Python_Source.bat
 ```
 Or start via Python:
 ```bash
@@ -106,11 +106,9 @@ ATS-Video/
 ├── data/                     # Persistent application data
 │   ├── assets/bgm/           # Background music loops (ambient, lofi, focus)
 │   └── sfx/                  # Sound effects & pre-cached voice preview MP3s
-├── extra/                    # Master blueprints, architecture docs & build helpers
-├── test/                     # Verification test scripts & test media
-├── Start-VideoGen-Exe.bat    # 1-Click launcher for compiled executable
-├── Start-SourceCode.bat      # 1-Click launcher for Python source code
-├── build_exe.bat             # PyInstaller standalone executable compiler
+├── 1_RUN_APP_Python_Source.bat       # 1-Click launcher for Python source code (fast & live)
+├── 2_RUN_APP_Standalone_EXE.bat       # 1-Click launcher for compiled executable (standalone)
+├── 3_BUILD_NEW_Standalone_EXE.bat     # PyInstaller standalone executable compiler
 ├── desktop_launcher.py       # Desktop browser window launcher
 ├── main.py                   # Root application entrypoint
 └── requirements.txt          # Python dependencies
