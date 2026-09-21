@@ -5,8 +5,16 @@ __pycache__/
 
 # Tests & Extra Folders (Ignored per user request)
 test/
+tests/
+test_*.py
+*_test.py
+*.test.*
 extra/
 scratch/
+
+# Ignore all planning and scratch markdown files (keep only root README.md)
+*.md
+!README.md
 
 # Temporary, Caches & Generated Media (Stock & Rendered)
 data/cache/
