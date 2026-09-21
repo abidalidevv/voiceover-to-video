@@ -212,7 +212,7 @@ def render_final_video(
 
     # ==================== STAGE 1: PARALLEL SEGMENT NORMALIZATION (16:9 FULL HD) ====================
     seg_files = [None] * len(valid_clips)
-    num_workers = min(4, max(2, (os.cpu_count() or 4) // 2))
+    num_workers = min(8, max(4, os.cpu_count() or 4))
 
     def normalize_clip(item_idx, sc_id, fpath, dur, sc):
         # File extension
@@ -523,14 +523,24 @@ def render_final_video(
     else:
         final_cmd.extend(["-map", "0:v:0", "-map", "1:a:0"])
 
-    final_cmd.extend([
-        "-c:v", encoder,
-        *encoder_args,
-        "-c:a", "aac",
-        "-b:a", "192k",
-        "-shortest",
-        str(final_output_path)
-    ])
+    if video_map_label == "0:v:0":
+        print("[Renderer] Subtitles disabled: Using ultra-fast lossless video stream copy (-c:v copy)!")
+        final_cmd.extend([
+            "-c:v", "copy",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-shortest",
+            str(final_output_path)
+        ])
+    else:
+        final_cmd.extend([
+            "-c:v", encoder,
+            *encoder_args,
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-shortest",
+            str(final_output_path)
+        ])
 
     try:
         subprocess.run(final_cmd, capture_output=True, text=True, check=True)
@@ -553,17 +563,26 @@ def render_final_video(
         else:
             cpu_cmd.extend(["-map", "0:v:0", "-map", "1:a:0"])
 
-        cpu_cmd.extend([
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "20",
-            "-pix_fmt", "yuv420p",
-            "-threads", "0",
-            "-c:a", "aac",
-            "-b:a", "192k",
-            "-shortest",
-            str(final_output_path)
-        ])
+        if video_map_label == "0:v:0":
+            cpu_cmd.extend([
+                "-c:v", "copy",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-shortest",
+                str(final_output_path)
+            ])
+        else:
+            cpu_cmd.extend([
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-crf", "20",
+                "-pix_fmt", "yuv420p",
+                "-threads", "0",
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-shortest",
+                str(final_output_path)
+            ])
         subprocess.run(cpu_cmd, capture_output=True, text=True, check=True)
 
     # Clean up temp segments
@@ -600,9 +619,9 @@ def get_best_video_encoder(ffmpeg_exe: str, use_gpu: bool = True):
         return _DETECTED_ENCODER_CACHE
 
     candidates = [
-        ("h264_nvenc", ["-preset", "p4", "-cq", "22", "-pix_fmt", "yuv420p"]),
-        ("h264_qsv", ["-preset", "veryfast", "-global_quality", "22", "-pix_fmt", "nv12"]),
-        ("h264_amf", ["-usage", "transcoding", "-quality", "speed", "-rc", "cqp", "-qp_p", "22", "-pix_fmt", "yuv420p"]),
+        ("h264_nvenc", ["-preset", "p1", "-tune", "ll", "-cq", "23", "-pix_fmt", "yuv420p"]),
+        ("h264_qsv", ["-preset", "veryfast", "-global_quality", "23", "-pix_fmt", "nv12"]),
+        ("h264_amf", ["-usage", "transcoding", "-quality", "speed", "-rc", "cqp", "-qp_p", "23", "-pix_fmt", "yuv420p"]),
         ("h264_mf", ["-rate_control", "cbr", "-b:v", "8M", "-pix_fmt", "yuv420p"])
     ]
 
