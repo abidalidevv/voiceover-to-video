@@ -691,13 +691,22 @@ function loadSceneClip(sceneIdx, autoPlay = true) {
     };
 
     videoEl.muted = true;
+    videoEl.onerror = () => {
+      console.warn("[VideoGen] Warning: Could not load scene clip from", clip.web_url);
+    };
+    videoEl.onplaying = () => {
+      videoEl.removeAttribute('poster');
+    };
+
     const currentSrc = videoEl.getAttribute('src') || videoEl.src || '';
     if (currentSrc === clip.web_url || currentSrc.endsWith(clip.web_url)) {
+      videoEl.removeAttribute('poster');
       applySeekAndPlay();
     } else {
       videoEl.src = clip.web_url;
       videoEl.load();
       videoEl.onloadeddata = () => {
+        videoEl.removeAttribute('poster');
         applySeekAndPlay();
       };
     }
@@ -753,6 +762,7 @@ function startPlayback() {
   }
   if (videoEl) {
     videoEl.muted = true;
+    videoEl.removeAttribute('poster');
     const playPromise = videoEl.play();
     if (playPromise !== undefined) {
       playPromise.catch(() => {});

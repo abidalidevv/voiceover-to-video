@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import time
 import shutil
@@ -60,15 +61,32 @@ def save_project_to_history(proj: Dict[str, Any]):
 
 
 def _to_media_url(file_path: Any) -> str:
-    """Safely converts a disk path under DATA_DIR to a /media/... web URL."""
+    """Safely converts a disk path to a /media/... web URL."""
     if not file_path:
         return ""
     p = Path(file_path)
+    # Check if under DATA_DIR
     try:
         rel = p.resolve().relative_to(DATA_DIR.resolve()).as_posix()
         return f"/media/{rel}"
     except Exception:
+        pass
+    # Check if under VideoGen/data
+    try:
+        alt_data = Path("C:/Users/Abid/Desktop/VideoGen/data").resolve()
+        rel = p.resolve().relative_to(alt_data).as_posix()
+        return f"/media/{rel}"
+    except Exception:
+        pass
+    # Check if inside known subdirectories
+    p_str = str(p).replace("\\", "/")
+    if "scene_clips" in p_str:
+        return f"/media/cache/scene_clips/{p.name}"
+    elif "stock_videos" in p_str:
         return f"/media/cache/stock_videos/{p.name}"
+    elif "temp" in p_str:
+        return f"/media/temp/{p.name}"
+    return f"/media/cache/stock_videos/{p.name}"
 
 
 
@@ -1470,6 +1488,35 @@ def get_favicon():
     if ico_file.exists():
         return FileResponse(str(ico_file), media_type="image/x-icon")
     raise HTTPException(status_code=404, detail="Favicon not found")
+
+
+@app.get("/media/{file_path:path}")
+async def serve_media(file_path: str):
+    """
+    Robust media streaming endpoint that resolves audio/video files across
+    DATA_DIR, cache directories, and alternative project paths with HTTP range support.
+    """
+    clean_rel = file_path.replace("\\", "/").lstrip("/")
+    fname = Path(clean_rel).name
+
+    candidates = [
+        DATA_DIR / clean_rel,
+        CACHE_DIR / clean_rel,
+        CACHE_DIR / "scene_clips" / fname,
+        CACHE_DIR / "stock_videos" / fname,
+        DATA_DIR / "temp" / fname,
+        DATA_DIR / "assets" / "bgm" / fname,
+        Path("C:/Users/Abid/Desktop/VideoGen/data") / clean_rel,
+        Path("C:/Users/Abid/Desktop/VideoGen/data/cache/scene_clips") / fname,
+        Path("C:/Users/Abid/Desktop/VideoGen/data/cache/stock_videos") / fname,
+        Path("C:/Users/Abid/Desktop/VideoGen/data/temp") / fname,
+    ]
+    for c in candidates:
+        if c.exists() and c.is_file():
+            ext = c.suffix.lower()
+            media_type = "video/mp4" if ext == ".mp4" else ("audio/mpeg" if ext == ".mp3" else None)
+            return FileResponse(str(c), media_type=media_type)
+    raise HTTPException(status_code=404, detail=f"Media file '{file_path}' not found")
 
 
 # Mount data folder to serve audio, video clips, and exported MP4s
