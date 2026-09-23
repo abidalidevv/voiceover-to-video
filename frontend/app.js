@@ -3275,7 +3275,7 @@ async function generateClonedVoiceover() {
     if (fileinfo) fileinfo.classList.remove('hidden');
     if (fn) fn.textContent = `🧬 Cloned Voice (${data.filename})`;
     uploadedAudioFilename = data.filename;
-    const startBtn = document.getElementById('start-generate-btn');
+    const startBtn = document.getElementById('generate-btn') || document.getElementById('start-generate-btn');
     if (startBtn) startBtn.disabled = false;
 
     showToast(`🧬 Voice synthesized successfully! Ready to generate video.`);
@@ -3484,7 +3484,7 @@ async function generateAIVoiceover() {
     }
 
     // Enable Start Generation button in Single Studio
-    const startBtn = document.getElementById('start-generate-btn');
+    const startBtn = document.getElementById('generate-btn') || document.getElementById('start-generate-btn');
     if (startBtn) startBtn.disabled = false;
 
     showToast(`🎉 AI Voiceover ready (${data.duration}s)! You can now click <strong>Generate Complete Video</strong>.`);
