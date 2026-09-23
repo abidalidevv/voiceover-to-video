@@ -3,6 +3,7 @@ import re
 import json
 import time
 import shutil
+import random
 import threading
 import subprocess
 from pathlib import Path
@@ -752,6 +753,20 @@ class RenderRequest(BaseModel):
     fps: int = 30
 
 
+def generate_bundle_prefix(project_name: str = "") -> str:
+    """
+    Generates a unique matching identifier code (e.g. 'A938') and timestamp (e.g. '20260923_224510')
+    shared by both the rendered video and its thumbnails so users can pair them instantly.
+    """
+    import string
+    letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+    code = f"{random.choice(letters)}{random.randint(100, 999)}"
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    clean = re.sub(r'[^a-zA-Z0-9_-]', '_', str(project_name or "VideoGen")).strip('_') or "Video"
+    clean = clean[:25].strip('_')
+    return f"{code}_{ts}_{clean}"
+
+
 @app.post("/api/render")
 def render_video(req: RenderRequest):
     project = ACTIVE_PROJECTS.get(req.project_id)
@@ -791,7 +806,9 @@ def render_video(req: RenderRequest):
 
     # 2. Render Video with BGM, Ken Burns FX, Modern Transitions, and Audio Muxing
     res_tag = "8K_UHD" if target_res == "8k" else ("4K_UHD" if target_res == "4k" else "FullHD_1080p")
-    out_filename = f"{project['name']}_{res_tag}_{int(time.time())}.mp4"
+    bundle_prefix = project.get("bundle_prefix") or generate_bundle_prefix(project.get("name") or "Video")
+    project["bundle_prefix"] = bundle_prefix
+    out_filename = f"{bundle_prefix}_{res_tag}.mp4"
     render_opts = {
         "fps": req.fps,
         "target_resolution": target_res,
@@ -827,13 +844,13 @@ def render_video(req: RenderRequest):
     }
     project["status"] = "completed"
 
-    # Auto-generate 2 YouTube Thumbnails (Viral & Cinematic)
+    # Auto-generate 3 YouTube Thumbnails with matching bundle_prefix
     try:
         from backend.thumbnail_generator import generate_youtube_thumbnails
         conf_thumb = str(load_settings().get("thumbnail_output_dir", "")).strip()
         thumb_dir = Path(conf_thumb) if conf_thumb else (DATA_DIR / "thumbnails")
         thumb_dir.mkdir(parents=True, exist_ok=True)
-        thumb_res = generate_youtube_thumbnails(project, target_dir=thumb_dir)
+        thumb_res = generate_youtube_thumbnails(project, target_dir=thumb_dir, bundle_prefix=bundle_prefix)
         project["thumbnails"] = thumb_res
     except Exception as th_err:
         print(f"[ThumbnailGenerator] Auto-generation notice: {th_err}")
@@ -911,8 +928,10 @@ def start_render_job(req: RenderRequest):
             job["stage_desc"] = "Ready. Initializing parallel video normalization..."
 
             proj_name = project.get("name") or project.get("id") or "VideoGen"
+            bundle_prefix = project.get("bundle_prefix") or generate_bundle_prefix(proj_name)
+            project["bundle_prefix"] = bundle_prefix
             res_tag = "8K_UHD" if target_res == "8k" else ("4K_UHD" if target_res == "4k" else "FullHD_1080p")
-            out_filename = f"{proj_name}_{res_tag}_{int(time.time())}.mp4"
+            out_filename = f"{bundle_prefix}_{res_tag}.mp4"
             render_opts = {
                 "fps": req.fps,
                 "target_resolution": target_res,
@@ -975,7 +994,7 @@ def start_render_job(req: RenderRequest):
                 conf_thumb = str(load_settings().get("thumbnail_output_dir", "")).strip()
                 thumb_dir = Path(conf_thumb) if conf_thumb else (DATA_DIR / "thumbnails")
                 thumb_dir.mkdir(parents=True, exist_ok=True)
-                thumb_res = generate_youtube_thumbnails(project, target_dir=thumb_dir)
+                thumb_res = generate_youtube_thumbnails(project, target_dir=thumb_dir, bundle_prefix=bundle_prefix)
                 project["thumbnails"] = thumb_res
                 job["thumbnails"] = thumb_res
             except Exception as th_err:
@@ -1082,7 +1101,14 @@ def generate_thumbnails_endpoint(req: GenerateThumbnailRequest):
             raise HTTPException(status_code=404, detail="Project not found")
 
     from backend.thumbnail_generator import generate_youtube_thumbnails
-    thumb_res = generate_youtube_thumbnails(project, custom_headline=req.custom_headline, target_dir=DATA_DIR / "thumbnails")
+    bundle_prefix = project.get("bundle_prefix") or generate_bundle_prefix(project.get("name") or "Video")
+    project["bundle_prefix"] = bundle_prefix
+    thumb_res = generate_youtube_thumbnails(
+        project,
+        custom_headline=req.custom_headline,
+        target_dir=DATA_DIR / "thumbnails",
+        bundle_prefix=bundle_prefix
+    )
     project["thumbnails"] = thumb_res
     save_project_to_history(project)
     return {"status": "success", "thumbnails": thumb_res}
@@ -1099,15 +1125,41 @@ def get_thumbnails_endpoint(project_id: str):
     if project and project.get("thumbnails"):
         return {"status": "success", "thumbnails": project["thumbnails"]}
 
-    # 2. Check disk in DATA_DIR / "thumbnails" for this project_id
+    bundle_prefix = project.get("bundle_prefix") if project else None
+
+    # 2. Check disk in DATA_DIR / "thumbnails" for bundle_prefix or project_id
+    if bundle_prefix:
+        b1 = DATA_DIR / "thumbnails" / f"{bundle_prefix}_Thumb_Viral_Style1.jpg"
+        b2 = DATA_DIR / "thumbnails" / f"{bundle_prefix}_Thumb_Cinematic_Style2.jpg"
+        b3 = DATA_DIR / "thumbnails" / f"{bundle_prefix}_Thumb_ModernTech_Style3.jpg"
+        if b1.exists() or b2.exists() or b3.exists():
+            thumbs = {
+                "thumb1_url": f"/media/thumbnails/{b1.name}" if b1.exists() else None,
+                "thumb2_url": f"/media/thumbnails/{b2.name}" if b2.exists() else None,
+                "thumb3_url": f"/media/thumbnails/{b3.name}" if b3.exists() else None,
+                "thumb1_path": str(b1) if b1.exists() else "",
+                "thumb2_path": str(b2) if b2.exists() else "",
+                "thumb3_path": str(b3) if b3.exists() else "",
+                "headline_line1": "VIRAL HOOK",
+                "headline_line2": "WATCH NOW",
+                "bundle_prefix": bundle_prefix
+            }
+            if project:
+                project["thumbnails"] = thumbs
+                save_project_to_history(project)
+            return {"status": "success", "thumbnails": thumbs}
+
     t1 = DATA_DIR / "thumbnails" / f"{project_id}_thumb_1_viral.jpg"
     t2 = DATA_DIR / "thumbnails" / f"{project_id}_thumb_2_cinematic.jpg"
-    if t1.exists() or t2.exists():
+    t3 = DATA_DIR / "thumbnails" / f"{project_id}_thumb_3_modern.jpg"
+    if t1.exists() or t2.exists() or t3.exists():
         thumbs = {
             "thumb1_url": f"/media/thumbnails/{t1.name}" if t1.exists() else None,
             "thumb2_url": f"/media/thumbnails/{t2.name}" if t2.exists() else None,
+            "thumb3_url": f"/media/thumbnails/{t3.name}" if t3.exists() else None,
             "thumb1_path": str(t1) if t1.exists() else "",
             "thumb2_path": str(t2) if t2.exists() else "",
+            "thumb3_path": str(t3) if t3.exists() else "",
             "headline_line1": "VIRAL HOOK",
             "headline_line2": "WATCH NOW"
         }
@@ -1118,17 +1170,18 @@ def get_thumbnails_endpoint(project_id: str):
 
     # 3. Check OUTPUT_DIR for any matching thumbnail files
     if project:
-        safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', project.get("name", project_id))
         conf_out = str(load_settings().get("output_dir", "")).strip()
         dest_dir = Path(conf_out) if conf_out else OUTPUT_DIR
-        out_t1 = dest_dir / f"{safe_name}_Thumbnail_Style1_ViralPunch.jpg"
-        out_t2 = dest_dir / f"{safe_name}_Thumbnail_Style2_CinematicMystery.jpg"
-        if out_t1.exists() or out_t2.exists():
+        safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', project.get("name", project_id))
+        out_candidates = list(dest_dir.glob(f"*{safe_name}*Thumb*.jpg"))
+        if out_candidates:
             thumbs = {
-                "thumb1_url": f"/media/output/{out_t1.name}" if out_t1.exists() else None,
-                "thumb2_url": f"/media/output/{out_t2.name}" if out_t2.exists() else None,
-                "thumb1_path": str(out_t1) if out_t1.exists() else "",
-                "thumb2_path": str(out_t2) if out_t2.exists() else "",
+                "thumb1_url": f"/media/output/{out_candidates[0].name}",
+                "thumb2_url": f"/media/output/{out_candidates[1].name}" if len(out_candidates) > 1 else None,
+                "thumb3_url": f"/media/output/{out_candidates[2].name}" if len(out_candidates) > 2 else None,
+                "thumb1_path": str(out_candidates[0]),
+                "thumb2_path": str(out_candidates[1]) if len(out_candidates) > 1 else "",
+                "thumb3_path": str(out_candidates[2]) if len(out_candidates) > 2 else "",
                 "headline_line1": "VIRAL HOOK",
                 "headline_line2": "WATCH NOW"
             }
@@ -1142,7 +1195,9 @@ def get_thumbnails_endpoint(project_id: str):
             from backend.thumbnail_generator import generate_youtube_thumbnails
             thumb_dir = DATA_DIR / "thumbnails"
             thumb_dir.mkdir(parents=True, exist_ok=True)
-            thumbs = generate_youtube_thumbnails(project, target_dir=thumb_dir)
+            bp = project.get("bundle_prefix") or generate_bundle_prefix(project.get("name") or "Video")
+            project["bundle_prefix"] = bp
+            thumbs = generate_youtube_thumbnails(project, target_dir=thumb_dir, bundle_prefix=bp)
             project["thumbnails"] = thumbs
             save_project_to_history(project)
             return {"status": "success", "thumbnails": thumbs}
@@ -1285,6 +1340,40 @@ def open_docs_endpoint():
         return {"status": "error", "message": str(e)}
 
 
+def _bring_explorer_to_foreground(abs_path: str):
+    """
+    Spawns File Explorer in a new window (/n) and ensures it is brought
+    directly to the foreground on Windows even when called from background browsers.
+    """
+    if os.name != "nt":
+        return
+    try:
+        # /n opens a new window, which Windows allows to take focus
+        subprocess.Popen(f'explorer.exe /n,"{abs_path}"')
+    except Exception as e:
+        print(f"[OpenFolder] explorer spawn error: {e}")
+        try:
+            os.startfile(abs_path)
+        except Exception:
+            pass
+
+    def _focus():
+        time.sleep(0.35)
+        try:
+            folder_leaf = Path(abs_path).name
+            ps_script = f"""
+            $ws = New-Object -ComObject WScript.Shell;
+            $ws.AppActivate('{folder_leaf}');
+            $ws.AppActivate('File Explorer');
+            """
+            subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
+                           capture_output=True, timeout=3)
+        except Exception:
+            pass
+
+    threading.Thread(target=_focus, daemon=True).start()
+
+
 @app.get("/api/open-output-folder")
 @app.post("/api/open-output-folder")
 @app.get("/api/open-folder")
@@ -1293,9 +1382,9 @@ def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = N
     settings = load_settings()
     req_path = None
     if req and req.path:
-        req_path = req.path
+        req_path = str(req.path).strip()
     elif path:
-        req_path = path
+        req_path = str(path).strip()
 
     if req_path in ("thumbnails", "thumbnail"):
         conf_thumb = str(settings.get("thumbnail_output_dir", "")).strip()
@@ -1323,25 +1412,31 @@ def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = N
         if os.name == "nt":
             try:
                 subprocess.Popen(f'explorer.exe /select,"{abs_path}"')
+                _bring_explorer_to_foreground(str(target_path.parent.resolve()))
             except Exception as e:
                 print(f"[OpenFolder] explorer select failed: {e}")
         return {"status": "success", "path": abs_path, "type": "file"}
 
-    # Target is a folder
+    # If target has a file extension (e.g. video.mp4) but doesn't exist yet, fallback to its parent folder
+    if target_path.suffix:
+        target_path = target_path.parent
+
+    # Target is guaranteed to be a directory: create it if it doesn't exist yet!
     try:
         target_path.mkdir(parents=True, exist_ok=True)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[OpenFolder] mkdir notice: {e}")
+
     abs_path = os.path.normpath(str(target_path.resolve()))
 
     if os.name == "nt":
+        _bring_explorer_to_foreground(abs_path)
+    else:
         try:
-            os.startfile(abs_path)
+            subprocess.Popen(['xdg-open', abs_path])
         except Exception:
-            try:
-                subprocess.Popen(['explorer.exe', abs_path])
-            except Exception as e2:
-                print(f"[OpenFolder] explorer folder failed: {e2}")
+            pass
+
     return {"status": "success", "path": abs_path, "type": "folder"}
 
 

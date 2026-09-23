@@ -208,6 +208,20 @@ def _generate_gradient_background(w: int = 1280, h: int = 720, style: str = "vir
         gdraw.ellipse([w * 0.65, h * 0.1, w * 1.1, h * 0.9], fill=(255, 220, 0, 50))
         glow = glow.filter(ImageFilter.GaussianBlur(80))
         img.paste(glow, (0, 0), glow)
+    elif style == "modern":
+        # Cyber dark violet / midnight blue with radiant neon cyan & magenta laser spotlight
+        for y in range(h):
+            ratio = y / h
+            r = int(15 + ratio * 30)
+            g = int(8 + ratio * 15)
+            b = int(35 + ratio * 55)
+            draw.line([(0, y), (w, y)], fill=(r, g, b))
+        glow = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        gdraw = ImageDraw.Draw(glow)
+        gdraw.ellipse([w * 0.6, -h * 0.1, w * 1.15, h * 0.8], fill=(189, 0, 255, 60))
+        gdraw.ellipse([w * 0.2, h * 0.4, w * 0.8, h * 1.1], fill=(0, 245, 255, 45))
+        glow = glow.filter(ImageFilter.GaussianBlur(90))
+        img.paste(glow, (0, 0), glow)
     else:
         # Cinematic dark teal / obsidian vignette
         for y in range(h):
@@ -234,17 +248,37 @@ def _draw_text_with_effects(
     stroke_color: str = "#000000",
     stroke_width: int = 8,
     shadow_offset: Tuple[int, int] = (6, 8),
-    shadow_color: str = "#000000"
+    shadow_color: str = "#000000",
+    glow_color: Optional[Tuple[int, int, int, int]] = None,
+    glow_radius: int = 14,
+    target_img: Optional[Image.Image] = None
 ):
-    """Draws text with heavy drop shadow and bold stroke for maximum YouTube CTR readability."""
+    """
+    Draws text with:
+    1. Volumetric neon rim glow (via Gaussian blur on an RGBA layer if target_img & glow_color provided).
+    2. Deep multi-pass drop shadow for 3D depth pop.
+    3. Heavy outer stroke + vibrant foreground fill for 100% crisp YouTube readability.
+    """
     x, y = xy
+
+    # 1. Volumetric Neon Rim Glow
+    if glow_color and target_img is not None:
+        try:
+            glow_layer = Image.new("RGBA", target_img.size, (0, 0, 0, 0))
+            gdraw = ImageDraw.Draw(glow_layer)
+            gdraw.text((x, y), text, font=font, fill=glow_color, stroke_width=stroke_width + 12, stroke_fill=glow_color)
+            blurred_glow = glow_layer.filter(ImageFilter.GaussianBlur(glow_radius))
+            target_img.paste(blurred_glow, (0, 0), blurred_glow)
+        except Exception:
+            pass
+
     sx, sy = shadow_offset
-
-    # 1. Drop shadow
+    # 2. Multi-tier drop shadow for 3D volumetric pop
     if shadow_offset != (0, 0):
-        draw.text((x + sx, y + sy), text, font=font, fill=shadow_color, stroke_width=stroke_width + 2, stroke_fill=shadow_color)
+        draw.text((x + sx, y + sy), text, font=font, fill=shadow_color, stroke_width=stroke_width + 4, stroke_fill=shadow_color)
+        draw.text((x + max(1, sx // 2), y + max(1, sy // 2)), text, font=font, fill=shadow_color, stroke_width=stroke_width + 1, stroke_fill=shadow_color)
 
-    # 2. Outer stroke + Main fill
+    # 3. Outer stroke + Vibrant fill
     draw.text((x, y), text, font=font, fill=fill_color, stroke_width=stroke_width, stroke_fill=stroke_color)
 
 
@@ -258,13 +292,13 @@ def create_style_1_viral_punch(
     STYLE 1: Viral Punch (Alex Hormozi / MrBeast Style)
     - Contrast and saturation boosted
     - Dark lateral gradient on left
-    - Electric Yellow + Pure White text
+    - Electric Yellow + Pure White text with golden ambient glow
     - Heavy 8px black stroke and 3D shadow
     - Viral Warning Badge ("🚨 MUST WATCH" or "🔥 100% PROVEN")
     """
     thumb = base_image.copy().resize((1280, 720), Image.Resampling.LANCZOS)
     
-    # 1. Color Boost
+    # 1. Color & Contrast Boost
     enhancer = ImageEnhance.Contrast(thumb)
     thumb = enhancer.enhance(1.25)
     enhancer = ImageEnhance.Color(thumb)
@@ -273,8 +307,8 @@ def create_style_1_viral_punch(
     # 2. Gradient Overlay on Left Side for Text Readability
     overlay = Image.new("RGBA", (1280, 720), (0, 0, 0, 0))
     odraw = ImageDraw.Draw(overlay)
-    for x in range(850):
-        alpha = int(220 * (1.0 - (x / 850.0) ** 1.3))
+    for x in range(880):
+        alpha = int(225 * (1.0 - (x / 880.0) ** 1.3))
         odraw.line([(x, 0), (x, 720)], fill=(4, 6, 12, alpha))
     thumb.paste(overlay, (0, 0), overlay)
 
@@ -290,19 +324,18 @@ def create_style_1_viral_punch(
     elif "motivation" in niche.lower():
         badge_text = "100% PROVEN"
 
-    bx, by = 60, 60
+    bx, by = 60, 55
     bb = badge_font.getbbox(badge_text)
     bw, bh = (bb[2] - bb[0]) + 36, 52
-    # Draw rounded badge background in bright red with yellow border
     draw.rounded_rectangle([bx, by, bx + bw, by + bh], radius=10, fill="#E60026", outline="#FFE600", width=3)
     draw.text((bx + 18, by + 8), badge_text, font=badge_font, fill="#FFFFFF", stroke_width=2, stroke_fill="#000000")
 
     # 4. Main Headline Lines (Auto-scaled so text never cuts off)
     font_main_1 = _fit_font("impact", 94, line1, max_width=1120) if line1 else _get_font("impact", 94)
     font_main_2 = _fit_font("impact", 94, line2, max_width=1120) if line2 else _get_font("impact", 94)
-    y_cursor = 150
+    y_cursor = 145
 
-    # Line 1: Electric Yellow
+    # Line 1: Electric Yellow with Gold Rim Glow
     if line1:
         _draw_text_with_effects(
             draw=draw,
@@ -313,8 +346,12 @@ def create_style_1_viral_punch(
             stroke_color="#000000",
             stroke_width=8,
             shadow_offset=(8, 10),
-            shadow_color="#000000"
+            shadow_color="#000000",
+            glow_color=(255, 200, 0, 140),
+            glow_radius=16,
+            target_img=thumb
         )
+        draw = ImageDraw.Draw(thumb)
         bbox1 = font_main_1.getbbox(line1)
         h1 = (bbox1[3] - bbox1[1]) if bbox1 else 90
         y_cursor += max(100, h1 + 25)
@@ -330,15 +367,18 @@ def create_style_1_viral_punch(
             stroke_color="#000000",
             stroke_width=8,
             shadow_offset=(8, 10),
-            shadow_color="#000000"
+            shadow_color="#000000",
+            glow_color=(255, 255, 255, 90),
+            glow_radius=12,
+            target_img=thumb
         )
+        draw = ImageDraw.Draw(thumb)
 
     # 5. Bottom Callout Tagline
     tag_font = _get_font("ariblk", 28)
     tag_text = "WATCH BEFORE DELETED!"
     tb = tag_font.getbbox(tag_text)
     tw = (tb[2] - tb[0]) + 40
-    # Tag bar background
     draw.rounded_rectangle([60, 600, 60 + tw, 655], radius=8, fill="#FFE600", outline="#000000", width=2)
     draw.text((80, 610), tag_text, font=tag_font, fill="#000000")
 
@@ -354,7 +394,7 @@ def create_style_2_cinematic_mystery(
     """
     STYLE 2: Cinematic Mystery (Magnates Media / James Jani / Vox Style)
     - Moody cinematic color balance & deep vignette
-    - Gold / Cyan typography
+    - Gold / Cyan typography with volumetric cyan rim glow
     - Minimal luxury framing
     - Intriguing curiosity gap hook
     """
@@ -373,10 +413,10 @@ def create_style_2_cinematic_mystery(
         alpha = int(255 * (1.0 - (i / 120.0)))
         vdraw.rectangle([i, i, 1280 - i, 720 - i], outline=(2, 6, 14, alpha), width=2)
     
-    # Dark bottom-left scrim for typography
-    for y in range(350, 720):
-        ratio = (y - 350) / 370.0
-        alpha = int(240 * ratio)
+    # Dark bottom scrim for typography
+    for y in range(330, 720):
+        ratio = (y - 330) / 390.0
+        alpha = int(245 * ratio)
         vdraw.line([(0, y), (1280, y)], fill=(3, 7, 16, alpha))
 
     thumb.paste(vignette, (0, 0), vignette)
@@ -392,14 +432,16 @@ def create_style_2_cinematic_mystery(
         cat_text = "• CLASSIFIED ARCHIVE •"
     elif "finance" in niche.lower() or "wealth" in niche.lower():
         cat_text = "• THE WEALTH BLUEPRINT •"
+    elif "tech" in niche.lower() or "ai" in niche.lower():
+        cat_text = "• THE INSIDE INVESTIGATION •"
     
-    draw.text((60, 390), cat_text, font=cat_font, fill="#FFD700", stroke_width=1, stroke_fill="#000000")
+    draw.text((60, 385), cat_text, font=cat_font, fill="#FFD700", stroke_width=1, stroke_fill="#000000")
 
-    # 4. Cinematic Headline (Auto-scaled so text never overflows)
+    # 4. Cinematic Headline
     font_gold_1 = _fit_font("ariblk", 74, line1, max_width=1120) if line1 else _get_font("ariblk", 74)
     font_gold_2 = _fit_font("ariblk", 74, line2, max_width=1120) if line2 else _get_font("ariblk", 74)
 
-    y_pos = 435
+    y_pos = 430
     if line1:
         _draw_text_with_effects(
             draw=draw,
@@ -410,8 +452,12 @@ def create_style_2_cinematic_mystery(
             stroke_color="#05101A",
             stroke_width=6,
             shadow_offset=(5, 6),
-            shadow_color="#000000"
+            shadow_color="#000000",
+            glow_color=(0, 240, 255, 150),
+            glow_radius=16,
+            target_img=thumb
         )
+        draw = ImageDraw.Draw(thumb)
         b1 = font_gold_1.getbbox(line1)
         h1 = (b1[3] - b1[1]) if b1 else 70
         y_pos += max(80, h1 + 18)
@@ -426,12 +472,120 @@ def create_style_2_cinematic_mystery(
             stroke_color="#05101A",
             stroke_width=6,
             shadow_offset=(5, 6),
-            shadow_color="#000000"
+            shadow_color="#000000",
+            glow_color=(255, 215, 0, 90),
+            glow_radius=10,
+            target_img=thumb
         )
+        draw = ImageDraw.Draw(thumb)
 
     # 5. Glowing Accent Bar
-    draw.line([(60, 630), (520, 630)], fill="#FFD700", width=4)
-    draw.text((60, 642), "THE UNTOLD STORY • HIGH FIDELITY", font=_get_font("arialbd", 20), fill="#A0B0C0")
+    draw.line([(60, 630), (540, 630)], fill="#FFD700", width=4)
+    draw.text((60, 642), "THE UNTOLD STORY • HIGH FIDELITY DOCUMENTARY", font=_get_font("arialbd", 20), fill="#A0B0C0")
+
+    return thumb.convert("RGB")
+
+
+def create_style_3_modern_tech(
+    base_image: Image.Image,
+    line1: str,
+    line2: str,
+    niche: str = ""
+) -> Image.Image:
+    """
+    STYLE 3: Modern Tech / Neon Visionary (MKBHD / Kurzgesagt Style)
+    - Cyber neon aesthetic with deep purple & cyan ambient glow
+    - Sleek glassmorphism backdrop container card behind typography
+    - Electric Cyan (#00F5FF) + Radiant Magenta (#FF007A) / White text
+    - Tech telemetry footer ("4K ULTRA HD • HIGH RETENTION")
+    - Futuristic badge ("⚡ EXCLUSIVE BREAKTHROUGH")
+    """
+    thumb = base_image.copy().resize((1280, 720), Image.Resampling.LANCZOS)
+
+    # 1. Vibrant Cyber Color Grade
+    enhancer = ImageEnhance.Contrast(thumb)
+    thumb = enhancer.enhance(1.22)
+    enhancer = ImageEnhance.Color(thumb)
+    thumb = enhancer.enhance(1.15)
+
+    # 2. Glassmorphic Card Container on Bottom/Left for Typography
+    card = Image.new("RGBA", (1280, 720), (0, 0, 0, 0))
+    cdraw = ImageDraw.Draw(card)
+
+    card_x0, card_y0 = 40, 290
+    card_x1, card_y1 = 1240, 680
+    # Semi-transparent dark glass fill
+    cdraw.rounded_rectangle([card_x0, card_y0, card_x1, card_y1], radius=24, fill=(10, 14, 28, 205), outline=(0, 245, 255, 120), width=2)
+
+    # Top highlight line for glassmorphic shine
+    cdraw.line([(card_x0 + 24, card_y0 + 2), (card_x1 - 24, card_y0 + 2)], fill=(255, 255, 255, 140), width=2)
+    thumb.paste(card, (0, 0), card)
+
+    draw = ImageDraw.Draw(thumb)
+
+    # 3. Futuristic Pill Badge
+    badge_font = _get_font("seguibl", 22)
+    badge_text = "⚡ EXCLUSIVE BREAKTHROUGH"
+    if "ai" in niche.lower() or "tech" in niche.lower():
+        badge_text = "⚡ NEXT-GEN AI EXCLUSIVE"
+    elif "finance" in niche.lower():
+        badge_text = "📈 MARKET SHOCKWAVE"
+    elif "motivation" in niche.lower():
+        badge_text = "🔥 MASTERCLASS PROTOCOL"
+
+    bx, by = 70, 315
+    bb = badge_font.getbbox(badge_text)
+    bw, bh = (bb[2] - bb[0]) + 30, 42
+    draw.rounded_rectangle([bx, by, bx + bw, by + bh], radius=8, fill="#6200EA", outline="#00F5FF", width=2)
+    draw.text((bx + 15, by + 8), badge_text, font=badge_font, fill="#00F5FF")
+
+    # 4. Modern Bold Headline
+    font_tech_1 = _fit_font("ariblk", 76, line1, max_width=1100) if line1 else _get_font("ariblk", 76)
+    font_tech_2 = _fit_font("ariblk", 76, line2, max_width=1100) if line2 else _get_font("ariblk", 76)
+
+    y_pos = 370
+    if line1:
+        _draw_text_with_effects(
+            draw=draw,
+            xy=(70, y_pos),
+            text=line1,
+            font=font_tech_1,
+            fill_color="#00F5FF",
+            stroke_color="#050B14",
+            stroke_width=6,
+            shadow_offset=(6, 7),
+            shadow_color="#000000",
+            glow_color=(0, 245, 255, 170),
+            glow_radius=18,
+            target_img=thumb
+        )
+        draw = ImageDraw.Draw(thumb)
+        b1 = font_tech_1.getbbox(line1)
+        h1 = (b1[3] - b1[1]) if b1 else 72
+        y_pos += max(82, h1 + 16)
+
+    if line2:
+        _draw_text_with_effects(
+            draw=draw,
+            xy=(70, y_pos),
+            text=line2,
+            font=font_tech_2,
+            fill_color="#FFFFFF",
+            stroke_color="#050B14",
+            stroke_width=6,
+            shadow_offset=(6, 7),
+            shadow_color="#000000",
+            glow_color=(189, 0, 255, 140),
+            glow_radius=14,
+            target_img=thumb
+        )
+        draw = ImageDraw.Draw(thumb)
+
+    # 5. Glowing Telemetry Bar
+    tele_font = _get_font("arialbd", 18)
+    tele_text = "4K ULTRA HD  |  VERIFIED ANALYSIS  |  HIGH RETENTION"
+    draw.line([(70, 638), (480, 638)], fill="#00F5FF", width=3)
+    draw.text((70, 646), tele_text, font=tele_font, fill="#94A3B8")
 
     return thumb.convert("RGB")
 
@@ -439,19 +593,17 @@ def create_style_2_cinematic_mystery(
 def generate_youtube_thumbnails(
     project: Dict[str, Any],
     custom_headline: Optional[str] = None,
-    target_dir: Optional[Path] = None
+    target_dir: Optional[Path] = None,
+    bundle_prefix: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Generates 2 distinct high-CTR YouTube thumbnails for the project.
-    Returns:
-    {
-        "thumb1_url": "/media/thumbnails/...",
-        "thumb2_url": "/media/thumbnails/...",
-        "thumb1_path": "...",
-        "thumb2_path": "...",
-        "headline_line1": "...",
-        "headline_line2": "..."
-    }
+    Generates 3 distinct high-CTR YouTube thumbnails for the project:
+    - Style 1: Viral Punch (Alex Hormozi / MrBeast)
+    - Style 2: Cinematic Mystery (Vox / Magnates Media)
+    - Style 3: Modern Tech / Neon Visionary (MKBHD / Kurzgesagt)
+
+    Uses matching bundle_prefix (e.g. A938_20260923_224510_ProjectName) so the user can easily
+    match the video and thumbnails in the output folder.
     """
     settings = load_settings()
     conf_thumb = str(settings.get("thumbnail_output_dir", "")).strip()
@@ -463,6 +615,15 @@ def generate_youtube_thumbnails(
     proj_name = project.get("name", "YouTube_Video")
     safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', proj_name)
     niche = project.get("niche", "General")
+
+    # Match bundle prefix with video file
+    prefix = bundle_prefix or project.get("bundle_prefix")
+    if not prefix:
+        letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+        code = f"{random.choice(letters)}{random.randint(100, 999)}"
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        prefix = f"{code}_{ts}_{safe_name[:25].strip('_')}"
+        project["bundle_prefix"] = prefix
 
     line1, line2 = extract_hook_text(project, custom_headline)
 
@@ -508,9 +669,11 @@ def generate_youtube_thumbnails(
     if base_img is None:
         base_img_1 = _generate_gradient_background(1280, 720, style="viral")
         base_img_2 = _generate_gradient_background(1280, 720, style="cinematic")
+        base_img_3 = _generate_gradient_background(1280, 720, style="modern")
     else:
         base_img_1 = base_img.copy()
         base_img_2 = base_img.copy()
+        base_img_3 = base_img.copy()
 
     # Clean up temp frame
     if os.path.exists(temp_frame_path):
@@ -519,41 +682,56 @@ def generate_youtube_thumbnails(
         except Exception:
             pass
 
-    # 2. Render Style 1 (Viral Punch) & Style 2 (Cinematic Mystery)
+    # 2. Render all 3 Distinct Styles
     thumb1 = create_style_1_viral_punch(base_img_1, line1, line2, niche=niche)
     thumb2 = create_style_2_cinematic_mystery(base_img_2, line1, line2, niche=niche)
+    thumb3 = create_style_3_modern_tech(base_img_3, line1, line2, niche=niche)
 
-    # 3. Save to data/thumbnails/
-    t1_filename = f"{proj_id}_thumb_1_viral.jpg"
-    t2_filename = f"{proj_id}_thumb_2_cinematic.jpg"
+    # 3. Save to data/thumbnails/ with matching prefix and legacy filenames
+    t1_filename = f"{prefix}_Thumb_Viral_Style1.jpg"
+    t2_filename = f"{prefix}_Thumb_Cinematic_Style2.jpg"
+    t3_filename = f"{prefix}_Thumb_ModernTech_Style3.jpg"
     t1_path = out_dir / t1_filename
     t2_path = out_dir / t2_filename
+    t3_path = out_dir / t3_filename
 
     thumb1.save(str(t1_path), "JPEG", quality=95)
     thumb2.save(str(t2_path), "JPEG", quality=95)
+    thumb3.save(str(t3_path), "JPEG", quality=95)
 
-    # 4. Also copy directly to configured video output dir alongside rendered video
+    # Also save legacy files for backward compatibility
+    try:
+        thumb1.save(str(out_dir / f"{proj_id}_thumb_1_viral.jpg"), "JPEG", quality=92)
+        thumb2.save(str(out_dir / f"{proj_id}_thumb_2_cinematic.jpg"), "JPEG", quality=92)
+        thumb3.save(str(out_dir / f"{proj_id}_thumb_3_modern.jpg"), "JPEG", quality=92)
+    except Exception:
+        pass
+
+    # 4. ALSO copy all 3 directly into the video output directory!
     try:
         conf_out = str(settings.get("output_dir", "")).strip()
         dest_dir = Path(conf_out) if conf_out else OUTPUT_DIR
         dest_dir.mkdir(parents=True, exist_ok=True)
-        out_dest1 = dest_dir / f"{safe_name}_Thumbnail_Style1_ViralPunch.jpg"
-        out_dest2 = dest_dir / f"{safe_name}_Thumbnail_Style2_CinematicMystery.jpg"
-        shutil.copy2(t1_path, out_dest1)
-        shutil.copy2(t2_path, out_dest2)
+        shutil.copy2(t1_path, dest_dir / t1_filename)
+        shutil.copy2(t2_path, dest_dir / t2_filename)
+        shutil.copy2(t3_path, dest_dir / t3_filename)
     except Exception as e:
-        print(f"[ThumbnailGenerator] Warning copying to output dir: {e}")
+        print(f"[ThumbnailGenerator] Notice copying thumbnails to video output dir: {e}")
 
     # Web URLs
     url1 = f"/media/thumbnails/{t1_filename}"
     url2 = f"/media/thumbnails/{t2_filename}"
+    url3 = f"/media/thumbnails/{t3_filename}"
 
     return {
         "thumb1_url": url1,
         "thumb2_url": url2,
+        "thumb3_url": url3,
         "thumb1_path": str(t1_path),
         "thumb2_path": str(t2_path),
+        "thumb3_path": str(t3_path),
         "headline_line1": line1,
         "headline_line2": line2,
+        "bundle_prefix": prefix,
         "generated_at": time.strftime("%b %d, %Y %I:%M %p")
     }

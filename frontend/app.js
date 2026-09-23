@@ -430,22 +430,20 @@ let lastExportedThumbnails = null;
 
 async function openOutputFolder(customPath = null) {
   const btn = document.getElementById('header-btn-outputs');
+  let origHtml = '📂 Outputs';
   if (btn) {
-    btn.style.opacity = '0.7';
+    origHtml = btn.innerHTML;
+    btn.innerHTML = '📁 Opening...';
+    btn.style.opacity = '0.75';
     btn.style.transform = 'scale(0.96)';
   }
   try {
-    let res;
-    try {
-      res = await fetch('/api/open-folder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: customPath || null })
-      });
-    } catch (netErr) {
-      // Fallback: try GET /api/open-output-folder
-      res = await fetch('/api/open-output-folder');
-    }
+    const targetPath = (typeof customPath === 'string' && customPath.trim()) ? customPath.trim() : 'output';
+    let res = await fetch('/api/open-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: targetPath })
+    });
 
     if (!res || !res.ok) {
       res = await fetch('/api/open-output-folder');
@@ -460,15 +458,22 @@ async function openOutputFolder(customPath = null) {
     const isFile = data.type === 'file' || /\.(mp4|mkv|mov|avi|jpg|png)$/i.test(folderPath);
     const actionMsg = isFile ? `Selected file in Explorer: <strong>${folderName}</strong>` : `Opened folder in Windows Explorer: <strong>${folderName}</strong>`;
     showToast(`📂 ${actionMsg}<br><span style="font-size:11px;color:#94a3b8;word-break:break-all;">${folderPath}</span>`, 4500);
+    if (btn) {
+      btn.innerHTML = '✅ Opened!';
+    }
   } catch (e) {
     console.error('Error opening output folder:', e);
     showToast(`⚠️ Could not open folder: ${e.message}`);
+    if (btn) {
+      btn.innerHTML = '❌ Error';
+    }
   } finally {
     if (btn) {
       setTimeout(() => {
+        btn.innerHTML = origHtml;
         btn.style.opacity = '1';
         btn.style.transform = 'scale(1)';
-      }, 250);
+      }, 1400);
     }
   }
 }
@@ -2148,6 +2153,8 @@ async function startExportRender() {
       || (projId ? `/media/thumbnails/${projId}_thumb_1_viral.jpg` : '');
     const t2Url = (lastExportedThumbnails && lastExportedThumbnails.thumb2_url)
       || (projId ? `/media/thumbnails/${projId}_thumb_2_cinematic.jpg` : '');
+    const t3Url = (lastExportedThumbnails && lastExportedThumbnails.thumb3_url)
+      || (projId ? `/media/thumbnails/${projId}_thumb_3_modern.jpg` : '');
 
     if (exportedPlayer) {
       exportedPlayer.src = webUrl;
@@ -2163,8 +2170,10 @@ async function startExportRender() {
     // Populate Thumbnail Preview Cards in Export Modal
     const mThumb1 = document.getElementById('export-modal-thumb-1');
     const mThumb2 = document.getElementById('export-modal-thumb-2');
+    const mThumb3 = document.getElementById('export-modal-thumb-3');
     const mDl1 = document.getElementById('export-modal-dl-1');
     const mDl2 = document.getElementById('export-modal-dl-2');
+    const mDl3 = document.getElementById('export-modal-dl-3');
     const baseCleanName = outputFileName.replace(/\.mp4$/i, '');
 
     if (mThumb1 && t1Url) {
@@ -2172,7 +2181,7 @@ async function startExportRender() {
       mThumb1.style.display = 'block';
       if (mDl1) {
         mDl1.href = t1Url;
-        mDl1.setAttribute('download', `${baseCleanName}_Thumb_Viral.jpg`);
+        mDl1.setAttribute('download', `${baseCleanName}_Thumb_Viral_Style1.jpg`);
         mDl1.classList.remove('disabled');
       }
     }
@@ -2181,8 +2190,17 @@ async function startExportRender() {
       mThumb2.style.display = 'block';
       if (mDl2) {
         mDl2.href = t2Url;
-        mDl2.setAttribute('download', `${baseCleanName}_Thumb_Cinematic.jpg`);
+        mDl2.setAttribute('download', `${baseCleanName}_Thumb_Cinematic_Style2.jpg`);
         mDl2.classList.remove('disabled');
+      }
+    }
+    if (mThumb3 && t3Url) {
+      mThumb3.src = `${t3Url}?v=${Date.now()}`;
+      mThumb3.style.display = 'block';
+      if (mDl3) {
+        mDl3.href = t3Url;
+        mDl3.setAttribute('download', `${baseCleanName}_Thumb_ModernTech_Style3.jpg`);
+        mDl3.classList.remove('disabled');
       }
     }
 
@@ -2525,10 +2543,13 @@ async function loadProjectThumbnails(project) {
   const nicheEl = document.getElementById('thumb-active-niche');
   const img1 = document.getElementById('thumb-img-1');
   const img2 = document.getElementById('thumb-img-2');
+  const img3 = document.getElementById('thumb-img-3');
   const skel1 = document.getElementById('thumb-skeleton-1');
   const skel2 = document.getElementById('thumb-skeleton-2');
+  const skel3 = document.getElementById('thumb-skeleton-3');
   const dl1 = document.getElementById('thumb-download-1');
   const dl2 = document.getElementById('thumb-download-2');
+  const dl3 = document.getElementById('thumb-download-3');
   const headlineInput = document.getElementById('thumb-custom-headline');
 
   // Fallback to active project if null
@@ -2550,10 +2571,13 @@ async function loadProjectThumbnails(project) {
     if (nicheEl) nicheEl.textContent = 'None';
     if (img1) img1.style.display = 'none';
     if (img2) img2.style.display = 'none';
+    if (img3) img3.style.display = 'none';
     if (skel1) { skel1.style.display = 'flex'; skel1.querySelector('span').textContent = 'Render a video to generate thumbnails...'; }
     if (skel2) { skel2.style.display = 'flex'; skel2.querySelector('span').textContent = 'Render a video to generate thumbnails...'; }
+    if (skel3) { skel3.style.display = 'flex'; skel3.querySelector('span').textContent = 'Render a video to generate thumbnails...'; }
     if (dl1) dl1.classList.add('disabled');
     if (dl2) dl2.classList.add('disabled');
+    if (dl3) dl3.classList.add('disabled');
     return;
   }
 
@@ -2563,13 +2587,14 @@ async function loadProjectThumbnails(project) {
   // Helper to render thumbnails onto the DOM
   function applyThumbs(thumbs) {
     if (!thumbs) return;
+    const prefix = thumbs.bundle_prefix || (project.name || 'Video');
     if (img1 && thumbs.thumb1_url) {
       img1.src = `${thumbs.thumb1_url}?v=${Date.now()}`;
       img1.style.display = 'block';
       if (skel1) skel1.style.display = 'none';
       if (dl1) {
         dl1.href = thumbs.thumb1_url;
-        dl1.setAttribute('download', `${project.name || 'Video'}_Thumb_Viral.jpg`);
+        dl1.setAttribute('download', `${prefix}_Thumb_Viral_Style1.jpg`);
         dl1.classList.remove('disabled');
       }
     }
@@ -2579,8 +2604,18 @@ async function loadProjectThumbnails(project) {
       if (skel2) skel2.style.display = 'none';
       if (dl2) {
         dl2.href = thumbs.thumb2_url;
-        dl2.setAttribute('download', `${project.name || 'Video'}_Thumb_Cinematic.jpg`);
+        dl2.setAttribute('download', `${prefix}_Thumb_Cinematic_Style2.jpg`);
         dl2.classList.remove('disabled');
+      }
+    }
+    if (img3 && thumbs.thumb3_url) {
+      img3.src = `${thumbs.thumb3_url}?v=${Date.now()}`;
+      img3.style.display = 'block';
+      if (skel3) skel3.style.display = 'none';
+      if (dl3) {
+        dl3.href = thumbs.thumb3_url;
+        dl3.setAttribute('download', `${prefix}_Thumb_ModernTech_Style3.jpg`);
+        dl3.classList.remove('disabled');
       }
     }
     if (headlineInput && thumbs.headline_line1) {
@@ -2589,7 +2624,7 @@ async function loadProjectThumbnails(project) {
   }
 
   // 1. Immediately render if already present in project object
-  if (project.thumbnails && (project.thumbnails.thumb1_url || project.thumbnails.thumb2_url)) {
+  if (project.thumbnails && (project.thumbnails.thumb1_url || project.thumbnails.thumb2_url || project.thumbnails.thumb3_url)) {
     applyThumbs(project.thumbnails);
   }
 
@@ -3596,11 +3631,28 @@ async function regenerateSEO() {
 
 function populateSEOUi(data) {
   if (!data) return;
+  const container = document.getElementById('seo-titles-container');
   const titles = data.titles || [];
-  for (let i = 1; i <= 3; i++) {
-    const tEl = document.getElementById(`seo-title-${i}`);
-    if (tEl) {
-      tEl.textContent = titles[i - 1] || 'No title generated';
+  const categorized = data.categorized_titles || [];
+
+  if (container) {
+    if (categorized.length > 0) {
+      container.innerHTML = categorized.map((item, idx) => `
+        <div class="seo-title-item" onclick="copyDirectTitle('${item.title.replace(/'/g, "\\'")}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:8px;margin-bottom:8px;transition:all 0.2s ease;">
+          <div style="display:flex;flex-direction:column;gap:3px;flex:1;margin-right:12px;">
+            <span style="font-size:11px;font-weight:700;color:var(--accent-cyan);">${item.category}</span>
+            <span style="font-size:13.5px;color:#f1f5f9;font-weight:600;" id="seo-title-${idx+1}">${item.title}</span>
+          </div>
+          <button class="btn btn-xs btn-outline" style="white-space:nowrap;">📋 Copy</button>
+        </div>
+      `).join('');
+    } else {
+      for (let i = 1; i <= 3; i++) {
+        const tEl = document.getElementById(`seo-title-${i}`);
+        if (tEl) {
+          tEl.textContent = titles[i - 1] || 'No title generated';
+        }
+      }
     }
   }
 
@@ -3613,6 +3665,10 @@ function populateSEOUi(data) {
   if (tagsEl) {
     tagsEl.value = data.tags_string || (data.tags_list || []).join(', ');
   }
+}
+
+function copyDirectTitle(title) {
+  copyText(title, 'Title copied to clipboard!');
 }
 
 function copyTitleText(idx) {
