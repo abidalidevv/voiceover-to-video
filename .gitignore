@@ -12,9 +12,10 @@ test_*.py
 extra/
 scratch/
 
-# Ignore all planning and scratch markdown files (keep only root README.md)
+# Ignore all planning and scratch markdown files (keep root README.md and CLAUDE_REVIEW.md)
 *.md
 !README.md
+!CLAUDE_REVIEW.md
 
 # Temporary, Caches & Generated Media (Stock & Rendered)
 data/cache/

@@ -146,7 +146,7 @@ SESSION.mount("https://", adapter)
 SESSION.mount("http://", adapter)
 
 
-def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback=None, target_resolution: str = "1080p") -> List[Dict[str, Any]]:
+def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback=None, target_resolution: str = "1080p", niche: str = "") -> List[Dict[str, Any]]:
     """
     Downloads stock videos for all scenes in parallel using a ThreadPoolExecutor.
     Load-balances queries across multiple API keys (Pexels, Pixabay, etc.).
@@ -164,7 +164,7 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
     total_keys = len(p_keys) + len(pb_keys)
     num_workers = max(configured_workers, min(16, max(4, total_keys * 2)))
 
-    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers (Resolution: {target_resolution}, Pexels Accounts: {len(p_keys)}, Pixabay Accounts: {len(pb_keys)})...")
+    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers (Resolution: {target_resolution}, Niche: '{niche}', Pexels Accounts: {len(p_keys)}, Pixabay Accounts: {len(pb_keys)})...")
 
     completed_scenes = [None] * len(scenes)
     completed_count = 0
@@ -175,6 +175,7 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
     def process_scene(scene_item):
         nonlocal completed_count
         scene_idx = scene_item["id"]
+        scene_niche = scene_item.get("niche") or niche
         tags = scene_item.get("search_tags", ["cinematic inspiring"])
         selected_tag = scene_item.get("selected_tag") or tags[0]
         duration = float(scene_item.get("duration", 4.0))
@@ -190,7 +191,8 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
                 sentence_context=sentence_text,
                 target_resolution=target_resolution,
                 pexels_pool=pexels_pool,
-                pixabay_pool=pixabay_pool
+                pixabay_pool=pixabay_pool,
+                niche=scene_niche
             )
             if clip_data:
                 vid_id = clip_data.get("video_id")
@@ -249,8 +251,26 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
     return completed_scenes
 
 
-def _score_candidate(duration: float, width: int, height: int, target_dur: float, query_words: List[str], metadata_text: str, target_resolution: str = "1080p") -> float:
-    """Ranks candidate video clips based on resolution, duration headroom, and keyword match."""
+def _simplify_stock_query(q: str) -> Optional[str]:
+    """Extracts core 2 salient words from a multi-word query if initial search fails."""
+    clean = re.sub(r'[#,\-_\./]', ' ', q).strip().lower()
+    words = [w for w in clean.split() if w not in ("cinematic", "dramatic", "4k", "hd", "footage", "video", "ultra", "scene", "shot", "view", "majestic", "dense")]
+    if len(words) >= 3:
+        return " ".join(words[:2])
+    return None
+
+
+def _score_candidate(
+    duration: float, 
+    width: int, 
+    height: int, 
+    target_dur: float, 
+    query_words: List[str], 
+    metadata_text: str, 
+    target_resolution: str = "1080p",
+    niche: str = ""
+) -> float:
+    """Ranks candidate video clips based on resolution, duration headroom, keyword match, and niche relevance."""
     score = 0.0
     res_str = str(target_resolution or "1080p").lower().strip()
 
@@ -284,10 +304,58 @@ def _score_candidate(duration: float, width: int, height: int, target_dur: float
     elif duration < target_dur:
         score += 0.0
 
-    # 3. Keyword / Semantic Overlap (30 pts)
+    # 3. Keyword / Semantic Overlap (up to 50 pts)
     meta_lower = metadata_text.lower()
     matched = sum(1 for w in query_words if len(w) >= 3 and w in meta_lower)
-    score += min(30.0, matched * 10.0)
+    score += min(50.0, matched * 15.0)
+
+    # 4. NICHE-SPECIFIC RELEVANCE BONUS & CLASH PENALTIES
+    niche_clean = str(niche or "").lower()
+    all_query_text = " ".join(query_words).lower()
+
+    is_space_niche = any(k in niche_clean for k in ("space", "sci-fi", "cosmos", "astronomy")) or any(k in all_query_text for k in ("space", "galaxy", "planet", "orbit", "astronaut", "universe", "cosmos", "mars", "nebula"))
+
+    if is_space_niche:
+        space_positives = {"space", "galaxy", "planet", "stars", "star", "astronomy", "cosmos", "astronaut", "nasa", "orbit", "satellite", "telescope", "spacecraft", "solar", "moon", "mars", "nebula", "universe", "alien", "sci-fi"}
+        if any(w in meta_lower for w in space_positives):
+            score += 40.0
+
+        # NEVER allow sports, swimming, beach, kitchen, makeup clips for space!
+        space_clashes = {"swim", "swimming", "swimmer", "olympic", "olympics", "beach", "pool", "kitchen", "cooking", "recipe", "baking", "wedding", "bride", "groom", "makeup", "cosmetics", "fashion", "dress", "dance", "dancing", "soccer", "football", "baseball", "tennis", "puppy", "kitten", "cat", "dog", "barbecue", "party", "lake", "ocean beach"}
+        if any(c in meta_lower for c in space_clashes):
+            score -= 200.0
+
+    elif any(k in niche_clean for k in ("military", "war", "defense")) or any(k in all_query_text for k in ("missile", "war", "tank", "bomb", "soldier", "radar", "fighter")):
+        mil_positives = {"military", "soldier", "army", "tank", "missile", "war", "weapon", "fighter", "aircraft", "radar", "navy", "combat", "explosion"}
+        if any(w in meta_lower for w in mil_positives):
+            score += 40.0
+        mil_clashes = {"snail", "mollusk", "flower", "garden", "kitten", "puppy", "butterfly", "makeup", "fashion", "dress", "swim", "party", "baking"}
+        if any(c in meta_lower for c in mil_clashes):
+            score -= 200.0
+
+    elif any(k in niche_clean for k in ("finance", "wealth", "business", "money")):
+        fin_positives = {"money", "finance", "stock", "market", "trading", "crypto", "business", "office", "charts", "economy"}
+        if any(w in meta_lower for w in fin_positives):
+            score += 35.0
+        fin_clashes = {"beach party", "pool", "swim", "gaming", "esports", "cartoon", "toys"}
+        if any(c in meta_lower for c in fin_clashes):
+            score -= 100.0
+
+    elif any(k in niche_clean for k in ("fitness", "health", "workout")):
+        fit_positives = {"gym", "fitness", "workout", "athlete", "training", "exercise", "muscle", "running"}
+        if any(w in meta_lower for w in fit_positives):
+            score += 35.0
+        fit_clashes = {"junk food", "burger", "couch", "sleeping", "smoking"}
+        if any(c in meta_lower for c in fit_clashes):
+            score -= 100.0
+
+    elif any(k in niche_clean for k in ("nature", "wildlife", "animal")):
+        nat_positives = {"forest", "mountain", "ocean", "river", "wildlife", "animal", "landscape", "nature", "trees"}
+        if any(w in meta_lower for w in nat_positives):
+            score += 35.0
+        nat_clashes = {"office", "cubicle", "keyboard", "computer", "traffic jam"}
+        if any(c in meta_lower for c in nat_clashes):
+            score -= 100.0
 
     return score
 
@@ -298,13 +366,16 @@ def find_and_download_stock_video(
     sentence_context: str = "",
     target_resolution: str = "1080p",
     pexels_pool: Optional[ApiKeyPool] = None,
-    pixabay_pool: Optional[ApiKeyPool] = None
+    pixabay_pool: Optional[ApiKeyPool] = None,
+    allow_simplify: bool = True,
+    niche: str = ""
 ) -> Optional[Dict[str, Any]]:
     """
     Cascading Fallback Provider Architecture with Multi-Account Pools:
     1. Queries primary provider (Pexels) across configured account keys. If candidates match, returns immediately!
     2. Only if all Pexels keys fail or rate-limit, cascades to Pixabay multi-account pool.
     3. If Pixabay fails, cascades to free archives (Coverr / NASA / Wikimedia).
+    4. If no results and query has >= 3 words, retries with simplified 2-word salient query.
     """
     settings = load_settings()
     provider_pref = settings.get("video_provider", "all")
@@ -325,13 +396,13 @@ def find_and_download_stock_video(
 
     # Priority 1: Pexels (best quality)
     if (provider_pref in ("all", "pexels")) and pexels_pool.has_keys():
-        clip = _search_pexels(query, pexels_pool, min_duration, sentence_context, target_resolution=target_resolution)
+        clip = _search_pexels(query, pexels_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche)
         if clip:
             return clip
 
     # Priority 2: Pixabay (fast secondary fallback)
     if (provider_pref in ("all", "pixabay")) and pixabay_pool.has_keys():
-        clip = _search_pixabay(query, pixabay_pool, min_duration, sentence_context, target_resolution=target_resolution)
+        clip = _search_pixabay(query, pixabay_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche)
         if clip:
             return clip
 
@@ -347,7 +418,7 @@ def find_and_download_stock_video(
         if clip:
             return clip
 
-    # Priority 5: NASA Open Video
+    # Priority 5: NASA Open Video (especially good for Space niche!)
     if (provider_pref in ("all", "nasa")) and nasa_enabled:
         clip = _search_nasa(query, min_duration)
         if clip:
@@ -365,10 +436,27 @@ def find_and_download_stock_video(
         if clip:
             return clip
 
+    # Fallback retry: If multi-word query failed on all providers, try simplified 2-word query
+    if allow_simplify:
+        simple_q = _simplify_stock_query(query)
+        if simple_q and simple_q.lower() != query.lower():
+            simplified_clip = find_and_download_stock_video(
+                simple_q,
+                min_duration=min_duration,
+                sentence_context=sentence_context,
+                target_resolution=target_resolution,
+                pexels_pool=pexels_pool,
+                pixabay_pool=pixabay_pool,
+                allow_simplify=False,
+                niche=niche
+            )
+            if simplified_clip:
+                return simplified_clip
+
     return None
 
 
-def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p") -> Optional[Dict[str, Any]]:
+def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p", niche: str = "") -> Optional[Dict[str, Any]]:
     clean_query = re.sub(r'#', '', query).strip()
     candidate_keys = pool.get_candidate_keys()
     if not candidate_keys:
@@ -425,7 +513,8 @@ def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_c
                         target_dur=min_duration,
                         query_words=query_tokens,
                         metadata_text=meta_text,
-                        target_resolution=target_resolution
+                        target_resolution=target_resolution,
+                        niche=niche
                     )
                     scored.append((score, vid, best_file))
 
@@ -453,7 +542,7 @@ def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_c
     return None
 
 
-def _search_pixabay(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p") -> Optional[Dict[str, Any]]:
+def _search_pixabay(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p", niche: str = "") -> Optional[Dict[str, Any]]:
     clean_query = re.sub(r'#', '', query).strip()
     candidate_keys = pool.get_candidate_keys()
     if not candidate_keys:
@@ -498,7 +587,8 @@ def _search_pixabay(query: str, pool: ApiKeyPool, min_duration: float, sentence_
                     target_dur=min_duration,
                     query_words=query_tokens,
                     metadata_text=tags_text,
-                    target_resolution=target_resolution
+                    target_resolution=target_resolution,
+                    niche=niche
                 )
                 scored.append((score, h, selected))
 
@@ -822,8 +912,10 @@ def get_fallback_stock_video(scene_idx: int, query: str, duration: float) -> Dic
         "video_id": f"scene_{scene_idx}",
         "query": query,
         "file_path": str(fallback_file),
+        "web_url": f"/media/cache/stock_videos/{fallback_file.name}",
         "thumbnail_url": "",
         "duration": target_duration,
         "width": 1920,
-        "height": 1080
+        "height": 1080,
+        "is_fallback": True
     }

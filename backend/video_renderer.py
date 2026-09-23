@@ -6,6 +6,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional
 from .config import find_ffmpeg, find_ffprobe, TEMP_DIR, OUTPUT_DIR, BASE_DIR, DATA_DIR, load_settings
+from .transcriber import get_audio_duration
 
 # Modern transition pool for random mixing (YouTube/TikTok creator style)
 TRANSITION_POOL = ["smoothleft", "smoothright", "zoomin", "fade", "fadefast", "circlecrop", "dissolve"]
@@ -306,8 +307,10 @@ def render_final_video(
             ffmpeg_exe, "-y",
             "-stream_loop", "-1",  # Seamlessly loop if shorter than duration
             "-i", str(fpath),
-            "-t", f"{clip_target_dur:.2f}",
+            "-t", f"{clip_target_dur:.3f}",
             "-vf", vf,
+            "-r", str(fps),
+            "-vsync", "cfr",
             "-c:v", encoder,
             *encoder_args,
             "-an",  # Strip stock video audio completely to avoid noise
@@ -323,8 +326,10 @@ def render_final_video(
                     ffmpeg_exe, "-y",
                     "-stream_loop", "-1",
                     "-i", str(fpath),
-                    "-t", f"{clip_target_dur:.2f}",
+                    "-t", f"{clip_target_dur:.3f}",
                     "-vf", vf,
+                    "-r", str(fps),
+                    "-vsync", "cfr",
                     "-c:v", "libx264",
                     "-preset", "ultrafast",
                     "-crf", "20",
@@ -342,7 +347,7 @@ def render_final_video(
             fb_cmd = [
                 ffmpeg_exe, "-y",
                 "-f", "lavfi",
-                "-i", f"color=c=0x111726:s={target_w}x{target_h}:d={clip_target_dur:.2f}:r={fps}",
+                "-i", f"color=c=0x111726:s={target_w}x{target_h}:d={clip_target_dur:.3f}:r={fps}",
                 "-c:v", "libx264",
                 "-preset", "ultrafast",
                 "-pix_fmt", "yuv420p",
@@ -500,7 +505,7 @@ def render_final_video(
         audio_filter = (
             f"[1:a]volume=1.0[vo];"
             f"[2:a]aloop=loop=-1:size=2e+09,volume={bgm_volume:.2f}[bgm];"
-            f"[vo][bgm][sfx_all]amix=inputs=3:duration=first:dropout_transition=2[aout]"
+            f"[vo][bgm][sfx_all]amix=inputs=3:duration=first:dropout_transition=2,aresample=async=1[aout]"
         )
         filter_complex_parts.append(audio_filter)
         audio_map_label = "[aout]"
@@ -508,14 +513,14 @@ def render_final_video(
         audio_filter = (
             f"[1:a]volume=1.0[vo];"
             f"[2:a]aloop=loop=-1:size=2e+09,volume={bgm_volume:.2f}[bgm];"
-            f"[vo][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+            f"[vo][bgm]amix=inputs=2:duration=first:dropout_transition=2,aresample=async=1[aout]"
         )
         filter_complex_parts.append(audio_filter)
         audio_map_label = "[aout]"
     elif not has_bgm and has_sfx:
         audio_filter = (
             f"[1:a]volume=1.0[vo];"
-            f"[vo][sfx_all]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+            f"[vo][sfx_all]amix=inputs=2:duration=first:dropout_transition=2,aresample=async=1[aout]"
         )
         filter_complex_parts.append(audio_filter)
         audio_map_label = "[aout]"
@@ -523,11 +528,19 @@ def render_final_video(
         # Simple voiceover stream mapping
         audio_map_label = "1:a:0"
 
+    # Calculate exact voiceover audio duration for precise audio/video sync
+    try:
+        audio_dur = get_audio_duration(resolved_audio_path)
+    except Exception:
+        audio_dur = sum(c[2] for c in valid_clips)
+
     if filter_complex_parts:
         final_cmd.extend(["-filter_complex", ";".join(filter_complex_parts)])
         final_cmd.extend(["-map", video_map_label, "-map", audio_map_label])
     else:
-        final_cmd.extend(["-map", "0:v:0", "-map", "1:a:0"])
+        final_cmd.extend(["-map", "0:v:0", "-map", "1:a:0", "-af", "aresample=async=1"])
+
+    final_cmd.extend(["-t", f"{audio_dur:.3f}"])
 
     if video_map_label == "0:v:0":
         print("[Renderer] Subtitles disabled: Using ultra-fast lossless video stream copy (-c:v copy)!")
@@ -535,7 +548,6 @@ def render_final_video(
             "-c:v", "copy",
             "-c:a", "aac",
             "-b:a", "192k",
-            "-shortest",
             str(final_output_path)
         ])
     else:
@@ -544,7 +556,6 @@ def render_final_video(
             *encoder_args,
             "-c:a", "aac",
             "-b:a", "192k",
-            "-shortest",
             str(final_output_path)
         ])
 
@@ -567,14 +578,15 @@ def render_final_video(
             cpu_cmd.extend(["-filter_complex", ";".join(filter_complex_parts)])
             cpu_cmd.extend(["-map", video_map_label, "-map", audio_map_label])
         else:
-            cpu_cmd.extend(["-map", "0:v:0", "-map", "1:a:0"])
+            cpu_cmd.extend(["-map", "0:v:0", "-map", "1:a:0", "-af", "aresample=async=1"])
+
+        cpu_cmd.extend(["-t", f"{audio_dur:.3f}"])
 
         if video_map_label == "0:v:0":
             cpu_cmd.extend([
                 "-c:v", "copy",
                 "-c:a", "aac",
                 "-b:a", "192k",
-                "-shortest",
                 str(final_output_path)
             ])
         else:
@@ -586,7 +598,6 @@ def render_final_video(
                 "-threads", "0",
                 "-c:a", "aac",
                 "-b:a", "192k",
-                "-shortest",
                 str(final_output_path)
             ])
         subprocess.run(cpu_cmd, capture_output=True, text=True, check=True)
@@ -666,22 +677,22 @@ def _render_xfade_single(ffmpeg_exe, seg_files, valid_clips, transition, trans_d
         dur_i = valid_clips[i][2]
         cum_offset += dur_i
 
-        # Safe adaptive transition duration: prevent xfade crash if scene is shorter than transition
-        eff_trans = min(trans_dur, max(0.08, dur_i * 0.40))
-        trans_offset = max(0.01, round(cum_offset - eff_trans, 2))
+        # Safe adaptive transition duration: center transition at boundary
+        eff_trans = min(trans_dur, max(0.08, dur_i * 0.35))
+        trans_offset = max(0.01, round(cum_offset - (eff_trans / 2.0), 3))
 
         # Pick transition type (random or fixed) with no consecutive repeats
         trans_type = _pick_transition(i, mode=transition_mode, fallback=transition, last_picked=last_picked)
         last_picked = trans_type
 
-        print(f"[Renderer] Scene boundary {i} -> {i+1}: transition '{trans_type}' (mode: {transition_mode}, offset: {trans_offset:.2f}s, duration: {eff_trans:.2f}s)")
+        print(f"[Renderer] Scene boundary {i} -> {i+1}: transition '{trans_type}' (mode: {transition_mode}, offset: {trans_offset:.3f}s, duration: {eff_trans:.3f}s)")
 
         in_label = "[0:v]" if i == 0 else f"[v{i}]"
         next_label = f"[{i+1}:v]"
         out_label = f"[v{i+1}]"
 
         filter_chains.append(
-            f"{in_label}{next_label}xfade=transition={trans_type}:duration={eff_trans:.2f}:offset={trans_offset:.2f}{out_label}"
+            f"{in_label}{next_label}xfade=transition={trans_type}:duration={eff_trans:.3f}:offset={trans_offset:.3f}{out_label}"
         )
 
     final_filter = ";".join(filter_chains)
@@ -756,22 +767,22 @@ def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_
             dur_i = batch_clips[i][2]
             cum_offset += dur_i
 
-            # Safe adaptive transition duration for batches
-            eff_trans = min(trans_dur, max(0.08, dur_i * 0.40))
-            trans_offset = max(0.01, round(cum_offset - eff_trans, 2))
+            # Safe adaptive transition duration for batches: center transition at boundary
+            eff_trans = min(trans_dur, max(0.08, dur_i * 0.35))
+            trans_offset = max(0.01, round(cum_offset - (eff_trans / 2.0), 3))
 
             boundary_idx = batch_start + i
             trans_type = _pick_transition(boundary_idx, mode=transition_mode, fallback=transition, last_picked=last_picked)
             last_picked = trans_type
 
-            print(f"[Renderer] Batch scene boundary {boundary_idx} -> {boundary_idx+1}: transition '{trans_type}' (mode: {transition_mode}, offset: {trans_offset:.2f}s, duration: {eff_trans:.2f}s)")
+            print(f"[Renderer] Batch scene boundary {boundary_idx} -> {boundary_idx+1}: transition '{trans_type}' (mode: {transition_mode}, offset: {trans_offset:.3f}s, duration: {eff_trans:.3f}s)")
 
             in_label = "[0:v]" if i == 0 else f"[v{i}]"
             next_label = f"[{i+1}:v]"
             out_label = f"[v{i+1}]"
 
             filter_chains.append(
-                f"{in_label}{next_label}xfade=transition={trans_type}:duration={eff_trans:.2f}:offset={trans_offset:.2f}{out_label}"
+                f"{in_label}{next_label}xfade=transition={trans_type}:duration={eff_trans:.3f}:offset={trans_offset:.3f}{out_label}"
             )
 
         final_filter = ";".join(filter_chains)

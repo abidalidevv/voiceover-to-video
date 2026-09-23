@@ -394,9 +394,9 @@
       <div class="workers-pill" id="workers-status-pill">
         <span class="dot green"></span> <span id="worker-count-badge">8 Workers</span>
       </div>
-      <a href="docs.html" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">
+      <button id="header-btn-docs" class="btn btn-secondary btn-sm" onclick="openDocsManual()" style="display:inline-flex;align-items:center;gap:4px;" title="Open Operational Manual & Guide">
         📖 Docs
-      </a>
+      </button>
       <button id="header-btn-outputs" class="btn btn-secondary btn-sm" onclick="openOutputFolder()" style="display:inline-flex;align-items:center;gap:4px;">
         📂 Outputs
       </button>
@@ -843,6 +843,20 @@
         <!-- Left: Video Player & Controls -->
         <div class="player-column">
           <div class="player-wrapper">
+            <!-- Missing Stock Video Alert & 1-Click AI Image Generator Banner -->
+            <div id="missing-clips-alert" class="missing-clips-banner hidden">
+              <div class="missing-clips-info">
+                <span class="missing-clips-icon">⚠️</span>
+                <div>
+                  <strong id="missing-clips-count-title">Missing Video Footage Detected</strong>
+                  <p id="missing-clips-desc">Some scenes are using fallback placeholders.</p>
+                </div>
+              </div>
+              <button class="btn btn-warning btn-sm" id="btn-fix-missing-clips" onclick="fixMissingClipsWithAI()">
+                ✨ Generate Ultra HD 16:9 AI Images (1-Click)
+              </button>
+            </div>
+
             <div class="video-container" id="video-container">
               <!-- Video Element (Muted so stock audio never clashes) -->
               <video id="preview-video" preload="auto" playsinline muted></video>
@@ -1823,17 +1837,51 @@
 
   <!-- ==================== EXPORT COMPLETED MODAL ==================== -->
   <div class="modal-overlay hidden" id="export-complete-modal">
-    <div class="modal-card modal-md">
+    <div class="modal-card modal-md" style="max-width:680px;">
       <div class="success-check">🎉</div>
       <h3 id="export-modal-headline">Ultra HD Video Exported Successfully!</h3>
       <p id="export-success-filename">Your video and clickbait YouTube thumbnails are ready in your output folder.</p>
       
       <div class="exported-preview-box">
-        <video id="exported-video-player" controls style="width:100%; border-radius:8px;"></video>
+        <video id="exported-video-player" controls style="width:100%; border-radius:8px; background:#000; max-height:280px;"></video>
+      </div>
+
+      <!-- Generated YouTube Thumbnails Direct Previews -->
+      <div class="exported-thumbnails-section mt-12" id="export-modal-thumbs-container">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <strong style="font-size:13px;color:#f8fafc;display:flex;align-items:center;gap:6px;">
+            🖼️ Generated YouTube Thumbnails <span class="badge badge-success" style="font-size:10px;">1280x720</span>
+          </strong>
+          <span style="font-size:11px;color:#94a3b8;">High-CTR Viral Hooks</span>
+        </div>
+        <div class="exported-thumbnails-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <!-- Style 1 -->
+          <div class="export-thumb-box" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px;text-align:center;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span class="badge badge-danger" style="font-size:10px;">Style 1: Viral Punch</span>
+              <span style="font-size:10px;color:#94a3b8;">Hormozi Pop</span>
+            </div>
+            <img id="export-modal-thumb-1" src="" alt="Thumbnail Style 1" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;display:block;background:#1e293b;">
+            <a id="export-modal-dl-1" href="#" download="Thumbnail_Viral.jpg" class="btn btn-xs btn-outline mt-8 disabled" style="font-size:11px;padding:4px 8px;margin-top:8px;width:100%;display:inline-block;text-decoration:none;box-sizing:border-box;">
+              💾 Download Style 1
+            </a>
+          </div>
+          <!-- Style 2 -->
+          <div class="export-thumb-box" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px;text-align:center;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span class="badge badge-warning" style="font-size:10px;">Style 2: Cinematic</span>
+              <span style="font-size:10px;color:#94a3b8;">Vox Mystery</span>
+            </div>
+            <img id="export-modal-thumb-2" src="" alt="Thumbnail Style 2" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;display:block;background:#1e293b;">
+            <a id="export-modal-dl-2" href="#" download="Thumbnail_Cinematic.jpg" class="btn btn-xs btn-outline mt-8 disabled" style="font-size:11px;padding:4px 8px;margin-top:8px;width:100%;display:inline-block;text-decoration:none;box-sizing:border-box;">
+              💾 Download Style 2
+            </a>
+          </div>
+        </div>
       </div>
 
       <div class="modal-actions-row mt-16">
-        <button class="btn btn-primary" onclick="openOutputFolder()">
+        <button class="btn btn-primary" id="export-btn-show-folder" onclick="openExportedVideoFolder()">
           📂 Show in Windows Folder
         </button>
         <button class="btn btn-warning" onclick="switchToThumbnails()">
@@ -1846,6 +1894,27 @@
           Close
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ==================== DOCS MANUAL VIEWER MODAL ==================== -->
+  <div class="modal-overlay hidden" id="docs-modal">
+    <div class="modal-card" style="max-width:980px;width:95vw;height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden;background:#0f172a;border:1px solid rgba(255,255,255,0.15);border-radius:12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.1);background:#1e293b;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:18px;">📖</span>
+          <strong style="font-size:15px;color:#f8fafc;">VideoGen Studio — Operational Manual & User Guide</strong>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="openDocsInBrowser()" style="font-size:12px;padding:4px 10px;">
+            🌐 Open in External Browser
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="closeDocsModal()" style="font-size:12px;padding:4px 10px;">
+            ✕ Close
+          </button>
+        </div>
+      </div>
+      <iframe id="docs-iframe" src="docs.html" style="width:100%;flex:1;border:none;background:#0c0e12;"></iframe>
     </div>
   </div>
 

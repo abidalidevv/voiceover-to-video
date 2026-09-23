@@ -48,8 +48,100 @@ KEYWORD_MAP = {
     "waiting": ["person waiting train platform", "clock ticking time passing timelapse", "sitting alone cafe window"],
     "fight": ["boxer punching bag training", "determined warrior intense eyes", "overcoming struggle athletic"],
     "morning": ["golden sunrise horizon dawn", "drinking coffee morning window", "morning sun rays trees"],
-    "future": ["futuristic technology glowing interface", "modern architecture minimalist", "virtual reality headset person"]
+    "future": ["futuristic technology glowing interface", "modern architecture minimalist", "virtual reality headset person"],
+    "missile": ["ballistic missile launch", "rocket launch night", "missile explosion"],
+    "ballistic": ["ballistic missile launch", "missile flight trajectory", "military rocket"],
+    "blastoc": ["ballistic missile launch", "military rocket explosion"],
+    "misile": ["ballistic missile launch", "missile rocket launch"],
+    "war": ["military battlefield soldiers", "war explosion smoke", "military combat tank"],
+    "army": ["military soldiers marching", "armed forces tactical", "military base"],
+    "military": ["military base operations", "armed forces soldiers", "military vehicles convoy"],
+    "attack": ["military strike explosion", "airstrike explosion", "tactical combat"],
+    "strike": ["airstrike explosion", "missile impact explosion", "military strike"],
+    "explosion": ["huge fiery explosion", "battlefield explosion", "detonation smoke fire"],
+    "dhamaka": ["huge fiery explosion", "military explosion", "blast detonation"],
+    "bomb": ["bomb detonation explosion", "fighter jet bombing", "tactical bomb drop"],
+    "drone": ["military drone flying", "uav surveillance drone", "aerial drone strike"],
+    "rocket": ["rocket launch smoke", "rocket propulsion night", "military rocket"],
+    "tank": ["military tank moving", "armored vehicle battlefield", "tank firing cannon"],
+    "soldier": ["soldiers in uniform patrol", "armed tactical soldier", "combat troops marching"],
+    "fauj": ["military soldiers marching", "armed forces patrol", "military infantry"],
+    "jang": ["war explosion battlefield", "military combat", "war smoke fire"],
+    "weapon": ["military weapon arsenal", "tactical firearms shooting", "defense weapons system"],
+    "iran": ["middle east desert landscape", "tehran city skyline", "military base middle east"],
+    "israel": ["tel aviv city aerial", "middle east desert landscape", "military defense iron dome"],
+    "defense": ["air defense radar", "military defense system", "anti missile system"],
+    "radar": ["military radar antenna spinning", "air defense radar screen", "surveillance radar"],
+    "fighter": ["fighter jet supersonic", "military aircraft flight", "air force jet takeoff"],
+    "jet": ["fighter jet in clouds", "supersonic combat jet", "military aviation"],
+    "aircraft": ["military aircraft carrier", "fighter jet takeoff", "warplane flying sky"],
+    # Space & Astronomy
+    "space": ["deep space galaxy stars", "astronaut spacewalk earth", "space shuttle launch"],
+    "planet": ["planet earth orbit", "solar system planets", "jupiter saturn rings"],
+    "galaxy": ["milky way galaxy night", "spiral galaxy hubble", "deep space nebula stars"],
+    "orbit": ["satellite orbiting earth", "international space station", "spacecraft orbit"],
+    "astronaut": ["astronaut spacewalk helmet", "astronaut moon surface", "astronaut floating station"],
+    "star": ["stars night sky timelapse", "stellar nebula cosmos", "shooting star meteor"],
+    "solar": ["solar system animation", "solar flare sun surface", "solar eclipse dramatic"],
+    "moon": ["full moon night sky", "lunar surface craters", "moon landing apollo"],
+    "mars": ["mars red planet surface", "mars rover exploration", "mars colony concept"],
+    "nasa": ["nasa rocket launch", "nasa space mission", "nasa control room"],
+    "satellite": ["satellite orbiting earth", "communication satellite space", "satellite dish antenna"],
+    "telescope": ["telescope observatory night", "hubble telescope deep space", "telescope stargazing"],
+    "cosmos": ["cosmos universe stars", "cosmic nebula colorful", "deep space exploration"],
+    "universe": ["universe expanding cosmos", "deep space stars galaxy", "cosmic nebula"],
+    "nebula": ["colorful nebula hubble", "space nebula gas clouds", "stellar nursery nebula"],
+    "blackhole": ["black hole visualization", "event horizon space", "black hole accretion"],
+    "comet": ["comet tail night sky", "comet approaching earth", "asteroid comet space"],
+    "asteroid": ["asteroid belt space", "asteroid approaching earth", "meteor asteroid impact"],
+    "gravity": ["zero gravity floating", "astronaut weightless space", "gravity physics"],
+    "launch": ["rocket launch countdown", "space shuttle launch pad", "spacecraft launch flames"],
+    # Science & Technology
+    "science": ["scientific laboratory experiment", "molecular structure 3d", "scientist research lab"],
+    "technology": ["futuristic technology interface", "circuit board electronics", "innovation technology"],
+    "computer": ["computer code programming", "server room data center", "typing keyboard screen"],
+    "internet": ["global network connections", "fiber optic data", "digital world connected"],
+    "robot": ["humanoid robot advanced", "robotic arm factory", "artificial intelligence robot"],
+    "brain": ["human brain neural network", "brain scan medical", "neurons firing brain"],
+    "energy": ["renewable energy windmill", "solar panels field", "nuclear power plant"],
+    "nuclear": ["nuclear power plant", "atomic energy reactor", "nuclear physics"],
+    "electric": ["electric power grid", "lightning bolt storm", "electric car charging"],
+    # Ocean & Marine
+    "ocean": ["deep ocean underwater", "ocean waves aerial drone", "underwater coral reef"],
+    "sea": ["calm sea horizon sunset", "stormy sea waves crashing", "deep sea creatures"],
+    "underwater": ["underwater coral reef fish", "deep sea diving", "underwater ocean life"],
+    "whale": ["whale underwater ocean", "humpback whale breach", "blue whale deep sea"],
+    "fish": ["tropical fish coral reef", "school of fish ocean", "deep sea fish"],
+    "swim": ["person swimming pool", "olympic swimming race", "swimming underwater blue"],
+    # Education & Knowledge
+    "learn": ["student studying library", "classroom education learning", "books reading knowledge"],
+    "school": ["school classroom students", "university campus aerial", "graduation ceremony"],
+    "book": ["open book reading light", "library books shelves", "ancient manuscript book"],
+    "study": ["student studying desk night", "focused studying library", "research study papers"],
+    "history": ["ancient historical ruins", "historical documentary footage", "old civilization artifacts"],
+    "ancient": ["ancient temple ruins", "ancient civilization archaeology", "historical ancient statue"],
+    # Economy & Politics
+    "economy": ["stock market trading floor", "economic growth chart", "global economy finance"],
+    "politics": ["government parliament building", "political speech podium", "voting election democracy"],
+    "president": ["presidential speech podium", "white house building", "political leader address"],
+    "election": ["voting ballot box election", "election campaign rally", "democratic voting process"],
+    "government": ["government capitol building", "parliament session debate", "official government meeting"],
+    # Health & Medical
+    "health": ["healthy lifestyle exercise", "medical hospital care", "wellness meditation yoga"],
+    "doctor": ["doctor medical examination", "surgeon operating room", "medical professional stethoscope"],
+    "virus": ["virus microscope 3d", "pandemic medical response", "viral infection cells"],
+    "medicine": ["pharmaceutical medicine pills", "medical research laboratory", "hospital medicine care"],
+    # Nature & Weather
+    "mountain": ["mountain peak aerial snow", "hiking mountain summit", "majestic mountain landscape"],
+    "forest": ["dense forest aerial misty", "walking through forest trail", "sunlight through forest trees"],
+    "desert": ["vast desert sand dunes", "desert sunset dramatic sky", "sahara desert landscape"],
+    "volcano": ["active volcano eruption lava", "volcanic eruption smoke", "volcano lava flowing"],
+    "earthquake": ["earthquake destruction buildings", "seismic earthquake damage", "earthquake rescue response"],
+    "storm": ["thunderstorm lightning dramatic", "hurricane storm satellite", "tornado storm destruction"],
+    "fire": ["wildfire forest burning", "fire flames dramatic", "firefighter emergency response"],
+    "ice": ["arctic ice glacier frozen", "ice melting climate change", "frozen landscape winter"],
 }
+
 
 
 def build_scenes(
@@ -183,6 +275,7 @@ def build_scenes(
             scenes.append({
                 "id": idx,
                 "scene_number": idx + 1,
+                "niche": niche,
                 "start": start,
                 "end": end,
                 "duration": dur,
@@ -206,6 +299,7 @@ def build_scenes(
             scenes.append({
                 "id": i,
                 "scene_number": i + 1,
+                "niche": niche,
                 "start": start,
                 "end": end,
                 "duration": dur,
@@ -235,12 +329,14 @@ def build_scenes(
             if sc.get("duration", 0) > effective_max:
                 sc["duration"] = effective_max
 
-    # AI Enhancement if API key is provided
+    # AI Enhancement if API key is provided (Gemini, Groq, or OpenAI)
+    gemini_key = settings.get("gemini_api_key", "").strip()
+    gemini_keys = settings.get("gemini_api_keys") or ([gemini_key] if gemini_key else [])
     groq_key = settings.get("groq_api_key", "").strip()
     openai_key = settings.get("openai_api_key", "").strip()
-    if (groq_key or openai_key) and scenes:
+    if (gemini_keys or groq_key or openai_key) and scenes:
         try:
-            enhanced_data = _enhance_tags_with_ai(scenes, niche, groq_key, openai_key)
+            enhanced_data = _enhance_tags_with_ai(scenes, niche, gemini_keys, groq_key, openai_key)
             for sc, item in zip(scenes, enhanced_data):
                 if isinstance(item, list):
                     sc["search_tags"] = item
@@ -337,35 +433,44 @@ def _extract_tags_rulebased(text: str, niche: str, surrounding_context: str = ""
     """Generates visual tags based on text tokens, emotions, niche context, and surrounding sentences."""
     text_lower = text.lower()
     matched_queries = []
+    niche_flavor = NICHE_VISUAL_FLAVORS.get(niche, NICHE_VISUAL_FLAVORS.get("General", ["cinematic inspiring 4k"]))
 
-    # Check for direct keyword mappings
+    # 1. Check for direct keyword mappings (Space, Tech, Finance, etc.)
+    has_direct_kw = False
     for kw, queries in KEYWORD_MAP.items():
         if re.search(r'\b' + re.escape(kw) + r'\b', text_lower):
             matched_queries.extend(queries[:2])
+            has_direct_kw = True
 
-    # Clean words to find salient nouns and verbs
-    stop_words = {"this", "that", "with", "from", "have", "been", "were", "what", "here", "there", "they", "your", "will", "would", "could", "should", "about", "thing"}
-    clean_words = [w for w in re.findall(r'\b[a-zA-Z]{4,}\b', text_lower) if w not in stop_words]
-
-    if clean_words:
-        keyword_phrase = " ".join(clean_words[:3])
-        matched_queries.append(f"{keyword_phrase} cinematic")
-
-    # If sentence is short or lacks rich visual keywords, borrow context from adjacent sentences
-    if len(clean_words) < 2 and surrounding_context:
+    # 2. Check surrounding context if current sentence has no direct keyword
+    if not has_direct_kw and surrounding_context:
         ctx_lower = surrounding_context.lower()
         for kw, queries in KEYWORD_MAP.items():
             if re.search(r'\b' + re.escape(kw) + r'\b', ctx_lower):
                 matched_queries.extend(queries[:1])
-        ctx_words = [w for w in re.findall(r'\b[a-zA-Z]{4,}\b', ctx_lower) if w not in stop_words]
-        if ctx_words:
-            matched_queries.append(f"{' '.join(ctx_words[:2])} cinematic")
+                has_direct_kw = True
 
-    # Add niche flavored visual tags
-    niche_flavor = NICHE_VISUAL_FLAVORS.get(niche, NICHE_VISUAL_FLAVORS["General"])
-    matched_queries.extend(niche_flavor[:2])
+    # 3. Clean words for salient nouns/verbs
+    stop_words = {"this", "that", "with", "from", "have", "been", "were", "what", "here", "there", "they", "your", "will", "would", "could", "should", "about", "thing", "some", "more", "most", "also", "then", "into", "onto", "when", "where", "which"}
+    clean_words = [w for w in re.findall(r'\b[a-zA-Z]{4,}\b', text_lower) if w not in stop_words]
 
-    # De-duplicate while preserving order
+    # If direct keyword matched, add clean words as supplementary
+    if has_direct_kw and clean_words:
+        keyword_phrase = " ".join(clean_words[:2])
+        matched_queries.append(f"{keyword_phrase} cinematic")
+    elif not has_direct_kw:
+        # No direct keyword matched (e.g. Urdu, Roman Urdu, or abstract speech):
+        # Anchor solidly to the selected niche so we NEVER get off-topic stock footage like swimming or sports!
+        matched_queries.extend(niche_flavor[:3])
+        if clean_words:
+            matched_queries.append(f"{' '.join(clean_words[:2])} cinematic")
+
+    # 4. Always ensure niche flavor tags are included as strong fallbacks
+    for nf in niche_flavor[:2]:
+        if nf not in matched_queries:
+            matched_queries.append(nf)
+
+    # De-duplicate while preserving priority order
     unique_tags = []
     for q in matched_queries:
         q_clean = q.strip()
@@ -375,25 +480,67 @@ def _extract_tags_rulebased(text: str, niche: str, surrounding_context: str = ""
     return unique_tags[:5]
 
 
-def _enhance_tags_with_ai(scenes: List[Dict[str, Any]], niche: str, groq_key: str = "", openai_key: str = "") -> List[Dict[str, Any]]:
+def _call_gemini_api(prompt: str, gemini_keys: List[str]) -> Optional[str]:
+    """Calls Google Gemini API across candidate keys using gemini-3.6-flash and JSON response."""
+    for key in gemini_keys:
+        k_clean = str(key).strip()
+        if not k_clean:
+            continue
+        for model in ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.5-flash"]:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={k_clean}"
+                payload = {
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {
+                        "temperature": 0.2,
+                        "responseMimeType": "application/json"
+                    }
+                }
+                res = requests.post(url, json=payload, timeout=20)
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts:
+                            text_out = parts[0].get("text", "")
+                            if text_out:
+                                print(f"[SceneAnalyzer] Google Gemini ({model}) successfully generated visual tags.")
+                                return text_out
+                else:
+                    print(f"[SceneAnalyzer] Gemini API {model} notice: HTTP {res.status_code} - {res.text[:120]}")
+            except Exception as e:
+                print(f"[SceneAnalyzer] Gemini API connection notice ({model}): {e}")
+                continue
+    return None
+
+
+def _enhance_tags_with_ai(
+    scenes: List[Dict[str, Any]],
+    niche: str,
+    gemini_keys: Optional[List[str]] = None,
+    groq_key: str = "",
+    openai_key: str = ""
+) -> List[Dict[str, Any]]:
     """
-    Calls Groq or OpenAI LLM once for the script to generate:
-    1. Search tags (visual B-roll queries)
+    Calls Gemini, Groq, or OpenAI LLM once for the script to generate:
+    1. Search tags (visual B-roll queries strictly 2-3 English words)
     2. Callout text (3-5 words for strong claims, statistics, or key takeaways, else null)
     3. Emphasis word (single most important/punchy word for emphasis zoom timing, else null)
     """
     prompt = f"""You are a master YouTube video editor, B-roll visual director, and motion graphic designer.
 For the niche: "{niche}", analyze each sentence from the voiceover script below.
+Even if sentences are in Urdu, Roman Urdu, Hindi, Arabic, or contain typos/phonetic spelling (e.g. "blastoc misile" -> ballistic missile), understand the exact visual context.
 For EACH sentence provide:
-1. "search_tags": 3 to 4 specific, cinematic, highly searchable stock footage queries depicting what is being spoken or the mood.
+1. "search_tags": 3 to 4 specific, cinematic, highly searchable stock footage queries in ENGLISH (strictly 2 to 3 words each in English, e.g. "deep space galaxy", "astronaut spacewalk", "satellite orbit", "solar system earth", "mars planet"). NEVER return non-English words, full sentences, or vague words in search_tags.
 2. "callout_text": If this sentence contains a strong claim, key statistic, notable fact, or list-point worth a visual text callout badge, return a concise 3-5 word callout (e.g., "93% OF USERS AGREE", "KEY TAKEAWAY: PERSISTENCE", "RULE #1: FOCUS FIRST"). Otherwise, return null.
 3. "emphasis_word": The single most emphatic, high-impact word in that sentence (numbers, superlatives like "best", "never", "biggest", "critical", or key nouns) for emphasis timing, or null.
 
 Respond ONLY with a STRICT JSON array of objects, one object per sentence in exact order. No markdown code blocks, no commentary.
 Example:
 [
-  {{"search_tags": ["person looking into distance", "longing expression", "motivated man standing cliff"], "callout_text": "PERSISTENCE IS EVERYTHING", "emphasis_word": "everything"}},
-  {{"search_tags": ["crowd walking city subway", "tired worker rainy evening"], "callout_text": null, "emphasis_word": "never"}}
+  {{"search_tags": ["deep space galaxy", "planet earth orbit", "stars nebula cosmic"], "callout_text": "DEEP SPACE DISCOVERY", "emphasis_word": "universe"}},
+  {{"search_tags": ["astronaut spacewalk", "satellite earth", "space shuttle"], "callout_text": null, "emphasis_word": "astronaut"}}
 ]
 
 Sentences:
@@ -402,10 +549,15 @@ Sentences:
         prompt += f"{i+1}. {s['text']}\n"
 
     content = None
-    if groq_key:
+    # Priority 1: Google Gemini (high context understanding for Urdu/Roman Urdu)
+    if gemini_keys:
+        content = _call_gemini_api(prompt, gemini_keys)
+
+    # Priority 2: Groq high-speed inference (using active Groq models)
+    if not content and groq_key:
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
-        for model_id in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]:
+        for model_id in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"]:
             try:
                 payload = {
                     "model": model_id,
@@ -415,10 +567,14 @@ Sentences:
                 res = requests.post(url, headers=headers, json=payload, timeout=20)
                 if res.status_code == 200:
                     content = res.json()["choices"][0]["message"]["content"]
+                    print(f"[SceneAnalyzer] Groq ({model_id}) successfully generated visual tags.")
                     break
-            except Exception:
+            except Exception as e:
+                print(f"[SceneAnalyzer] Groq notice ({model_id}): {e}")
                 continue
-    elif openai_key:
+
+    # Priority 3: OpenAI
+    if not content and openai_key:
         try:
             url = "https://api.openai.com/v1/chat/completions"
             headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
@@ -641,12 +797,14 @@ def analyze_script_editorial_direction(
     if not groq_key and not openai_key:
         try:
             settings = load_settings()
+            g_key = settings.get("gemini_api_key", "").strip()
+            gemini_keys = settings.get("gemini_api_keys") or ([g_key] if g_key else [])
             groq_key = settings.get("groq_api_key", "").strip()
             openai_key = settings.get("openai_api_key", "").strip()
         except Exception:
-            pass
+            gemini_keys = []
 
-    if not groq_key and not openai_key:
+    if not gemini_keys and not groq_key and not openai_key:
         return default_editorial
 
     # Number sentences for 0-based climax sentence identification
@@ -673,10 +831,13 @@ Respond ONLY with a STRICT JSON object in this exact format. No markdown code bl
 
     content = None
     try:
-        if groq_key:
+        if gemini_keys:
+            content = _call_gemini_api(prompt, gemini_keys)
+
+        if not content and groq_key:
             url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
-            for model_id in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]:
+            for model_id in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-3.1-70b-versatile"]:
                 try:
                     payload = {
                         "model": model_id,
@@ -689,9 +850,7 @@ Respond ONLY with a STRICT JSON object in this exact format. No markdown code bl
                         break
                 except Exception:
                     continue
-            if not content:
-                return default_editorial
-        elif openai_key:
+        elif not content and openai_key:
             url = "https://api.openai.com/v1/chat/completions"
             headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
             payload = {
@@ -702,10 +861,6 @@ Respond ONLY with a STRICT JSON object in this exact format. No markdown code bl
             res = requests.post(url, headers=headers, json=payload, timeout=20)
             if res.status_code == 200:
                 content = res.json()["choices"][0]["message"]["content"]
-            else:
-                return default_editorial
-        else:
-            return default_editorial
 
         if not content:
             return default_editorial

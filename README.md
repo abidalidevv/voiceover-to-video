@@ -83,41 +83,45 @@ http://127.0.0.1:8765/
 ```
 ATS-Video/
 ├── backend/                  # Core Python modules
-│   ├── server.py             # Active FastAPI backend endpoints & WebSocket progress
-│   ├── tts_generator.py      # Edge-TTS Neural, ElevenLabs, and OpenAI voice engines
-│   ├── thumbnail_generator.py# YouTube Thumbnail Studio (Viral & Cinematic styles)
-│   ├── seo_generator.py      # YouTube SEO title, description & tag generator
-│   ├── transcriber.py        # Groq Whisper speech-to-text with word micro-timestamps
-│   ├── scene_analyzer.py     # Sentence segmentation, editorial direction & tag enhancement
-│   ├── stock_downloader.py   # Multi-worker concurrent Pexels/Pixabay downloader
-│   ├── video_renderer.py     # FFmpeg normalization, transitions, SFX mixing & punch zoom
+│   ├── server.py             # Active FastAPI backend endpoints, WebSocket progress & Explorer launchers
+│   ├── scene_analyzer.py     # Gemini Flash + Groq LLM scene analyzer & 80+ keyword map
+│   ├── stock_downloader.py   # Multi-worker Pexels/Pixabay downloader with -200pt clash scoring
+│   ├── image_generator.py    # 1-Click 16:9 AI Image Generator & Ken Burns MP4 video synthesis
+│   ├── video_renderer.py     # FFmpeg CFR normalization, centered transitions, BGM/SFX mixing
 │   ├── subtitle_generator.py # ASS kinetic subtitles & callout badge generator
-│   ├── templates.py          # Master templates, pools & variant resolution
+│   ├── thumbnail_generator.py# YouTube Thumbnail Studio (Viral Punch & Cinematic Mystery)
+│   ├── seo_generator.py      # AI YouTube SEO Suite (Titles, Description, Timestamps, Tags)
+│   ├── tts_generator.py      # Edge-TTS Neural, ElevenLabs, OpenAI voice engines
+│   ├── transcriber.py        # Groq Whisper speech-to-text with word micro-timestamps
 │   ├── capcut_exporter.py    # Native CapCut desktop draft project generator
+│   ├── templates.py          # Master templates, pools & variant resolution
 │   └── config.py             # Global settings, paths, SFX library & defaults
 ├── frontend/                 # Glassmorphic Obsidian Web application
-│   ├── index.html            # Studio, Preview, Thumbnail, Projects, Settings tabs
-│   ├── styles.css            # Dark mode UI, responsive breakpoints, sleek textareas
-│   ├── app.js                # Frontend controllers, live audio preview, settings sync
+│   ├── index.html            # Studio, Preview, Thumbnail, Projects, Settings, Docs & Export modals
+│   ├── styles.css            # Dark mode UI, Ken Burns animations, responsive styles
+│   ├── app.js                # Frontend controllers, live preview, folder & CapCut handlers
 │   ├── caption_engine.js     # Word-level kinetic subtitle animator & drag positioning
 │   ├── docs.html             # Built-in User Guide & operational manual
-│   ├── favicon.ico           # Application icon
-│   └── favicon.png           # Nano ATS brand badge
+│   ├── favicon.ico / png     # Application icon & brand badge
 ├── data/                     # Persistent application data
 │   ├── assets/bgm/           # Background music loops (ambient, lofi, focus)
+│   ├── output/               # Rendered 1080p/4K MP4 videos & YouTube thumbnails
+│   ├── thumbnails/           # Auto-generated YouTube clickbait thumbnail JPEGs
+│   ├── seo/                  # Generated YouTube titles, descriptions, and tags JSON
 │   └── sfx/                  # Sound effects & pre-cached voice preview MP3s
 ├── 1_RUN_APP_Python_Source.bat       # 1-Click launcher for Python source code (fast & live)
 ├── 2_RUN_APP_Standalone_EXE.bat       # 1-Click launcher for compiled executable (standalone)
 ├── 3_BUILD_NEW_Standalone_EXE.bat     # PyInstaller standalone executable compiler
-├── desktop_launcher.py       # Desktop browser window launcher
+├── desktop_launcher.py       # Desktop app launcher with Edge App mode & port management
 ├── main.py                   # Root application entrypoint
+├── CLAUDE_REVIEW.md          # Master architectural review & post-mortem blueprint
 └── requirements.txt          # Python dependencies
 ```
 
 ---
 
 ## 📜 Interactive Documentation
-Access the comprehensive user guide by clicking **📖 Docs** in the top navigation header or visiting:
+Access the comprehensive user guide by clicking **📖 Docs** in the top navigation header inside the app or visiting:
 `http://127.0.0.1:8765/docs.html`
 
 ---

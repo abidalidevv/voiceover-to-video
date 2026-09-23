@@ -393,10 +393,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             chunk_start = chunk[0]["start"]
             chunk_end = chunk[-1]["end"]
 
-            # For each word in the chunk, create a sub-interval where that word is actively highlighted
+            # For each word in the chunk, create a continuous sub-interval where that word is actively highlighted
             for active_idx, active_word in enumerate(chunk):
-                w_start = format_ass_time(active_word["start"])
-                w_end = format_ass_time(active_word["end"])
+                # Start: if first word, start at chunk_start; otherwise at word start
+                t_start_val = chunk_start if active_idx == 0 else active_word["start"]
+                # End: extend to the start of the next word to eliminate inter-word flicker gaps!
+                if active_idx < len(chunk) - 1:
+                    t_end_val = chunk[active_idx + 1]["start"]
+                else:
+                    t_end_val = max(active_word["end"], chunk_end + 0.15)
+
+                w_start = format_ass_time(t_start_val)
+                w_end = format_ass_time(t_end_val)
 
                 # Build styled line
                 line_parts = []

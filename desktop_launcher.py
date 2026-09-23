@@ -93,12 +93,35 @@ def launch_native_window():
     webbrowser.open(URL)
 
 
+def kill_process_on_port(port: int):
+    """Kills any previous zombie process holding the specified port so the server binds cleanly."""
+    if os.name != "nt":
+        return
+    try:
+        cmd = f'netstat -ano | findstr :{port}'
+        res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        current_pid = os.getpid()
+        for line in res.stdout.strip().splitlines():
+            parts = line.strip().split()
+            if len(parts) >= 5 and "LISTENING" in parts:
+                pid = int(parts[-1])
+                if pid != current_pid and pid > 0:
+                    print(f"[VideoGen Studio] Cleaning up stale background instance (PID: {pid}) on port {port}...")
+                    subprocess.run(f"taskkill /F /PID {pid}", shell=True, capture_output=True)
+    except Exception:
+        pass
+
+
 def main():
     print("=" * 68)
     print("      VIDEO GEN STUDIO - AI YOUTUBE FULL HD VIDEO GENERATOR")
     print("                     Desktop Standalone Engine")
     print("=" * 68)
     print(f"[VideoGen Studio] App Directory: {APP_DIR}")
+
+    # Clean up any stale process holding the port
+    kill_process_on_port(PORT)
+
     print(f"[VideoGen Studio] Starting backend server at {URL} ...")
 
     # Import backend app

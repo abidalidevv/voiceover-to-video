@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 import json
 import shutil
 from pathlib import Path
@@ -56,6 +57,7 @@ DEFAULT_SETTINGS = {
     "groq_api_key": "",
     "openai_api_key": "",
     "gemini_api_key": "",
+    "gemini_api_keys": [],
     "elevenlabs_api_key": "",
 
     # Performance & Concurrency Settings (GPU / CPU Tuner)
@@ -175,6 +177,14 @@ def load_settings() -> dict:
         pb_keys.insert(0, single_pb)
     merged["pixabay_api_keys"] = pb_keys
     merged["pixabay_api_key"] = pb_keys[0] if pb_keys else ""
+
+    # Normalize Gemini key pool
+    g_keys = _clean_key_list(merged.get("gemini_api_keys", []))
+    single_g = str(merged.get("gemini_api_key", "")).strip()
+    if single_g and single_g not in g_keys:
+        g_keys.insert(0, single_g)
+    merged["gemini_api_keys"] = g_keys
+    merged["gemini_api_key"] = g_keys[0] if g_keys else ""
 
     # Ensure output directories are never empty
     if not str(merged.get("output_dir", "")).strip():

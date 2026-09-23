@@ -567,9 +567,12 @@ def export_project_to_capcut(project_data: Dict[str, Any], custom_options: Dict[
 
     # Open folder in Windows Explorer
     try:
-        os.startfile(str(project_dir.resolve()))
-    except Exception:
-        subprocess.Popen(f'explorer "{project_dir.resolve()}"', shell=True)
+        if os.name == "nt":
+            subprocess.Popen(['explorer.exe', str(project_dir.resolve())])
+        else:
+            os.startfile(str(project_dir.resolve()))
+    except Exception as e:
+        print(f"[CapCutExporter] Could not open draft directory: {e}")
 
     return {
         "status": "success",

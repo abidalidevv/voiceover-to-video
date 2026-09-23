@@ -349,6 +349,10 @@ function showToast(message) {
   }, 3500);
 }
 
+let lastExportedVideoPath = null;
+let lastExportedVideoName = null;
+let lastExportedThumbnails = null;
+
 async function openOutputFolder(customPath = null) {
   const btn = document.getElementById('header-btn-outputs');
   if (btn) {
@@ -369,7 +373,6 @@ async function openOutputFolder(customPath = null) {
     }
 
     if (!res || !res.ok) {
-      // If POST was rejected, try fallback GET
       res = await fetch('/api/open-output-folder');
     }
 
@@ -379,7 +382,9 @@ async function openOutputFolder(customPath = null) {
     const data = await res.json();
     const folderPath = data.path || 'data/output';
     const folderName = (folderPath.split(/[\\/]/).pop()) || 'Output';
-    showToast(`📂 Opened folder in Windows Explorer: <strong>${folderName}</strong><br><span style="font-size:11px;color:#94a3b8;word-break:break-all;">${folderPath}</span>`, 4500);
+    const isFile = data.type === 'file' || /\.(mp4|mkv|mov|avi|jpg|png)$/i.test(folderPath);
+    const actionMsg = isFile ? `Selected file in Explorer: <strong>${folderName}</strong>` : `Opened folder in Windows Explorer: <strong>${folderName}</strong>`;
+    showToast(`📂 ${actionMsg}<br><span style="font-size:11px;color:#94a3b8;word-break:break-all;">${folderPath}</span>`, 4500);
   } catch (e) {
     console.error('Error opening output folder:', e);
     showToast(`⚠️ Could not open folder: ${e.message}`);
@@ -391,6 +396,40 @@ async function openOutputFolder(customPath = null) {
       }, 250);
     }
   }
+}
+
+function openExportedVideoFolder() {
+  const path = lastExportedVideoPath || lastExportedVideoName;
+  openOutputFolder(path);
+}
+
+// ==================== OPERATIONAL MANUAL & DOCS VIEWER ====================
+async function openDocsManual() {
+  const modal = document.getElementById('docs-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+  }
+  try {
+    fetch('/api/open-docs');
+  } catch (e) {}
+}
+
+function closeDocsModal() {
+  const modal = document.getElementById('docs-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+async function openDocsInBrowser() {
+  try {
+    const res = await fetch('/api/open-docs');
+    if (res.ok) {
+      showToast('📖 User manual opened in your default Windows browser', 3500);
+      return;
+    }
+  } catch (e) {}
+  window.open('docs.html', '_blank');
 }
 
 // ==================== AUDIO DROPZONE & UPLOAD ====================
@@ -623,6 +662,9 @@ function loadProjectIntoPreview(project) {
   // Render Scene Director cards
   renderSceneCards(project.scenes);
 
+  // Check for missing stock footage and show alert if needed
+  checkMissingClipsAlert(project.scenes);
+
   // Reset playback
   currentPlaybackTime = 0.0;
   currentSceneIdx = -1;
@@ -658,16 +700,23 @@ function renderSceneCards(scenes) {
     const thumbUrl = clip.thumbnail_url || '';
     const videoUrl = clip.web_url || '';
     const provider = clip.provider || 'stock';
+    const isFallback = Boolean(sc.fallback_used || clip.is_fallback || !clip.file_path);
 
-    const thumbHtml = videoUrl
+    const isImage = Boolean(videoUrl && /\.(jpg|jpeg|png|webp)($|\?)/i.test(videoUrl));
+    const thumbHtml = (videoUrl && !isImage)
       ? `<video src="${videoUrl}#t=0.5" poster="${thumbUrl}" preload="metadata" muted playsinline loop onmouseover="this.play()" onmouseout="this.pause()"></video>`
-      : (thumbUrl 
-          ? `<img src="${thumbUrl}" alt="Scene thumbnail" style="width:100%;height:100%;object-fit:cover;">` 
+      : ((thumbUrl || videoUrl) 
+          ? `<img src="${thumbUrl || videoUrl}" alt="Scene thumbnail" style="width:100%;height:100%;object-fit:cover;">` 
           : `<div style="padding:30px;color:#666;">No Clip</div>`);
+
+    const fallbackBadge = isFallback
+      ? `<span class="scene-fallback-badge">⚠️ AI Image Needed</span>`
+      : '';
 
     card.innerHTML = `
       <div class="scene-card-thumb">
         ${thumbHtml}
+        ${fallbackBadge}
         <span class="scene-time-badge">⏱ ${formatTime(sc.start)} - ${formatTime(sc.end)}</span>
         <span class="scene-provider-badge">${provider}</span>
       </div>
@@ -676,13 +725,33 @@ function renderSceneCards(scenes) {
         <div class="scene-tags">
           ${(sc.search_tags || []).slice(0, 2).map(t => `<span class="tag-pill">#${t}</span>`).join('')}
         </div>
-        <button class="btn btn-secondary btn-swap" onclick="event.stopPropagation(); openSwapModal(${sc.id})">
-          🔄 Swap Clip
-        </button>
+        <div class="scene-card-actions">
+          <button class="btn btn-secondary btn-swap" onclick="event.stopPropagation(); openSwapModal(${sc.id})">
+            🔄 Swap
+          </button>
+          <button class="btn btn-ai-img" onclick="event.stopPropagation(); generateSingleSceneAIImage(${sc.id})" title="Generate Ultra HD 16:9 AI Image for this scene">
+            🎨 AI Image
+          </button>
+        </div>
       </div>
     `;
     strip.appendChild(card);
   });
+}
+
+function preloadNextSceneClip(sceneIdx) {
+  if (!currentProject || !currentProject.scenes) return;
+  const nextIdx = sceneIdx + 1;
+  if (nextIdx < currentProject.scenes.length) {
+    const nextClip = currentProject.scenes[nextIdx].video_clip;
+    if (nextClip && nextClip.web_url && !/\.(jpg|jpeg|png|webp)($|\?)/i.test(nextClip.web_url)) {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'video';
+      link.href = nextClip.web_url;
+      document.head.appendChild(link);
+    }
+  }
 }
 
 function loadSceneClip(sceneIdx, autoPlay = true) {
@@ -690,10 +759,41 @@ function loadSceneClip(sceneIdx, autoPlay = true) {
   currentSceneIdx = sceneIdx;
   const sc = currentProject.scenes[sceneIdx];
   const videoEl = document.getElementById('preview-video');
-  if (!videoEl) return;
+  const container = document.getElementById('video-container');
+  if (!videoEl || !container) return;
+
+  // Preload next scene in background for zero-latency cutover
+  preloadNextSceneClip(sceneIdx);
+
+  // Get or create smooth image animation layer for photo/fallback scenes
+  let imgLayer = document.getElementById('preview-image-layer');
+  if (!imgLayer) {
+    imgLayer = document.createElement('div');
+    imgLayer.id = 'preview-image-layer';
+    imgLayer.className = 'preview-image-kenburns';
+    container.insertBefore(imgLayer, videoEl);
+  }
 
   const clip = sc.video_clip;
-  if (clip && clip.web_url) {
+  const mediaUrl = clip ? (clip.web_url || clip.thumbnail_url || '') : '';
+  const isImageMedia = Boolean(mediaUrl && /\.(jpg|jpeg|png|webp)($|\?)/i.test(mediaUrl));
+
+  if (isImageMedia || (!clip || !clip.file_path)) {
+    // Scene is an AI photo or image: render with smooth cinematic Ken Burns motion!
+    const displayImg = mediaUrl || (clip && clip.thumbnail_url) || '';
+    if (displayImg) {
+      imgLayer.style.backgroundImage = `url('${displayImg}')`;
+      imgLayer.style.display = 'block';
+    } else {
+      imgLayer.style.display = 'none';
+    }
+    videoEl.style.display = 'none';
+    try { videoEl.pause(); } catch (e) {}
+  } else if (clip && clip.web_url) {
+    // Scene is an active MP4 video
+    imgLayer.style.display = 'none';
+    videoEl.style.display = 'block';
+
     if (clip.thumbnail_url) {
       videoEl.poster = clip.thumbnail_url;
     }
@@ -715,7 +815,6 @@ function loadSceneClip(sceneIdx, autoPlay = true) {
     };
 
     videoEl.onloadedmetadata = () => {
-      const container = document.getElementById('video-container');
       const resTag = container ? container.querySelector('.res-tag') : null;
       if (videoEl.videoWidth && videoEl.videoHeight) {
         const isVertical = videoEl.videoHeight > videoEl.videoWidth;
@@ -1238,6 +1337,117 @@ async function handleBgmUpload(event) {
   }
 }
 
+// ==================== MISSING CLIPS ALERT & 1-CLICK AI IMAGE GENERATION ====================
+function checkMissingClipsAlert(scenes) {
+  const alertEl = document.getElementById('missing-clips-alert');
+  if (!alertEl || !scenes) return;
+
+  const missingScenes = scenes.filter(sc => 
+    Boolean(sc.fallback_used) || 
+    Boolean(sc.video_clip && sc.video_clip.is_fallback) || 
+    !sc.video_clip || 
+    !sc.video_clip.file_path
+  );
+
+  if (missingScenes.length > 0) {
+    const titleEl = document.getElementById('missing-clips-count-title');
+    const descEl = document.getElementById('missing-clips-desc');
+    if (titleEl) {
+      titleEl.textContent = `⚠️ ${missingScenes.length} Scene${missingScenes.length > 1 ? 's' : ''} Missing Matching Video Footage`;
+    }
+    if (descEl) {
+      descEl.textContent = `Scenes are using fallback placeholders. Generate 16:9 Ultra HD AI Images to complete the video.`;
+    }
+    alertEl.classList.remove('hidden');
+  } else {
+    alertEl.classList.add('hidden');
+  }
+}
+
+async function fixMissingClipsWithAI() {
+  if (!currentProject || !currentProject.id) return;
+  const btn = document.getElementById('btn-fix-missing-clips');
+  const originalHtml = btn ? btn.innerHTML : '✨ Generate Ultra HD 16:9 AI Images (1-Click)';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Generating Ultra HD 16:9 AI Images...';
+  }
+
+  showToast('🎨 Generating Ultra HD 16:9 cinematic AI images for missing scenes...', 3500);
+
+  try {
+    const res = await fetch('/api/generate-missing-scene-images', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: currentProject.id })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Image generation failed');
+    }
+    const data = await res.json();
+    if (data.scenes) {
+      currentProject.scenes = data.scenes;
+      captionEngine.loadScenes(currentProject.scenes);
+      renderTimelineMarkers(currentProject.scenes);
+      renderSceneCards(currentProject.scenes);
+      checkMissingClipsAlert(currentProject.scenes);
+      if (currentSceneIdx >= 0 && currentSceneIdx < currentProject.scenes.length) {
+        loadSceneClip(currentSceneIdx, isPlaying);
+      }
+    }
+    showToast(`🎉 Generated & applied <strong>${data.fixed_count}</strong> Ultra HD 16:9 AI Images with exact sentence durations!`, 5500);
+  } catch (e) {
+    console.error(e);
+    alert('Failed to generate AI images: ' + e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  }
+}
+
+async function generateSingleSceneAIImage(sceneId) {
+  if (!currentProject || !currentProject.id) return;
+  const sc = currentProject.scenes.find(s => s.id === sceneId);
+  if (!sc) return;
+
+  const defaultPrompt = sc.selected_tag || (sc.search_tags && sc.search_tags[0]) || sc.text;
+  const promptInput = prompt(`Generate Ultra HD 16:9 AI Image for Scene #${sc.scene_number}:\nEnter custom visual prompt (or press OK to use default):`, defaultPrompt);
+  if (promptInput === null) return; // User cancelled
+
+  showToast(`🎨 Generating Ultra HD 16:9 AI Image for Scene #${sc.scene_number}...`);
+  try {
+    const res = await fetch('/api/generate-single-scene-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: currentProject.id,
+        scene_id: sceneId,
+        custom_prompt: promptInput.trim() || null
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to generate image');
+    }
+    const data = await res.json();
+    if (data.scenes) {
+      currentProject.scenes = data.scenes;
+      renderSceneCards(currentProject.scenes);
+      checkMissingClipsAlert(currentProject.scenes);
+      if (currentSceneIdx === sceneId) {
+        loadSceneClip(sceneId, isPlaying);
+      }
+    }
+    showToast(`✨ Scene #${sc.scene_number} updated with Ultra HD 16:9 AI Image!`);
+  } catch (err) {
+    console.error(err);
+    alert('Error generating image: ' + err.message);
+  }
+}
+
 // ==================== SCENE CLIP SWAP MODAL ====================
 function openSwapModal(sceneId) {
   swapTargetSceneId = sceneId;
@@ -1472,17 +1682,55 @@ async function startExportRender() {
     // Populate & open export complete modal
     const outputFileName = result.output_file || 'rendered_video.mp4';
     const webUrl = result.web_url || '';
+    lastExportedVideoPath = result.output_path || outputFileName;
+    lastExportedVideoName = outputFileName;
+    lastExportedThumbnails = result.thumbnails || (currentProject && currentProject.thumbnails);
+
     document.getElementById('export-success-filename').textContent = `File: ${outputFileName}`;
     const exportedPlayer = document.getElementById('exported-video-player');
+    
+    // Resolve thumbnail URLs
+    const projId = (currentProject && currentProject.id) || result.project_id || '';
+    const t1Url = (lastExportedThumbnails && lastExportedThumbnails.thumb1_url)
+      || (projId ? `/media/thumbnails/${projId}_thumb_1_viral.jpg` : '');
+    const t2Url = (lastExportedThumbnails && lastExportedThumbnails.thumb2_url)
+      || (projId ? `/media/thumbnails/${projId}_thumb_2_cinematic.jpg` : '');
+
     if (exportedPlayer) {
       exportedPlayer.src = webUrl;
-      if (currentProject && currentProject.id) {
-        exportedPlayer.poster = `/media/thumbnails/${currentProject.id}_thumb1.jpg`;
+      if (t1Url) {
+        exportedPlayer.poster = `${t1Url}?v=${Date.now()}`;
       }
       exportedPlayer.load();
       exportedPlayer.addEventListener('loadedmetadata', () => {
         try { exportedPlayer.currentTime = 0.1; } catch (e) {}
       }, { once: true });
+    }
+
+    // Populate Thumbnail Preview Cards in Export Modal
+    const mThumb1 = document.getElementById('export-modal-thumb-1');
+    const mThumb2 = document.getElementById('export-modal-thumb-2');
+    const mDl1 = document.getElementById('export-modal-dl-1');
+    const mDl2 = document.getElementById('export-modal-dl-2');
+    const baseCleanName = outputFileName.replace(/\.mp4$/i, '');
+
+    if (mThumb1 && t1Url) {
+      mThumb1.src = `${t1Url}?v=${Date.now()}`;
+      mThumb1.style.display = 'block';
+      if (mDl1) {
+        mDl1.href = t1Url;
+        mDl1.setAttribute('download', `${baseCleanName}_Thumb_Viral.jpg`);
+        mDl1.classList.remove('disabled');
+      }
+    }
+    if (mThumb2 && t2Url) {
+      mThumb2.src = `${t2Url}?v=${Date.now()}`;
+      mThumb2.style.display = 'block';
+      if (mDl2) {
+        mDl2.href = t2Url;
+        mDl2.setAttribute('download', `${baseCleanName}_Thumb_Cinematic.jpg`);
+        mDl2.classList.remove('disabled');
+      }
     }
 
     const dlLink = document.getElementById('export-download-link');
@@ -1495,11 +1743,14 @@ async function startExportRender() {
     showToast(`🎉 Video exported successfully: <strong>${outputFileName}</strong>`);
     loadProjectsLibrary();
 
-    // Auto-open output folder in Windows Explorer immediately
-    openOutputFolder();
+    // Auto-open output folder in Windows Explorer with newly exported video selected
+    openOutputFolder(lastExportedVideoPath);
 
-    // Load newly generated thumbnails in Thumbnail Studio
+    // Update active project thumbnails and sync Thumbnail Studio
     if (currentProject) {
+      if (lastExportedThumbnails) {
+        currentProject.thumbnails = lastExportedThumbnails;
+      }
       loadProjectThumbnails(currentProject);
     }
 
@@ -1520,30 +1771,56 @@ let lastCapCutDraftPath = null;
 
 async function exportToCapCutTimeline() {
   if (!currentProject) {
-    alert('No active project to open in CapCut!');
+    try {
+      const pRes = await fetch('/api/projects');
+      if (pRes.ok) {
+        const projs = await pRes.json();
+        if (projs && projs.length > 0) {
+          currentProject = projs[0];
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (!currentProject) {
+    alert('No active project found to export to CapCut! Please create or select a project first.');
     return;
   }
 
   pausePlayback();
 
+  const fontEl = document.getElementById('font-family-select');
+  const sizeEl = document.getElementById('font-size-slider');
+  const letEl = document.getElementById('letter-spacing-slider');
+  const wordEl = document.getElementById('word-spacing-slider');
+  const primEl = document.getElementById('color-primary');
+  const hiEl = document.getElementById('color-highlight');
+  const strEl = document.getElementById('color-stroke');
+  const strWEl = document.getElementById('stroke-width-slider');
+  const marEl = document.getElementById('margin-v-slider');
+  const upEl = document.getElementById('uppercase-checkbox');
+  const animEl = document.getElementById('animation-style-select');
+
   const customOptions = {
-    font_name: document.getElementById('font-family-select').value,
-    font_size: parseInt(document.getElementById('font-size-slider').value, 10),
-    letter_spacing: parseFloat(document.getElementById('letter-spacing-slider').value) || 1,
-    word_spacing: parseFloat(document.getElementById('word-spacing-slider').value) || 6,
-    primary_color: document.getElementById('color-primary').value,
-    highlight_color: document.getElementById('color-highlight').value,
-    outline_color: document.getElementById('color-stroke').value,
-    outline_width: parseFloat(document.getElementById('stroke-width-slider').value),
-    margin_v: parseInt(document.getElementById('margin-v-slider').value, 10),
-    uppercase: document.getElementById('uppercase-checkbox').checked,
-    animation: document.getElementById('animation-style-select').value
+    font_name: fontEl ? fontEl.value : 'Inter',
+    font_size: sizeEl ? parseInt(sizeEl.value, 10) : 48,
+    letter_spacing: letEl ? parseFloat(letEl.value) || 1 : 1,
+    word_spacing: wordEl ? parseFloat(wordEl.value) || 6 : 6,
+    primary_color: primEl ? primEl.value : '#FFFFFF',
+    highlight_color: hiEl ? hiEl.value : '#FFE600',
+    outline_color: strEl ? strEl.value : '#000000',
+    outline_width: strWEl ? parseFloat(strWEl.value) : 2.5,
+    margin_v: marEl ? parseInt(marEl.value, 10) : 60,
+    uppercase: upEl ? upEl.checked : true,
+    animation: animEl ? animEl.value : 'pop_up'
   };
 
   const pModal = document.getElementById('processing-modal');
-  document.getElementById('modal-status-title').textContent = 'Generating CapCut Timeline Project...';
-  document.getElementById('modal-status-desc').textContent = 'Structuring video cuts, voiceover timeline, and kinetic caption tracks...';
-  pModal.classList.remove('hidden');
+  if (pModal) {
+    document.getElementById('modal-status-title').textContent = 'Generating CapCut Timeline Project...';
+    document.getElementById('modal-status-desc').textContent = 'Structuring video cuts, voiceover timeline, and kinetic caption tracks...';
+    pModal.classList.remove('hidden');
+  }
 
   try {
     const res = await fetch('/api/export-capcut', {
@@ -1561,19 +1838,22 @@ async function exportToCapCutTimeline() {
     }
 
     const data = await res.json();
-    pModal.classList.add('hidden');
+    if (pModal) pModal.classList.add('hidden');
     lastCapCutDraftPath = data.project_dir;
 
-    document.getElementById('capcut-draft-path').textContent = data.project_dir;
+    const pathEl = document.getElementById('capcut-draft-path');
+    if (pathEl) pathEl.textContent = data.project_dir;
     const msg = data.launched
       ? '🚀 CapCut.exe launched! Project template is ready on your timeline with all cuts, audio, and captions.'
       : '✅ CapCut draft generated and placed directly in your CapCut projects folder!';
-    document.getElementById('capcut-status-msg').textContent = msg;
+    const statusEl = document.getElementById('capcut-status-msg');
+    if (statusEl) statusEl.textContent = msg;
 
-    document.getElementById('capcut-modal').classList.remove('hidden');
+    const capcutModal = document.getElementById('capcut-modal');
+    if (capcutModal) capcutModal.classList.remove('hidden');
     showToast(`✂️ CapCut draft ready: <strong>${data.folder_name}</strong>`);
   } catch (err) {
-    pModal.classList.add('hidden');
+    if (pModal) pModal.classList.add('hidden');
     alert('CapCut export failed: ' + err.message);
   }
 }
@@ -1755,9 +2035,21 @@ function onExportResolutionChange(val) {
 
 // ==================== YOUTUBE THUMBNAILS STUDIO ====================
 
-function switchToThumbnails() {
+async function switchToThumbnails() {
   closeExportModal();
   switchTab('thumbnails');
+  if (!currentProject) {
+    try {
+      const res = await fetch('/api/projects');
+      const projects = await res.json();
+      if (projects && projects.length > 0) {
+        currentProject = projects[0];
+      }
+    } catch (e) {}
+  }
+  if (currentProject) {
+    await loadProjectThumbnails(currentProject);
+  }
 }
 
 async function openProjectThumbnails(projectId, event) {
@@ -1786,6 +2078,20 @@ async function loadProjectThumbnails(project) {
   const dl2 = document.getElementById('thumb-download-2');
   const headlineInput = document.getElementById('thumb-custom-headline');
 
+  // Fallback to active project if null
+  if (!project) {
+    try {
+      const pRes = await fetch('/api/projects');
+      if (pRes.ok) {
+        const projs = await pRes.json();
+        if (projs && projs.length > 0) {
+          project = projs[0];
+          currentProject = projs[0];
+        }
+      }
+    } catch (e) {}
+  }
+
   if (!project) {
     if (nameEl) nameEl.textContent = 'No Project Loaded';
     if (nicheEl) nicheEl.textContent = 'None';
@@ -1801,6 +2107,40 @@ async function loadProjectThumbnails(project) {
   if (nameEl) nameEl.textContent = project.name || project.id || 'Active Video';
   if (nicheEl) nicheEl.textContent = project.niche || 'General';
 
+  // Helper to render thumbnails onto the DOM
+  function applyThumbs(thumbs) {
+    if (!thumbs) return;
+    if (img1 && thumbs.thumb1_url) {
+      img1.src = `${thumbs.thumb1_url}?v=${Date.now()}`;
+      img1.style.display = 'block';
+      if (skel1) skel1.style.display = 'none';
+      if (dl1) {
+        dl1.href = thumbs.thumb1_url;
+        dl1.setAttribute('download', `${project.name || 'Video'}_Thumb_Viral.jpg`);
+        dl1.classList.remove('disabled');
+      }
+    }
+    if (img2 && thumbs.thumb2_url) {
+      img2.src = `${thumbs.thumb2_url}?v=${Date.now()}`;
+      img2.style.display = 'block';
+      if (skel2) skel2.style.display = 'none';
+      if (dl2) {
+        dl2.href = thumbs.thumb2_url;
+        dl2.setAttribute('download', `${project.name || 'Video'}_Thumb_Cinematic.jpg`);
+        dl2.classList.remove('disabled');
+      }
+    }
+    if (headlineInput && thumbs.headline_line1) {
+      headlineInput.value = `${thumbs.headline_line1} ${thumbs.headline_line2 || ''}`.trim();
+    }
+  }
+
+  // 1. Immediately render if already present in project object
+  if (project.thumbnails && (project.thumbnails.thumb1_url || project.thumbnails.thumb2_url)) {
+    applyThumbs(project.thumbnails);
+  }
+
+  // 2. Fetch fresh thumbnails from server
   try {
     const res = await fetch(`/api/thumbnails/${project.id}`);
     if (res.ok) {
@@ -1808,29 +2148,7 @@ async function loadProjectThumbnails(project) {
       const thumbs = data.thumbnails;
       if (thumbs) {
         project.thumbnails = thumbs;
-        if (img1 && thumbs.thumb1_url) {
-          img1.src = `${thumbs.thumb1_url}?v=${Date.now()}`;
-          img1.style.display = 'block';
-          if (skel1) skel1.style.display = 'none';
-          if (dl1) {
-            dl1.href = thumbs.thumb1_url;
-            dl1.setAttribute('download', `${project.name || 'Video'}_Thumb_Viral.jpg`);
-            dl1.classList.remove('disabled');
-          }
-        }
-        if (img2 && thumbs.thumb2_url) {
-          img2.src = `${thumbs.thumb2_url}?v=${Date.now()}`;
-          img2.style.display = 'block';
-          if (skel2) skel2.style.display = 'none';
-          if (dl2) {
-            dl2.href = thumbs.thumb2_url;
-            dl2.setAttribute('download', `${project.name || 'Video'}_Thumb_Cinematic.jpg`);
-            dl2.classList.remove('disabled');
-          }
-        }
-        if (headlineInput && thumbs.headline_line1) {
-          headlineInput.value = `${thumbs.headline_line1} ${thumbs.headline_line2 || ''}`.trim();
-        }
+        applyThumbs(thumbs);
       }
     }
     // Also load SEO metadata for this project

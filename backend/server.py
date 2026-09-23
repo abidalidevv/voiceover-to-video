@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
+import asyncio
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -26,6 +27,26 @@ from .video_renderer import render_final_video
 from .capcut_exporter import export_project_to_capcut, find_capcut_executable, get_capcut_drafts_dir
 
 app = FastAPI(title="VideoGen Studio API", version="1.0.0")
+
+
+def _silence_proactor_reset(loop, context):
+    """Silences harmless WinError 10054 (client disconnected/seeked media stream) in Windows asyncio event loop."""
+    exc = context.get("exception")
+    if isinstance(exc, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)):
+        return
+    if getattr(exc, "winerror", None) == 10054:
+        return
+    loop.default_exception_handler(context)
+
+
+@app.on_event("startup")
+async def startup_event():
+    try:
+        loop = asyncio.get_running_loop()
+        loop.set_exception_handler(_silence_proactor_reset)
+    except Exception as e:
+        print(f"[Server] Event loop handler notice: {e}")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -68,13 +89,6 @@ def _to_media_url(file_path: Any) -> str:
     # Check if under DATA_DIR
     try:
         rel = p.resolve().relative_to(DATA_DIR.resolve()).as_posix()
-        return f"/media/{rel}"
-    except Exception:
-        pass
-    # Check if under VideoGen/data
-    try:
-        alt_data = Path("C:/Users/Abid/Desktop/VideoGen/data").resolve()
-        rel = p.resolve().relative_to(alt_data).as_posix()
         return f"/media/{rel}"
     except Exception:
         pass
@@ -411,7 +425,8 @@ def start_generation_job(req: GenerateRequest):
             processed_scenes = download_scenes_concurrently(
                 scenes,
                 progress_callback=on_progress,
-                target_resolution=req.target_resolution
+                target_resolution=req.target_resolution,
+                niche=req.niche
             )
 
             # Web URLs
@@ -478,7 +493,7 @@ def generate_project(req: GenerateRequest):
         niche=req.niche
     )
     scenes = build_scenes(transcription, niche=req.niche, editorial_direction=editorial_dir)
-    processed_scenes = download_scenes_concurrently(scenes)
+    processed_scenes = download_scenes_concurrently(scenes, niche=req.niche)
 
     for sc in processed_scenes:
         if sc.get("video_clip") and sc["video_clip"].get("file_path"):
@@ -550,6 +565,157 @@ def swap_clip(req: SwapClipRequest):
 
     save_project_to_history(project)
     return {"status": "success", "scenes": project["scenes"]}
+
+
+class GenerateMissingImagesRequest(BaseModel):
+    project_id: str
+    scene_ids: Optional[List[int]] = None
+    motion: bool = True
+
+
+@app.post("/api/generate-missing-scene-images")
+def generate_missing_scene_images(req: GenerateMissingImagesRequest):
+    project = ACTIVE_PROJECTS.get(req.project_id)
+    if not project:
+        history = load_projects_history()
+        for p in history:
+            if p.get("id") == req.project_id:
+                project = p
+                ACTIVE_PROJECTS[req.project_id] = p
+                break
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    from .image_generator import generate_scene_image, convert_image_to_scene_clip
+
+    niche = project.get("niche", "General")
+    target_res = load_settings().get("resolution", "1080p")
+    fixed_count = 0
+    target_ids = set(req.scene_ids) if req.scene_ids is not None else None
+
+    for sc in project.get("scenes", []):
+        sc_id = sc.get("id", 0)
+        is_missing = bool(sc.get("fallback_used")) or bool(sc.get("video_clip", {}).get("is_fallback")) or not bool(sc.get("video_clip", {}).get("file_path"))
+
+        if (target_ids is not None and sc_id in target_ids) or (target_ids is None and is_missing):
+            text = sc.get("text", "")
+            tags = sc.get("search_tags", [])
+            dur = float(sc.get("duration", 4.0))
+
+            try:
+                img_path = generate_scene_image(
+                    prompt=text,
+                    scene_id=sc_id,
+                    tags=tags,
+                    niche=niche,
+                    target_resolution=target_res
+                )
+                clip_path = convert_image_to_scene_clip(
+                    image_path=str(img_path),
+                    duration=dur,
+                    scene_id=sc_id,
+                    target_resolution=target_res,
+                    motion=req.motion
+                )
+                if clip_path and os.path.exists(clip_path):
+                    sc["video_clip"] = {
+                        "provider": "ai_image",
+                        "video_id": f"ai_img_{sc_id}_{int(time.time())}",
+                        "query": sc.get("selected_tag") or (tags[0] if tags else "cinematic"),
+                        "file_path": str(clip_path),
+                        "raw_file_path": str(img_path),
+                        "web_url": _to_media_url(clip_path),
+                        "thumbnail_url": _to_media_url(img_path),
+                        "duration": dur,
+                        "width": 1920,
+                        "height": 1080,
+                        "is_fallback": False
+                    }
+                    sc["fallback_used"] = False
+                    sc["status"] = "ready"
+                    fixed_count += 1
+            except Exception as e:
+                print(f"[Server] Failed to generate AI image for scene {sc_id}: {e}")
+
+    save_project_to_history(project)
+    return {
+        "status": "success",
+        "fixed_count": fixed_count,
+        "scenes": project.get("scenes", [])
+    }
+
+
+class SingleSceneImageRequest(BaseModel):
+    project_id: str
+    scene_id: int
+    custom_prompt: Optional[str] = None
+    motion: bool = True
+
+
+@app.post("/api/generate-single-scene-image")
+def generate_single_scene_image(req: SingleSceneImageRequest):
+    project = ACTIVE_PROJECTS.get(req.project_id)
+    if not project:
+        history = load_projects_history()
+        for p in history:
+            if p.get("id") == req.project_id:
+                project = p
+                ACTIVE_PROJECTS[req.project_id] = p
+                break
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    from .image_generator import generate_scene_image, convert_image_to_scene_clip
+
+    niche = project.get("niche", "General")
+    target_res = load_settings().get("resolution", "1080p")
+
+    for sc in project.get("scenes", []):
+        if sc.get("id") == req.scene_id:
+            dur = float(sc.get("duration", 4.0))
+            prompt = req.custom_prompt or sc.get("text", "")
+            tags = sc.get("search_tags", [])
+            try:
+                img_path = generate_scene_image(
+                    prompt=prompt,
+                    scene_id=req.scene_id,
+                    tags=tags,
+                    niche=niche,
+                    target_resolution=target_res
+                )
+                clip_path = convert_image_to_scene_clip(
+                    image_path=str(img_path),
+                    duration=dur,
+                    scene_id=req.scene_id,
+                    target_resolution=target_res,
+                    motion=req.motion
+                )
+                if not clip_path or not os.path.exists(clip_path):
+                    raise HTTPException(status_code=500, detail=f"AI image generation succeeded but video clip conversion failed for scene {req.scene_id}")
+                sc["video_clip"] = {
+                    "provider": "ai_image",
+                    "video_id": f"ai_img_{req.scene_id}_{int(time.time())}",
+                    "query": req.custom_prompt or sc.get("selected_tag") or "cinematic",
+                    "file_path": str(clip_path),
+                    "raw_file_path": str(img_path),
+                    "web_url": _to_media_url(clip_path),
+                    "thumbnail_url": _to_media_url(img_path),
+                    "duration": dur,
+                    "width": 1920,
+                    "height": 1080,
+                    "is_fallback": False
+                }
+                sc["fallback_used"] = False
+                sc["status"] = "ready"
+                save_project_to_history(project)
+                return {"status": "success", "scene": sc, "scenes": project.get("scenes", [])}
+            except HTTPException:
+                raise
+            except Exception as e:
+                print(f"[Server] Failed to generate AI image for scene {req.scene_id}: {e}")
+                raise HTTPException(status_code=500, detail=f"AI image generation failed for scene {req.scene_id}: {str(e)}")
+
+    raise HTTPException(status_code=404, detail="Scene not found")
 
 
 # ======================== MERGE & EXPORT VIDEO ========================
@@ -837,7 +1003,9 @@ def get_render_progress(job_id: str):
     job["result"] = {
         "output_file": job.get("output_file"),
         "output_path": job.get("output_path"),
-        "web_url": job.get("web_url")
+        "web_url": job.get("web_url"),
+        "project_id": job.get("project_id"),
+        "thumbnails": job.get("thumbnails")
     }
     return job
 
@@ -901,17 +1069,73 @@ def get_thumbnails_endpoint(project_id: str):
     if not project:
         history = load_projects_history()
         project = next((p for p in history if p.get("id") == project_id), None)
-        if not project:
-            raise HTTPException(status_code=404, detail="Project not found")
 
-    thumbs = project.get("thumbnails")
-    if not thumbs:
-        from backend.thumbnail_generator import generate_youtube_thumbnails
-        thumbs = generate_youtube_thumbnails(project, target_dir=DATA_DIR / "thumbnails")
-        project["thumbnails"] = thumbs
-        save_project_to_history(project)
+    # 1. Project in memory or history has thumbnails
+    if project and project.get("thumbnails"):
+        return {"status": "success", "thumbnails": project["thumbnails"]}
 
-    return {"status": "success", "thumbnails": thumbs}
+    # 2. Check disk in DATA_DIR / "thumbnails" for this project_id
+    t1 = DATA_DIR / "thumbnails" / f"{project_id}_thumb_1_viral.jpg"
+    t2 = DATA_DIR / "thumbnails" / f"{project_id}_thumb_2_cinematic.jpg"
+    if t1.exists() or t2.exists():
+        thumbs = {
+            "thumb1_url": f"/media/thumbnails/{t1.name}" if t1.exists() else None,
+            "thumb2_url": f"/media/thumbnails/{t2.name}" if t2.exists() else None,
+            "thumb1_path": str(t1) if t1.exists() else "",
+            "thumb2_path": str(t2) if t2.exists() else "",
+            "headline_line1": "VIRAL HOOK",
+            "headline_line2": "WATCH NOW"
+        }
+        if project:
+            project["thumbnails"] = thumbs
+            save_project_to_history(project)
+        return {"status": "success", "thumbnails": thumbs}
+
+    # 3. Check OUTPUT_DIR for any matching thumbnail files
+    if project:
+        safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', project.get("name", project_id))
+        conf_out = str(load_settings().get("output_dir", "")).strip()
+        dest_dir = Path(conf_out) if conf_out else OUTPUT_DIR
+        out_t1 = dest_dir / f"{safe_name}_Thumbnail_Style1_ViralPunch.jpg"
+        out_t2 = dest_dir / f"{safe_name}_Thumbnail_Style2_CinematicMystery.jpg"
+        if out_t1.exists() or out_t2.exists():
+            thumbs = {
+                "thumb1_url": f"/media/output/{out_t1.name}" if out_t1.exists() else None,
+                "thumb2_url": f"/media/output/{out_t2.name}" if out_t2.exists() else None,
+                "thumb1_path": str(out_t1) if out_t1.exists() else "",
+                "thumb2_path": str(out_t2) if out_t2.exists() else "",
+                "headline_line1": "VIRAL HOOK",
+                "headline_line2": "WATCH NOW"
+            }
+            project["thumbnails"] = thumbs
+            save_project_to_history(project)
+            return {"status": "success", "thumbnails": thumbs}
+
+    # 4. If project exists, generate thumbnails now
+    if project:
+        try:
+            from backend.thumbnail_generator import generate_youtube_thumbnails
+            thumb_dir = DATA_DIR / "thumbnails"
+            thumb_dir.mkdir(parents=True, exist_ok=True)
+            thumbs = generate_youtube_thumbnails(project, target_dir=thumb_dir)
+            project["thumbnails"] = thumbs
+            save_project_to_history(project)
+            return {"status": "success", "thumbnails": thumbs}
+        except Exception as e:
+            print(f"[ThumbnailGenerator] On-demand generation error: {e}")
+
+    # 5. Fallback to latest project thumbnails from history
+    history = load_projects_history()
+    for p in history:
+        if p.get("thumbnails"):
+            return {"status": "success", "thumbnails": p["thumbnails"]}
+
+    # Return empty success rather than 404 so UI doesn't crash
+    return {
+        "status": "not_ready",
+        "thumbnails": None,
+        "message": "Render a video to generate thumbnails"
+    }
 
 
 # ======================== TRANSITION SFX & YOUTUBE SEO SUITE ========================
@@ -1023,6 +1247,19 @@ def browse_directory(req: Optional[BrowseDirectoryRequest] = None):
     return {"status": "success", "path": selected_dir or ""}
 
 
+@app.get("/api/open-docs")
+@app.post("/api/open-docs")
+def open_docs_endpoint():
+    """Opens docs.html in the user's default Windows web browser."""
+    url = "http://127.0.0.1:8765/docs.html"
+    try:
+        import webbrowser
+        webbrowser.open_new_tab(url)
+        return {"status": "success", "url": url}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
 @app.get("/api/open-output-folder")
 @app.post("/api/open-output-folder")
 @app.get("/api/open-folder")
@@ -1044,23 +1281,40 @@ def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = N
     else:
         target_path = Path(req_path)
 
-    target_path.mkdir(parents=True, exist_ok=True)
+    # If relative, resolve against DATA_DIR / BASE_DIR / OUTPUT_DIR
+    if not target_path.is_absolute():
+        if (OUTPUT_DIR / target_path).exists():
+            target_path = OUTPUT_DIR / target_path
+        elif (DATA_DIR / target_path).exists():
+            target_path = DATA_DIR / target_path
+        elif (BASE_DIR / target_path).exists():
+            target_path = BASE_DIR / target_path
+        else:
+            target_path = OUTPUT_DIR / target_path
+
+    # If target is an existing file (e.g. rendered mp4 video), open Explorer with file selected!
+    if target_path.exists() and target_path.is_file():
+        abs_path = os.path.normpath(str(target_path.resolve()))
+        if os.name == "nt":
+            try:
+                subprocess.Popen(['explorer.exe', '/select,', abs_path])
+            except Exception as e:
+                print(f"[OpenFolder] explorer select failed: {e}")
+        return {"status": "success", "path": abs_path, "type": "file"}
+
+    # Target is a folder
+    try:
+        target_path.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
     abs_path = os.path.normpath(str(target_path.resolve()))
 
     if os.name == "nt":
-        opened = False
         try:
-            os.startfile(abs_path)
-            opened = True
-        except Exception as e:
-            print(f"[OpenFolder] os.startfile notice: {e}")
-        if not opened:
-            try:
-                subprocess.Popen(f'explorer "{abs_path}"', shell=True)
-                opened = True
-            except Exception as e2:
-                print(f"[OpenFolder] explorer shell command failed: {e2}")
-    return {"status": "success", "path": abs_path}
+            subprocess.Popen(['explorer.exe', abs_path])
+        except Exception as e2:
+            print(f"[OpenFolder] explorer folder failed: {e2}")
+    return {"status": "success", "path": abs_path, "type": "folder"}
 
 
 class CapCutExportRequest(BaseModel):
@@ -1085,6 +1339,8 @@ def export_capcut(req: CapCutExportRequest):
     if not project:
         history = load_projects_history()
         project = next((p for p in history if p.get("id") == req.project_id), None)
+        if not project and history:
+            project = history[0]
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
@@ -1125,21 +1381,30 @@ def get_bgm_tracks():
 
 @app.post("/api/upload-bgm")
 async def upload_bgm(file: UploadFile = File(...)):
-    bgm_dir = DATA_DIR / "assets" / "bgm"
-    bgm_dir.mkdir(parents=True, exist_ok=True)
-    # Sanitize and timestamp filename
-    clean_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename or 'custom_bgm.mp3')
-    filename = f"custom_{int(time.time())}_{clean_name}"
-    target_path = bgm_dir / filename
-    with open(target_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    return {
-        "status": "success",
-        "bgm_key": filename,
-        "filename": file.filename,
-        "path": str(target_path),
-        "web_url": f"/media/assets/bgm/{filename}"
-    }
+    try:
+        bgm_dir = DATA_DIR / "assets" / "bgm"
+        bgm_dir.mkdir(parents=True, exist_ok=True)
+        raw_name = file.filename or "custom_bgm.mp3"
+        clean_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', raw_name)
+        if not clean_name.strip('_'):
+            clean_name = "custom_bgm.mp3"
+        filename = f"custom_{int(time.time())}_{clean_name}"
+        target_path = bgm_dir / filename
+        content = await file.read()
+        with open(target_path, "wb") as buffer:
+            buffer.write(content)
+
+        return {
+            "status": "success",
+            "bgm_key": filename,
+            "filename": file.filename,
+            "path": str(target_path),
+            "web_url": f"/media/assets/bgm/{filename}"
+        }
+    except Exception as e:
+        print(f"[Server] upload_bgm error: {e}")
+        raise HTTPException(status_code=500, detail=f"BGM upload failed: {str(e)}")
+
 # ======================== EDITING TEMPLATES ENDPOINTS ========================
 
 from .templates import list_templates, get_template, resolve_template_variant, EDITING_TEMPLATES
@@ -1535,10 +1800,7 @@ async def serve_media(file_path: str):
         CACHE_DIR / "stock_videos" / fname,
         DATA_DIR / "temp" / fname,
         DATA_DIR / "assets" / "bgm" / fname,
-        Path("C:/Users/Abid/Desktop/VideoGen/data") / clean_rel,
-        Path("C:/Users/Abid/Desktop/VideoGen/data/cache/scene_clips") / fname,
-        Path("C:/Users/Abid/Desktop/VideoGen/data/cache/stock_videos") / fname,
-        Path("C:/Users/Abid/Desktop/VideoGen/data/temp") / fname,
+
     ]
     for c in candidates:
         if c.exists() and c.is_file():
