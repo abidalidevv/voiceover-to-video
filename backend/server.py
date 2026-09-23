@@ -140,22 +140,20 @@ threading.Thread(target=_cleanup_old_temp_files, daemon=True).start()
 @app.post("/api/test-apis")
 def test_apis():
     import requests
+    from concurrent.futures import ThreadPoolExecutor
     settings = load_settings()
     results = {}
 
-    # 1. Test Pexels (Multi-Account Pool Verification)
-    p_keys = settings.get("pexels_api_keys") or ([settings.get("pexels_api_key")] if settings.get("pexels_api_key") else [])
-    p_keys = [k for k in p_keys if k.strip()]
-    if p_keys:
+    def test_pexels():
+        p_keys = settings.get("pexels_api_keys") or ([settings.get("pexels_api_key")] if settings.get("pexels_api_key") else [])
+        p_keys = [k for k in p_keys if k.strip()]
+        if not p_keys:
+            return "pexels", {"status": "unconfigured"}
         valid_p = 0
         last_err = ""
         for pk in p_keys:
             try:
-                r = requests.get(
-                    "https://api.pexels.com/videos/search?query=nature&per_page=1",
-                    headers={"Authorization": pk},
-                    timeout=5
-                )
+                r = requests.get("https://api.pexels.com/videos/search?query=nature&per_page=1", headers={"Authorization": pk}, timeout=4)
                 if r.status_code == 200:
                     valid_p += 1
                 elif r.status_code == 429:
@@ -163,24 +161,19 @@ def test_apis():
             except Exception as e:
                 last_err = str(e)
         if valid_p > 0:
-            results["pexels"] = {"status": "ok", "active_keys": valid_p, "total_keys": len(p_keys), "code": 200}
-        else:
-            results["pexels"] = {"status": "error", "error": last_err or "All keys failed"}
-    else:
-        results["pexels"] = {"status": "unconfigured"}
+            return "pexels", {"status": "ok", "active_keys": valid_p, "total_keys": len(p_keys), "code": 200}
+        return "pexels", {"status": "error", "error": last_err or "All keys failed"}
 
-    # 2. Test Pixabay (Multi-Account Pool Verification)
-    pb_keys = settings.get("pixabay_api_keys") or ([settings.get("pixabay_api_key")] if settings.get("pixabay_api_key") else [])
-    pb_keys = [k for k in pb_keys if k.strip()]
-    if pb_keys:
+    def test_pixabay():
+        pb_keys = settings.get("pixabay_api_keys") or ([settings.get("pixabay_api_key")] if settings.get("pixabay_api_key") else [])
+        pb_keys = [k for k in pb_keys if k.strip()]
+        if not pb_keys:
+            return "pixabay", {"status": "unconfigured"}
         valid_pb = 0
         last_err = ""
         for pbk in pb_keys:
             try:
-                r = requests.get(
-                    f"https://pixabay.com/api/videos/?key={pbk}&q=nature&per_page=3",
-                    timeout=5
-                )
+                r = requests.get(f"https://pixabay.com/api/videos/?key={pbk}&q=nature&per_page=3", timeout=4)
                 if r.status_code == 200:
                     valid_pb += 1
                 elif r.status_code == 429:
@@ -188,95 +181,101 @@ def test_apis():
             except Exception as e:
                 last_err = str(e)
         if valid_pb > 0:
-            results["pixabay"] = {"status": "ok", "active_keys": valid_pb, "total_keys": len(pb_keys), "code": 200}
-        else:
-            results["pixabay"] = {"status": "error", "error": last_err or "All keys failed"}
-    else:
-        results["pixabay"] = {"status": "unconfigured"}
+            return "pixabay", {"status": "ok", "active_keys": valid_pb, "total_keys": len(pb_keys), "code": 200}
+        return "pixabay", {"status": "error", "error": last_err or "All keys failed"}
 
-    # 3. Test Coverr
-    c_key = settings.get("coverr_api_key", "").strip()
-    if c_key:
+    def test_gemini():
+        g_keys = settings.get("gemini_api_keys") or ([settings.get("gemini_api_key")] if settings.get("gemini_api_key") else [])
+        g_keys = [k for k in g_keys if k and k.strip()]
+        if not g_keys:
+            return "gemini", {"status": "unconfigured"}
+        valid_g = 0
+        last_err = ""
+        for gk in g_keys:
+            try:
+                r = requests.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={gk}", timeout=4)
+                if r.status_code == 200:
+                    valid_g += 1
+                elif r.status_code == 429:
+                    last_err = "429 Quota/Rate Limit"
+                else:
+                    last_err = f"HTTP {r.status_code}"
+            except Exception as e:
+                last_err = str(e)
+        if valid_g > 0:
+            return "gemini", {"status": "ok", "active_keys": valid_g, "total_keys": len(g_keys), "code": 200}
+        return "gemini", {"status": "error", "error": last_err or "All Gemini keys failed"}
+
+    def test_groq():
+        g_key = settings.get("groq_api_key", "").strip()
+        if not g_key:
+            return "groq", {"status": "unconfigured"}
+        try:
+            r = requests.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {g_key}"}, timeout=4)
+            return "groq", {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
+        except Exception as e:
+            return "groq", {"status": "error", "error": str(e)}
+
+    def test_openai():
+        o_key = settings.get("openai_api_key", "").strip()
+        if not o_key:
+            return "openai", {"status": "unconfigured"}
+        try:
+            r = requests.get("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {o_key}"}, timeout=4)
+            return "openai", {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
+        except Exception as e:
+            return "openai", {"status": "error", "error": str(e)}
+
+    def test_coverr():
+        c_key = settings.get("coverr_api_key", "").strip()
+        if not c_key:
+            return "coverr", {"status": "unconfigured"}
+        try:
+            r = requests.get("https://api.coverr.co/videos?query=nature&urls=mp4", headers={"Authorization": f"Bearer {c_key}"}, timeout=4)
+            return "coverr", {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
+        except Exception as e:
+            return "coverr", {"status": "error", "error": str(e)}
+
+    def test_videvo():
+        v_key = settings.get("videvo_api_key", "").strip()
+        if not v_key:
+            return "videvo", {"status": "unconfigured"}
+        try:
+            r = requests.get(f"https://api.videvo.net/v1/videos?q=nature&api_key={v_key}", timeout=4)
+            return "videvo", {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
+        except Exception as e:
+            return "videvo", {"status": "error", "error": str(e)}
+
+    def test_nasa():
+        try:
+            r = requests.get("https://images-api.nasa.gov/search?q=earth&media_type=video", timeout=4)
+            return "nasa", {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
+        except Exception as e:
+            return "nasa", {"status": "error", "error": str(e)}
+
+    def test_wikimedia():
         try:
             r = requests.get(
-                "https://api.coverr.co/videos?query=nature&urls=mp4",
-                headers={"Authorization": f"Bearer {c_key}"},
-                timeout=6
+                "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=nature+filetype:video&prop=imageinfo&format=json",
+                headers={"User-Agent": "VideoGen/1.0"},
+                timeout=4
             )
-            results["coverr"] = {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
+            return "wikimedia", {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
         except Exception as e:
-            results["coverr"] = {"status": "error", "error": str(e)}
-    else:
-        results["coverr"] = {"status": "unconfigured"}
+            return "wikimedia", {"status": "error", "error": str(e)}
 
-    # 4. Test Videvo
-    v_key = settings.get("videvo_api_key", "").strip()
-    if v_key:
-        try:
-            r = requests.get(
-                f"https://api.videvo.net/v1/videos?q=nature&api_key={v_key}",
-                timeout=6
-            )
-            results["videvo"] = {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
-        except Exception as e:
-            results["videvo"] = {"status": "error", "error": str(e)}
-    else:
-        results["videvo"] = {"status": "unconfigured"}
+    testers = [test_pexels, test_pixabay, test_gemini, test_groq, test_openai, test_coverr, test_videvo, test_nasa, test_wikimedia]
+    with ThreadPoolExecutor(max_workers=9) as executor:
+        futures = [executor.submit(fn) for fn in testers]
+        for f in futures:
+            try:
+                name, res = f.result()
+                results[name] = res
+            except Exception as e:
+                pass
 
-    # 5. Test NASA Open Media (Free public domain)
-    try:
-        r = requests.get("https://images-api.nasa.gov/search?q=earth&media_type=video", timeout=6)
-        results["nasa"] = {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
-    except Exception as e:
-        results["nasa"] = {"status": "error", "error": str(e)}
-
-    # 6. Test Wikimedia Commons (Free open video)
-    try:
-        r = requests.get(
-            "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=nature+filetype:video&prop=imageinfo&format=json",
-            headers={"User-Agent": "VideoGen/1.0"},
-            timeout=6
-        )
-        results["wikimedia"] = {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
-    except Exception as e:
-        results["wikimedia"] = {"status": "error", "error": str(e)}
-
-    # 7. Test Custom Webhook / RapidAPI
     hook = settings.get("custom_stock_webhook", "").strip()
-    if hook:
-        results["custom_webhook"] = {"status": "configured", "url": hook}
-    else:
-        results["custom_webhook"] = {"status": "unconfigured"}
-
-    # 8. Test Groq Whisper
-    g_key = settings.get("groq_api_key", "").strip()
-    if g_key:
-        try:
-            r = requests.get(
-                "https://api.groq.com/openai/v1/models",
-                headers={"Authorization": f"Bearer {g_key}"},
-                timeout=6
-            )
-            results["groq"] = {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
-        except Exception as e:
-            results["groq"] = {"status": "error", "error": str(e)}
-    else:
-        results["groq"] = {"status": "unconfigured"}
-
-    # 9. Test OpenAI
-    o_key = settings.get("openai_api_key", "").strip()
-    if o_key:
-        try:
-            r = requests.get(
-                "https://api.openai.com/v1/models",
-                headers={"Authorization": f"Bearer {o_key}"},
-                timeout=6
-            )
-            results["openai"] = {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
-        except Exception as e:
-            results["openai"] = {"status": "error", "error": str(e)}
-    else:
-        results["openai"] = {"status": "unconfigured"}
+    results["custom_webhook"] = {"status": "configured", "url": hook} if hook else {"status": "unconfigured"}
 
     return results
 
@@ -346,6 +345,7 @@ async def generate_voiceover_endpoint(req: VoiceoverRequest):
             "word_count": meta["word_count"],
             "approx_duration": meta["approx_duration"],
             "url": f"/media/temp/{filename}",
+            "audio_url": f"/media/temp/{filename}",
             "cleaned_text": meta["cleaned_text"]
         }
     except Exception as e:
@@ -1297,7 +1297,7 @@ def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = N
         abs_path = os.path.normpath(str(target_path.resolve()))
         if os.name == "nt":
             try:
-                subprocess.Popen(['explorer.exe', '/select,', abs_path])
+                subprocess.Popen(f'explorer.exe /select,"{abs_path}"')
             except Exception as e:
                 print(f"[OpenFolder] explorer select failed: {e}")
         return {"status": "success", "path": abs_path, "type": "file"}
@@ -1311,9 +1311,12 @@ def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = N
 
     if os.name == "nt":
         try:
-            subprocess.Popen(['explorer.exe', abs_path])
-        except Exception as e2:
-            print(f"[OpenFolder] explorer folder failed: {e2}")
+            os.startfile(abs_path)
+        except Exception:
+            try:
+                subprocess.Popen(['explorer.exe', abs_path])
+            except Exception as e2:
+                print(f"[OpenFolder] explorer folder failed: {e2}")
     return {"status": "success", "path": abs_path, "type": "folder"}
 
 

@@ -162,20 +162,45 @@ def render_final_video(
     resolved_overlay_path = resolve_overlay_path(overlay_video_path)
     has_overlay = bool(resolved_overlay_path and os.path.exists(resolved_overlay_path))
 
+    # Aspect Ratio Configuration (16:9 Landscape vs 9:16 Vertical Shorts/TikTok)
+    aspect_ratio = str(custom_options.get("aspect_ratio", "")).strip().lower()
+    if not aspect_ratio:
+        video_style = str(custom_options.get("video_style", "")).lower()
+        if "tiktok" in video_style or "shorts" in video_style or "hormozi" in video_style or "9:16" in video_style:
+            aspect_ratio = "9:16"
+        else:
+            aspect_ratio = "16:9"
+
+    is_vertical = aspect_ratio in ("9:16", "vertical", "portrait")
+
     # Resolution Configuration (1080p, 4K UHD, 8K UHD)
     target_res = str(custom_options.get("target_resolution", "1080p")).lower().strip()
-    if target_res == "8k":
-        target_w, target_h = 7680, 4320
-        motion_w1, motion_h1 = 8832, 4968
-        motion_w2, motion_h2 = 8192, 4608
-    elif target_res == "4k":
-        target_w, target_h = 3840, 2160
-        motion_w1, motion_h1 = 4416, 2484
-        motion_w2, motion_h2 = 4096, 2304
+    if is_vertical:
+        if target_res == "8k":
+            target_w, target_h = 4320, 7680
+            motion_w1, motion_h1 = 4968, 8832
+            motion_w2, motion_h2 = 4608, 8192
+        elif target_res == "4k":
+            target_w, target_h = 2160, 3840
+            motion_w1, motion_h1 = 2484, 4416
+            motion_w2, motion_h2 = 2304, 4096
+        else: # 1080p vertical
+            target_w, target_h = 1080, 1920
+            motion_w1, motion_h1 = 1242, 2208
+            motion_w2, motion_h2 = 1152, 2048
     else:
-        target_w, target_h = 1920, 1080
-        motion_w1, motion_h1 = 2208, 1242
-        motion_w2, motion_h2 = 2048, 1152
+        if target_res == "8k":
+            target_w, target_h = 7680, 4320
+            motion_w1, motion_h1 = 8832, 4968
+            motion_w2, motion_h2 = 8192, 4608
+        elif target_res == "4k":
+            target_w, target_h = 3840, 2160
+            motion_w1, motion_h1 = 4416, 2484
+            motion_w2, motion_h2 = 4096, 2304
+        else: # 1080p landscape
+            target_w, target_h = 1920, 1080
+            motion_w1, motion_h1 = 2208, 1242
+            motion_w2, motion_h2 = 2048, 1152
 
     # Detect fastest hardware or CPU encoder once
     encoder, encoder_args = get_best_video_encoder(ffmpeg_exe, use_gpu=use_gpu)

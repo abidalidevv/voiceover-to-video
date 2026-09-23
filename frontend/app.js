@@ -161,6 +161,13 @@ async function loadSettings() {
     if (document.getElementById('input-openai-key')) document.getElementById('input-openai-key').value = data.openai_api_key || '';
     if (document.getElementById('input-elevenlabs-key')) document.getElementById('input-elevenlabs-key').value = data.elevenlabs_api_key || '';
 
+    // Google Gemini 5-Key Pool
+    const gKeys = data.gemini_api_keys || (data.gemini_api_key ? [data.gemini_api_key] : []);
+    for (let i = 1; i <= 5; i++) {
+      const gEl = document.getElementById(`input-gemini-key-${i}`);
+      if (gEl) gEl.value = gKeys[i - 1] || '';
+    }
+
     // Tuner & Strategy
     if (document.getElementById('input-hardware-encoder')) document.getElementById('input-hardware-encoder').value = data.hardware_encoder || 'auto';
     if (document.getElementById('input-video-provider')) document.getElementById('input-video-provider').value = data.video_provider || 'all';
@@ -216,6 +223,21 @@ async function saveAppSettings() {
     });
   });
 
+  // Gather all non-empty Gemini keys
+  const rawGemini = [
+    document.getElementById('input-gemini-key-1')?.value || '',
+    document.getElementById('input-gemini-key-2')?.value || '',
+    document.getElementById('input-gemini-key-3')?.value || '',
+    document.getElementById('input-gemini-key-4')?.value || '',
+    document.getElementById('input-gemini-key-5')?.value || '',
+  ];
+  const geminiKeys = [];
+  rawGemini.forEach(val => {
+    val.split(/[\r\n,;]+/).map(k => k.trim()).filter(Boolean).forEach(k => {
+      if (!geminiKeys.includes(k)) geminiKeys.push(k);
+    });
+  });
+
   const payload = {
     // 10+ Stock Video APIs - Multi-Account Pool
     pexels_api_key: pexelsKeys[0] || '',
@@ -230,6 +252,10 @@ async function saveAppSettings() {
     freepik_api_key: document.getElementById('input-freepik-key')?.value.trim() || '',
     rapidapi_stock_key: document.getElementById('input-rapidapi-key')?.value.trim() || '',
     custom_stock_webhook: document.getElementById('input-custom-webhook')?.value.trim() || '',
+
+    // Google Gemini 5-Key Pool
+    gemini_api_key: geminiKeys[0] || '',
+    gemini_api_keys: geminiKeys,
 
     // AI & Transcription
     groq_api_key: document.getElementById('input-groq-key')?.value.trim() || '',
@@ -304,8 +330,12 @@ async function checkApiStatus() {
     updateBadge('badge-pexels', data.pexels);
     updateBadge('badge-pixabay', data.pixabay);
     updateBadge('badge-groq', data.groq);
+    updateBadge('badge-gemini', data.gemini);
+
+    return data;
   } catch (e) {
     console.warn('API check notice:', e);
+    return null;
   }
 }
 
@@ -317,17 +347,40 @@ function updateBadge(badgeId, res) {
     el.textContent = 'Not Configured';
   } else if (res.status === 'ok') {
     el.className = 'badge badge-success';
-    el.textContent = 'Connected ✓';
+    if (res.active_keys !== undefined && res.total_keys !== undefined) {
+      el.textContent = `Connected (${res.active_keys}/${res.total_keys} Keys) ✓`;
+    } else {
+      el.textContent = 'Connected ✓';
+    }
   } else {
     el.className = 'badge badge-error';
-    el.textContent = 'Error';
+    el.textContent = res.error ? `Error: ${res.error}` : 'Error';
   }
 }
 
 async function testApiConnections() {
   await saveAppSettings();
-  alert('Testing connections...');
-  await checkApiStatus();
+  showToast('🔄 Testing API connections in parallel...', 2500);
+  const data = await checkApiStatus();
+  if (!data) {
+    showToast('⚠️ Could not connect to API test endpoint.');
+    return;
+  }
+
+  const connected = [];
+  if (data.pexels?.status === 'ok') connected.push(`📷 Pexels: Active (${data.pexels.active_keys}/${data.pexels.total_keys} keys)`);
+  if (data.pixabay?.status === 'ok') connected.push(`🎥 Pixabay: Active (${data.pixabay.active_keys}/${data.pixabay.total_keys} keys)`);
+  if (data.gemini?.status === 'ok') connected.push(`✨ Google Gemini: Active (${data.gemini.active_keys}/${data.gemini.total_keys} keys)`);
+  if (data.groq?.status === 'ok') connected.push('🎙️ Groq Whisper: Active');
+  if (data.openai?.status === 'ok') connected.push('🤖 OpenAI: Active');
+  if (data.nasa?.status === 'ok') connected.push('🚀 NASA Open Media: Active');
+  if (data.coverr?.status === 'ok') connected.push('🎬 Coverr: Active');
+
+  if (connected.length > 0) {
+    showToast(`✅ <strong>API Verification Succeeded!</strong><br>${connected.join('<br>')}`, 6000);
+  } else {
+    showToast('⚠️ No active API keys configured or all connections timed out. Check your keys.');
+  }
 }
 
 function showToast(message) {
@@ -572,6 +625,7 @@ async function startGeneration() {
         const pct = Math.min(100, Math.max(5, job.percent || 5));
         document.getElementById('job-progress-bar').style.width = `${pct}%`;
         document.getElementById('job-progress-pct').textContent = `${pct}%`;
+        updateFloatingDock('⚡ Generating Video Draft...', job.stage_title || 'Analyzing scenes...', pct);
 
         if (job.stage_title) {
           document.getElementById('modal-status-title').textContent = job.stage_title;
@@ -613,14 +667,22 @@ async function startGeneration() {
           document.getElementById('job-progress-pct').textContent = '100%';
           document.getElementById('modal-status-title').textContent = 'Video Ready!';
 
+          const dock = document.getElementById('floating-task-dock');
+          if (dock) dock.classList.add('hidden');
+          activeMinimizedModal = null;
+
           setTimeout(() => {
             modal.classList.add('hidden');
             loadProjectIntoPreview(currentProject);
             switchTab('preview');
+            showToast('🎉 Interactive video preview ready in Studio!', 4000);
           }, 600);
         } else if (job.status === 'error') {
           clearInterval(pollInterval);
           modal.classList.add('hidden');
+          const dock = document.getElementById('floating-task-dock');
+          if (dock) dock.classList.add('hidden');
+          activeMinimizedModal = null;
           alert('Error during generation: ' + (job.error || 'Unknown error'));
         }
       } catch (pollErr) {
@@ -1430,26 +1492,33 @@ function onTTSVoiceChange() {
 }
 
 async function checkKokoroStatus() {
-  const badge = document.getElementById('kokoro-status-badge');
-  if (!badge) return;
+  const badges = [
+    document.getElementById('kokoro-status-badge'),
+    document.getElementById('clone-tab-status-badge')
+  ].filter(Boolean);
+  if (badges.length === 0) return;
   
   try {
     const res = await fetch('/api/clone-status');
     const data = await res.json();
     
-    if (data.available) {
-      badge.textContent = '✅ Ready';
-      badge.style.background = 'rgba(34,197,94,0.2)';
-      badge.style.color = '#86efac';
-    } else {
-      badge.textContent = '⚠️ Not Installed';
-      badge.style.background = 'rgba(234,179,8,0.2)';
-      badge.style.color = '#fde047';
-    }
+    badges.forEach(badge => {
+      if (data.available) {
+        badge.textContent = '✅ Ready';
+        badge.style.background = 'rgba(34,197,94,0.2)';
+        badge.style.color = '#86efac';
+      } else {
+        badge.textContent = '⚠️ Not Installed (pip install kokoro soundfile numpy)';
+        badge.style.background = 'rgba(234,179,8,0.2)';
+        badge.style.color = '#fde047';
+      }
+    });
   } catch (e) {
-    badge.textContent = '❌ Error';
-    badge.style.background = 'rgba(239,68,68,0.2)';
-    badge.style.color = '#fca5a5';
+    badges.forEach(badge => {
+      badge.textContent = '❌ Error';
+      badge.style.background = 'rgba(239,68,68,0.2)';
+      badge.style.color = '#fca5a5';
+    });
   }
 }
 
@@ -1705,6 +1774,7 @@ async function startExportRender() {
     transition_duration: parseFloat(document.getElementById('transition-speed-slider')?.value || '0.30'),
     enable_captions: document.getElementById('enable-captions-toggle')?.checked ?? true,
     target_resolution: document.getElementById('export-resolution')?.value || '1080p',
+    aspect_ratio: document.getElementById('export-aspect-ratio')?.value || '16:9',
     transition_sfx: document.getElementById('sfx-track-select')?.value || 'whoosh_soft',
     transition_sfx_volume: parseFloat(document.getElementById('sfx-volume-slider')?.value || '40') / 100,
     ...getOverlaySettings()
@@ -1794,6 +1864,7 @@ async function startExportRender() {
           if (progressBar) progressBar.style.width = `${pct}%`;
           if (progressPct) progressPct.textContent = `${pct}%`;
           if (statusMsg) statusMsg.textContent = job.stage_desc || job.stage || 'Rendering in progress...';
+          updateFloatingDock('🎬 Rendering Final Video...', job.stage_desc || 'Encoding...', pct);
           if (elapsedEl) elapsedEl.textContent = formatSecs(job.elapsed_seconds);
           if (etaEl) {
             etaEl.textContent = job.eta_seconds !== null ? `~${formatSecs(job.eta_seconds)}` : 'Calculating...';
@@ -1802,9 +1873,15 @@ async function startExportRender() {
 
           if (job.status === 'completed') {
             clearInterval(pollTimer);
+            const dock = document.getElementById('floating-task-dock');
+            if (dock) dock.classList.add('hidden');
+            activeMinimizedModal = null;
             resolve(job.result);
           } else if (job.status === 'error') {
             clearInterval(pollTimer);
+            const dock = document.getElementById('floating-task-dock');
+            if (dock) dock.classList.add('hidden');
+            activeMinimizedModal = null;
             reject(new Error(job.error || 'Rendering job failed'));
           }
         } catch (pollErr) {
@@ -1814,6 +1891,8 @@ async function startExportRender() {
     });
 
     if (renderModal) renderModal.classList.add('hidden');
+    const dock = document.getElementById('floating-task-dock');
+    if (dock) dock.classList.add('hidden');
 
     // Populate & open export complete modal
     const outputFileName = result.output_file || 'rendered_video.mp4';
@@ -2776,19 +2855,222 @@ async function startBatchGeneration() {
 function switchAudioMode(mode) {
   const uploadBtn = document.getElementById('mode-btn-upload');
   const ttsBtn = document.getElementById('mode-btn-tts');
+  const cloneBtn = document.getElementById('mode-btn-clone');
   const uploadPanel = document.getElementById('audio-upload-panel');
   const ttsPanel = document.getElementById('audio-tts-panel');
+  const clonePanel = document.getElementById('audio-clone-panel');
+
+  [uploadBtn, ttsBtn, cloneBtn].forEach(b => b?.classList.remove('active'));
+  [uploadPanel, ttsPanel, clonePanel].forEach(p => p?.classList.add('hidden'));
 
   if (mode === 'upload') {
     uploadBtn?.classList.add('active');
-    ttsBtn?.classList.remove('active');
     uploadPanel?.classList.remove('hidden');
-    ttsPanel?.classList.add('hidden');
+  } else if (mode === 'clone') {
+    cloneBtn?.classList.add('active');
+    clonePanel?.classList.remove('hidden');
+    checkKokoroStatus();
   } else {
-    uploadBtn?.classList.remove('active');
     ttsBtn?.classList.add('active');
-    uploadPanel?.classList.add('hidden');
     ttsPanel?.classList.remove('hidden');
+  }
+}
+
+// ==================== ASPECT RATIO SWITCHER ====================
+function onAspectRatioChange(val) {
+  const container = document.getElementById('video-container');
+  const sel = document.getElementById('export-aspect-ratio');
+  if (sel && sel.value !== val) sel.value = val;
+
+  if (container) {
+    if (val === '9:16') {
+      container.classList.add('aspect-9-16');
+      showToast('📱 Switched to <strong>9:16 Vertical</strong> (Shorts, TikTok, Reels)');
+    } else {
+      container.classList.remove('aspect-9-16');
+      showToast('📺 Switched to <strong>16:9 Landscape</strong> (YouTube Full HD)');
+    }
+  }
+}
+
+// ==================== FLOATING BACKGROUND TASK DOCK & MINIMIZE ====================
+let activeMinimizedModal = null; // 'processing' or 'render'
+
+function updateFloatingDock(title, desc, pct) {
+  const tEl = document.getElementById('dock-task-title');
+  const dEl = document.getElementById('dock-task-desc');
+  const pEl = document.getElementById('dock-task-pct');
+  if (tEl && title) tEl.textContent = title;
+  if (dEl && desc) dEl.textContent = `${desc} (${pct}%)`;
+  if (pEl && pct !== undefined) pEl.textContent = `${pct}%`;
+}
+
+function minimizeProcessingModal() {
+  const modal = document.getElementById('processing-modal');
+  const dock = document.getElementById('floating-task-dock');
+  if (modal) modal.classList.add('hidden');
+  if (dock) dock.classList.remove('hidden');
+  activeMinimizedModal = 'processing';
+  showToast('⚡ Generating draft in background. Click floating dock to restore anytime.', 3500);
+}
+
+function minimizeRenderModal() {
+  const modal = document.getElementById('render-progress-modal');
+  const dock = document.getElementById('floating-task-dock');
+  if (modal) modal.classList.add('hidden');
+  if (dock) dock.classList.remove('hidden');
+  activeMinimizedModal = 'render';
+  showToast('🎬 Rendering video in background. Click floating dock to restore anytime.', 3500);
+}
+
+function restoreActiveModal() {
+  const dock = document.getElementById('floating-task-dock');
+  if (dock) dock.classList.add('hidden');
+  if (activeMinimizedModal === 'render') {
+    const modal = document.getElementById('render-progress-modal');
+    if (modal) modal.classList.remove('hidden');
+  } else {
+    const modal = document.getElementById('processing-modal');
+    if (modal) modal.classList.remove('hidden');
+  }
+  activeMinimizedModal = null;
+}
+
+// ==================== DEDICATED VOICE CLONING HANDLERS ====================
+let uploadedVoiceSamplePath = null;
+
+async function handleVoiceSampleUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const infoEl = document.getElementById('clone-sample-active-info');
+  const nameEl = document.getElementById('clone-sample-name');
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload-voice-sample', { method: 'POST', body: formData });
+    if (!res.ok) throw new Error('Upload failed');
+    const data = await res.json();
+    uploadedVoiceSamplePath = data.path;
+    if (nameEl) nameEl.textContent = data.filename || file.name;
+    if (infoEl) infoEl.classList.remove('hidden');
+    showToast(`🎤 Voice reference sample uploaded: <strong>${data.filename || file.name}</strong>`);
+  } catch (e) {
+    alert('Voice sample upload failed: ' + e.message);
+  }
+}
+
+function clearVoiceSample() {
+  uploadedVoiceSamplePath = null;
+  const infoEl = document.getElementById('clone-sample-active-info');
+  if (infoEl) infoEl.classList.add('hidden');
+  const inputEl = document.getElementById('clone-sample-input');
+  if (inputEl) inputEl.value = '';
+  showToast('Voice reference cleared. Synthesizing with preset voice.');
+}
+
+function onCloneScriptInput() {
+  const text = document.getElementById('clone-script-input')?.value || '';
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const estSec = Math.round(words / 2.5);
+  const wcEl = document.getElementById('clone-word-count');
+  const durEl = document.getElementById('clone-est-dur');
+  if (wcEl) wcEl.textContent = words;
+  if (durEl) durEl.textContent = `~${estSec}s`;
+}
+
+function loadCloneSampleScript() {
+  const sample = "The future of automated video creation is here. With local voice cloning and AI scene synthesis, anyone can produce studio-quality videos in seconds.";
+  const input = document.getElementById('clone-script-input');
+  if (input) {
+    input.value = sample;
+    onCloneScriptInput();
+  }
+}
+
+function onCloneRateChange(val) {
+  const el = document.getElementById('clone-rate-val');
+  if (el) {
+    const num = parseFloat(val);
+    el.textContent = num === 1.0 ? 'Normal' : `${num.toFixed(2)}x`;
+  }
+}
+
+async function generateClonedVoiceover() {
+  const script = document.getElementById('clone-script-input')?.value.trim();
+  if (!script) {
+    alert('Please enter a script text to synthesize.');
+    return;
+  }
+
+  const preset = document.getElementById('clone-tab-preset-select')?.value || 'af_heart';
+  const voice = 'kokoro_' + preset;
+  const btn = document.getElementById('btn-gen-clone');
+  const originalText = btn ? btn.innerHTML : '🧬 Generate Voice';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Synthesizing Voice...';
+  }
+
+  try {
+    const res = await fetch('/api/generate-voiceover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: script,
+        voice: voice,
+        rate: '+0%',
+        pitch: '+0Hz'
+      })
+    });
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.detail || 'Voice generation failed');
+    }
+    const data = await res.json();
+    uploadedAudioData = {
+      filename: data.filename,
+      duration: data.duration,
+      url: data.audio_url
+    };
+
+    const box = document.getElementById('clone-preview-box');
+    const player = document.getElementById('clone-audio-player');
+    const durEl = document.getElementById('clone-audio-dur');
+
+    if (player) {
+      player.src = data.audio_url;
+      player.load();
+    }
+    if (durEl) {
+      const m = Math.floor(data.duration / 60);
+      const s = Math.floor(data.duration % 60).toString().padStart(2, '0');
+      durEl.textContent = `${m}:${s}`;
+    }
+    if (box) box.classList.remove('hidden');
+
+    // Also update main audio fileinfo state
+    const prompt = document.getElementById('dropzone-prompt');
+    const fileinfo = document.getElementById('dropzone-fileinfo');
+    const fn = document.getElementById('audio-filename');
+    const durStat = document.getElementById('audio-duration-stat');
+    if (prompt) prompt.classList.add('hidden');
+    if (fileinfo) fileinfo.classList.remove('hidden');
+    if (fn) fn.textContent = `🧬 Cloned Voice (${data.filename})`;
+    uploadedAudioFilename = data.filename;
+    const startBtn = document.getElementById('start-generate-btn');
+    if (startBtn) startBtn.disabled = false;
+
+    showToast(`🧬 Voice synthesized successfully! Ready to generate video.`);
+  } catch (e) {
+    console.error(e);
+    alert('Voice generation notice: ' + e.message + '\n\nNote: If Kokoro is not installed, the app falls back to Microsoft Edge-TTS.');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
   }
 }
 

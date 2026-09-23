@@ -438,7 +438,10 @@
                 📁 Upload Audio File
               </button>
               <button type="button" class="audio-mode-tab-btn" id="mode-btn-tts" onclick="switchAudioMode('tts')">
-                🎙️ Free AI Voiceover (Edge-TTS)
+                🎙️ Free AI Voiceover
+              </button>
+              <button type="button" class="audio-mode-tab-btn" id="mode-btn-clone" onclick="switchAudioMode('clone')" style="border-color: rgba(168,85,247,0.4); color: #c084fc;">
+                🧬 Voice Cloning (Free)
               </button>
             </div>
 
@@ -549,6 +552,85 @@
                     <button class="btn btn-xs btn-outline" onclick="generateAIVoiceover()">Re-Generate</button>
                   </div>
                   <audio id="tts-audio-player" controls style="width:100%;height:32px;"></audio>
+                </div>
+              </div>
+            </div>
+
+            <!-- Panel 3: Free AI Voice Cloning (Kokoro-82M) -->
+            <div id="audio-clone-panel" class="hidden" style="margin-top:10px;">
+              <div class="tts-container" style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.3);border-radius:10px;padding:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <label class="form-label" style="margin-bottom:0;color:#c084fc;font-weight:700;">🧬 Kokoro-82M Voice Cloning</label>
+                  <span id="clone-tab-status-badge" class="badge badge-success" style="font-size:10px;background:rgba(139,92,246,0.2);color:#d8b4fe;">Checking...</span>
+                </div>
+                <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px 0;line-height:1.4;">
+                  Clone any voice or use ultra-expressive Kokoro-82M neural presets. 100% free, local CPU inference, zero API fees.
+                </p>
+
+                <!-- Voice Reference Sample Dropzone / Picker -->
+                <div class="form-group" style="background:var(--bg-card-sub);padding:10px 12px;border-radius:8px;border:1px dashed rgba(168,85,247,0.4);margin-bottom:12px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <label class="sub-label" style="margin-bottom:0;color:#d8b4fe;">🎤 Voice Reference Sample (Optional 3–10s audio)</label>
+                    <button type="button" class="btn btn-secondary btn-xs" onclick="document.getElementById('clone-sample-input').click()" style="padding:2px 8px;font-size:11px;">
+                      📁 Select Sample
+                    </button>
+                    <input type="file" id="clone-sample-input" accept=".mp3,.wav,.ogg,.m4a,.flac" style="display:none;" onchange="handleVoiceSampleUpload(event)">
+                  </div>
+                  <div id="clone-sample-active-info" class="hidden" style="margin-top:6px;font-size:11px;color:#a78bfa;display:flex;align-items:center;gap:6px;">
+                    <span>✅ Sample loaded: <strong id="clone-sample-name">voice.mp3</strong></span>
+                    <button type="button" onclick="clearVoiceSample()" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:12px;">✕</button>
+                  </div>
+                  <p style="font-size:10px;color:var(--text-muted);margin:4px 0 0 0;">Upload a 3–10 sec clip of your voice, or use a preset below.</p>
+                </div>
+
+                <!-- Voice Preset Selector -->
+                <div class="form-group">
+                  <label class="sub-label">Kokoro Neural Voice Preset</label>
+                  <select id="clone-tab-preset-select" class="form-select">
+                    <option value="af_heart" selected>💜 Heart (Warm & Natural Female) — Recommended</option>
+                    <option value="am_adam">🎤 Adam (Deep, Authoritative Male)</option>
+                    <option value="am_michael">🎤 Michael (Warm & Engaging Male)</option>
+                    <option value="af_bella">💜 Bella (Soft & Calm Female)</option>
+                    <option value="am_onyx">🎤 Onyx (Cinematic Powerful Male)</option>
+                    <option value="af_nova">💜 Nova (Energetic & Dynamic Female)</option>
+                    <option value="bf_emma">🇬🇧 Emma (Refined British Female)</option>
+                    <option value="bm_george">🇬🇧 George (Distinguished British Male)</option>
+                    <option value="am_eric">🎤 Eric (Professional Explainer Male)</option>
+                    <option value="af_jessica">💜 Jessica (Confident Narrative Female)</option>
+                    <option value="af_sarah">💜 Sarah (Authentic Storyteller Female)</option>
+                    <option value="bm_lewis">🇬🇧 Lewis (Documentary British Male)</option>
+                  </select>
+                </div>
+
+                <!-- Script Textarea -->
+                <div class="form-group mt-10">
+                  <label class="sub-label">Video Script to Clone</label>
+                  <textarea id="clone-script-input" class="form-textarea" rows="4" placeholder="Type or paste the script you want spoken in this voice..." oninput="onCloneScriptInput()"></textarea>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:12px;color:var(--text-muted);">
+                    <div><span id="clone-word-count">0</span> words • Est. <span id="clone-est-dur">~0s</span></div>
+                    <button type="button" class="btn btn-xs btn-outline" onclick="loadCloneSampleScript()">Sample Script</button>
+                  </div>
+                </div>
+
+                <div class="form-row mt-10" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                  <div class="form-group">
+                    <label class="sub-label">Speech Speed (<span id="clone-rate-val">Normal</span>)</label>
+                    <input type="range" id="clone-rate-slider" min="0.75" max="1.35" step="0.05" value="1.0" oninput="onCloneRateChange(this.value)">
+                  </div>
+                  <div class="form-group" style="display:flex;align-items:flex-end;">
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-gen-clone" onclick="generateClonedVoiceover()" style="width:100%;height:38px;background:linear-gradient(135deg,#8b5cf6,#6366f1);border:none;">
+                      🧬 Generate Voice
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Generated Audio Player Box -->
+                <div id="clone-preview-box" class="hidden mt-12" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:8px;padding:10px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px;">
+                    <span style="color:#c084fc;font-weight:600;">✅ Cloned Audio Ready (<span id="clone-audio-dur">0:00</span>)</span>
+                    <button class="btn btn-xs btn-outline" onclick="generateClonedVoiceover()">Re-Generate</button>
+                  </div>
+                  <audio id="clone-audio-player" controls style="width:100%;height:32px;"></audio>
                 </div>
               </div>
             </div>
@@ -1269,20 +1351,27 @@
           </div>
 <!-- Final Export Bar -->
           <div class="inspector-footer">
-            <div class="export-settings-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:12px;color:var(--text-muted);">Res:</span>
-                <select id="export-resolution" class="form-select-sm" onchange="onExportResolutionChange(this.value)">
-                  <option value="1080p" selected>1080p Full HD</option>
-                  <option value="4k">4K Ultra HD</option>
-                  <option value="8k">8K Ultra HD</option>
+            <div class="export-settings-row" style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:4px;">
+                <span style="font-size:11px;color:var(--text-muted);">Ratio:</span>
+                <select id="export-aspect-ratio" class="form-select-sm" onchange="onAspectRatioChange(this.value)">
+                  <option value="16:9" selected>16:9 Landscape</option>
+                  <option value="9:16">9:16 Shorts/TikTok</option>
                 </select>
               </div>
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:12px;color:var(--text-muted);">FPS:</span>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <span style="font-size:11px;color:var(--text-muted);">Res:</span>
+                <select id="export-resolution" class="form-select-sm" onchange="onExportResolutionChange(this.value)">
+                  <option value="1080p" selected>1080p HD</option>
+                  <option value="4k">4K UHD</option>
+                  <option value="8k">8K UHD</option>
+                </select>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <span style="font-size:11px;color:var(--text-muted);">FPS:</span>
                 <select id="export-fps" class="form-select-sm">
-                  <option value="30" selected>30 FPS</option>
-                  <option value="60">60 FPS</option>
+                  <option value="30" selected>30</option>
+                  <option value="60">60</option>
                 </select>
               </div>
             </div>
@@ -1751,6 +1840,36 @@
           </div>
         </div>
 
+        <!-- Google Gemini Flash AI (Google AI Studio 5-Key Pool) -->
+        <div class="settings-card mt-24">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>✨ Google Gemini Flash AI (Google AI Studio - 5 Key Pool)</h3>
+            <span class="badge badge-success" id="badge-gemini">100% Free • High Quota</span>
+          </div>
+          <p class="help-text">
+            Powers smart semantic scene analysis, cinematic visual prompt extraction, YouTube SEO metadata, and 1-click AI image fallback. Multi-key pool rotates across keys to avoid free rate limits!
+          </p>
+
+          <div style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);margin-top:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <label class="form-label" style="margin-bottom:0;">
+                <span>Gemini API Key Pool (Enter up to 5 Free Keys from AI Studio)</span>
+              </label>
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" class="external-link">Get Free Keys on Google AI Studio ↗</a>
+            </div>
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
+              Enter 1 to 5 keys. The engine automatically rotates keys across scenes to prevent 429 rate limit pauses.
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <input type="password" id="input-gemini-key-1" class="form-input" placeholder="Gemini Key 1 (Primary)...">
+              <input type="password" id="input-gemini-key-2" class="form-input" placeholder="Gemini Key 2 (Backup)...">
+              <input type="password" id="input-gemini-key-3" class="form-input" placeholder="Gemini Key 3 (Backup)...">
+              <input type="password" id="input-gemini-key-4" class="form-input" placeholder="Gemini Key 4 (Backup)...">
+              <input type="password" id="input-gemini-key-5" class="form-input" placeholder="Gemini Key 5 (Backup)..." style="grid-column: span 2;">
+            </div>
+          </div>
+        </div>
+
         <!-- AI Voiceover & Human TTS Engines (100% Free & Premium APIs) -->
         <div class="settings-card mt-24">
           <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1806,6 +1925,11 @@
   <!-- ==================== PROCESSING MODAL ==================== -->
   <div class="modal-overlay hidden" id="processing-modal">
     <div class="modal-card">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+        <button type="button" class="btn btn-secondary btn-xs" onclick="minimizeProcessingModal()" title="Run in background and continue browsing the app" style="display:flex;align-items:center;gap:4px;font-size:11px;">
+          ➖ Minimize to Background
+        </button>
+      </div>
       <div class="modal-spinner"></div>
       <h3 id="modal-status-title">Generating YouTube Video...</h3>
       <p id="modal-status-desc">Transcribing speech and extracting visual scene cues...</p>
@@ -1844,6 +1968,11 @@
   <!-- ==================== EXPORT RENDER PROGRESS MODAL ==================== -->
   <div class="modal-overlay hidden" id="render-progress-modal">
     <div class="modal-card">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+        <button type="button" class="btn btn-secondary btn-xs" onclick="minimizeRenderModal()" title="Run in background and continue browsing the app" style="display:flex;align-items:center;gap:4px;font-size:11px;">
+          ➖ Minimize to Background
+        </button>
+      </div>
       <div class="modal-spinner"></div>
       <h3 id="render-modal-title">Rendering Full HD Video...</h3>
       <p id="render-modal-desc" style="color:var(--text-muted);font-size:13px;">Applying transitions, kinetic subtitles & multi-track audio mixing</p>
@@ -1883,6 +2012,17 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Floating Background Task Dock (Visible when progress modal is minimized) -->
+  <div id="floating-task-dock" class="floating-task-dock hidden" onclick="restoreActiveModal()" title="Click to expand full progress modal">
+    <div class="dock-pulse-dot"></div>
+    <div class="dock-info">
+      <div class="dock-title" id="dock-task-title">⚡ Background Task</div>
+      <div class="dock-desc" id="dock-task-desc">Processing in background...</div>
+    </div>
+    <div class="dock-badge" id="dock-task-pct">0%</div>
+    <button type="button" class="dock-expand-btn" title="Expand Full Modal" onclick="event.stopPropagation(); restoreActiveModal();">⤢</button>
   </div>
 
   <!-- ==================== SWAP CLIP MODAL ==================== -->
