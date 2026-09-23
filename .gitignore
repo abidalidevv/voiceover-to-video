@@ -3,19 +3,19 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Tests & Extra Folders (Ignored per user request)
+# Tests & Scratch Folders
 test/
 tests/
 test_*.py
 *_test.py
 *.test.*
-extra/
 scratch/
-
-# Ignore all planning and scratch markdown files (keep root README.md and CLAUDE_REVIEW.md)
-*.md
-!README.md
-!CLAUDE_REVIEW.md
+extra/test_scripts/
+extra/scratch_dev/
+extra/*.mp4
+extra/*.spec
+extra/*.bat
+extra/_unused_*
 
 # Temporary, Caches & Generated Media (Stock & Rendered)
 data/cache/
@@ -36,6 +36,7 @@ data/batch_jobs.json
 
 # Secrets & Local Credentials
 api.txt
+extra/api.txt
 .env
 
 # Dependencies & Build
