@@ -1,4 +1,4 @@
-# ATS Video ⚡ (4K/8K UHD AI Video Engine)
+# VideoGen Studio ⚡ (4K/8K UHD AI Video Engine)
 
 > **All-In-One Automated AI Video Engine, Neural Voiceover Studio, YouTube Thumbnail Studio & CapCut PC Integration**.
 > Generates 1080p Full HD, 4K UHD, and 8K Ultra HD YouTube landscape videos (16:9) and viral vertical Shorts (9:16) from a single script or voiceover audio file.
@@ -51,6 +51,20 @@
 - **2 to 32 Parallel Workers**: Hardware power slider tuned for dual-core CPUs up to multi-core Threadrippers.
 - **Hardware Acceleration**: Auto-detects NVIDIA NVENC (`h264_nvenc`), AMD AMF (`h264_amf`), and Intel QuickSync (`h264_qsv`).
 
+### 9. 🎭 Video Overlay Studio (Logo, Watermark, Facecam)
+- **1-Click Overlay Upload**: Upload any video or image file (`.mp4`, `.mov`, `.png`, `.jpg`, `.gif`) as an overlay layer.
+- **5 Position Presets**: Top-Left, Top-Right, Bottom-Left, Bottom-Right, Center — with 10px edge padding.
+- **Opacity Slider (5–100%)**: Adjustable transparency via FFmpeg `colorchannelmixer` alpha channel.
+- **Scale Control (5–80%)**: Overlay auto-scales to a percentage of the main frame width, preserving aspect ratio.
+- **Layered Rendering**: Overlays render beneath kinetic subtitles so captions are always readable.
+
+### 10. 🧬 Free Voice Cloning (Zero API Cost)
+- **Kokoro-82M Engine**: Apache 2.0 licensed, CPU-friendly (~200MB model), fully local inference.
+- **21 Voice Presets**: American English and British English male/female voices (Heart, Adam, Emma, George, etc.).
+- **Auto-Download**: Model auto-downloads on first use — no manual setup required.
+- **Graceful Fallback**: If Kokoro is not installed, automatically falls back to Microsoft Edge-TTS.
+- **Integration**: Seamlessly integrated into the existing TTS dropdown — select "🧬 Clone My Voice" and pick a Kokoro preset.
+
 ---
 
 ## 🚀 Quick Start
@@ -81,17 +95,19 @@ http://127.0.0.1:8765/
 ## 📁 Clean Repository Structure
 
 ```
-ATS-Video/
+VideoGen-Studio/
 ├── backend/                  # Core Python modules
-│   ├── server.py             # Active FastAPI backend endpoints, WebSocket progress & Explorer launchers
+│   ├── server.py             # FastAPI endpoints, WebSocket progress, Explorer & Docs APIs
 │   ├── scene_analyzer.py     # Gemini Flash + Groq LLM scene analyzer & 80+ keyword map
 │   ├── stock_downloader.py   # Multi-worker Pexels/Pixabay downloader with -200pt clash scoring
 │   ├── image_generator.py    # 1-Click 16:9 AI Image Generator & Ken Burns MP4 video synthesis
-│   ├── video_renderer.py     # FFmpeg CFR normalization, centered transitions, BGM/SFX mixing
+│   ├── video_renderer.py     # FFmpeg CFR normalization, transitions, BGM/SFX/Overlay mixing
+│   ├── video_overlay.py      # [NEW] Video overlay engine (logo, watermark, facecam + opacity)
+│   ├── voice_cloner.py       # [NEW] Free voice cloning via Kokoro-82M (Apache 2.0, CPU)
 │   ├── subtitle_generator.py # ASS kinetic subtitles & callout badge generator
 │   ├── thumbnail_generator.py# YouTube Thumbnail Studio (Viral Punch & Cinematic Mystery)
 │   ├── seo_generator.py      # AI YouTube SEO Suite (Titles, Description, Timestamps, Tags)
-│   ├── tts_generator.py      # Edge-TTS Neural, ElevenLabs, OpenAI voice engines
+│   ├── tts_generator.py      # Edge-TTS Neural, ElevenLabs, OpenAI, Kokoro voice engines
 │   ├── transcriber.py        # Groq Whisper speech-to-text with word micro-timestamps
 │   ├── capcut_exporter.py    # Native CapCut desktop draft project generator
 │   ├── templates.py          # Master templates, pools & variant resolution
@@ -99,23 +115,26 @@ ATS-Video/
 ├── frontend/                 # Glassmorphic Obsidian Web application
 │   ├── index.html            # Studio, Preview, Thumbnail, Projects, Settings, Docs & Export modals
 │   ├── styles.css            # Dark mode UI, Ken Burns animations, responsive styles
-│   ├── app.js                # Frontend controllers, live preview, folder & CapCut handlers
+│   ├── app.js                # Frontend controllers, overlay & clone handlers
 │   ├── caption_engine.js     # Word-level kinetic subtitle animator & drag positioning
 │   ├── docs.html             # Built-in User Guide & operational manual
 │   ├── favicon.ico / png     # Application icon & brand badge
 ├── data/                     # Persistent application data
 │   ├── assets/bgm/           # Background music loops (ambient, lofi, focus)
+│   ├── assets/overlays/      # [NEW] Uploaded video/image overlays
+│   ├── models/               # [NEW] Kokoro-82M voice cloning model cache
+│   ├── voice_samples/        # [NEW] User voice reference audio samples
 │   ├── output/               # Rendered 1080p/4K MP4 videos & YouTube thumbnails
 │   ├── thumbnails/           # Auto-generated YouTube clickbait thumbnail JPEGs
 │   ├── seo/                  # Generated YouTube titles, descriptions, and tags JSON
 │   └── sfx/                  # Sound effects & pre-cached voice preview MP3s
-├── 1_RUN_APP_Python_Source.bat       # 1-Click launcher for Python source code (fast & live)
-├── 2_RUN_APP_Standalone_EXE.bat       # 1-Click launcher for compiled executable (standalone)
+├── 1_RUN_APP_Python_Source.bat       # 1-Click launcher for Python source code
+├── 2_RUN_APP_Standalone_EXE.bat       # 1-Click launcher for compiled executable
 ├── 3_BUILD_NEW_Standalone_EXE.bat     # PyInstaller standalone executable compiler
 ├── desktop_launcher.py       # Desktop app launcher with Edge App mode & port management
 ├── main.py                   # Root application entrypoint
 ├── CLAUDE_REVIEW.md          # Master architectural review & post-mortem blueprint
-└── requirements.txt          # Python dependencies
+└── requirements.txt          # Python dependencies (including kokoro, soundfile, numpy)
 ```
 
 ---
@@ -125,4 +144,4 @@ Access the comprehensive user guide by clicking **📖 Docs** in the top navigat
 `http://127.0.0.1:8765/docs.html`
 
 ---
-*Maintained by Antigravity AI • ATS Video 4K/8K UHD AI Video Engine*
+*Maintained by Antigravity AI • VideoGen Studio 4K/8K UHD AI Video Engine*

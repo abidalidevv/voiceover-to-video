@@ -1405,6 +1405,114 @@ async def upload_bgm(file: UploadFile = File(...)):
         print(f"[Server] upload_bgm error: {e}")
         raise HTTPException(status_code=500, detail=f"BGM upload failed: {str(e)}")
 
+# ======================== VIDEO OVERLAY ENDPOINTS ========================
+
+from .video_overlay import list_overlay_files, OVERLAY_DIR
+
+@app.get("/api/overlay-files")
+def get_overlay_files():
+    """Lists all available overlay files (videos, images, logos)."""
+    return list_overlay_files()
+
+@app.post("/api/upload-overlay")
+async def upload_overlay(file: UploadFile = File(...)):
+    """Uploads a video/image file to use as a video overlay."""
+    try:
+        OVERLAY_DIR.mkdir(parents=True, exist_ok=True)
+        raw_name = file.filename or "custom_overlay.mp4"
+        clean_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', raw_name)
+        if not clean_name.strip('_'):
+            clean_name = "custom_overlay.mp4"
+        filename = f"overlay_{int(time.time())}_{clean_name}"
+        target_path = OVERLAY_DIR / filename
+        content = await file.read()
+        with open(target_path, "wb") as buffer:
+            buffer.write(content)
+
+        # Determine type
+        ext = Path(filename).suffix.lower()
+        ovr_type = "video" if ext in (".mp4", ".mov", ".webm", ".avi") else "image"
+
+        return {
+            "status": "success",
+            "overlay_key": str(target_path),
+            "filename": file.filename,
+            "path": str(target_path),
+            "type": ovr_type,
+            "size_kb": round(len(content) / 1024, 1),
+            "web_url": f"/media/assets/overlays/{filename}"
+        }
+    except Exception as e:
+        print(f"[Server] upload_overlay error: {e}")
+        raise HTTPException(status_code=500, detail=f"Overlay upload failed: {str(e)}")
+
+@app.delete("/api/overlay/{filename}")
+def delete_overlay(filename: str):
+    """Removes an uploaded overlay file."""
+    try:
+        target = OVERLAY_DIR / filename
+        if target.exists():
+            target.unlink()
+            return {"status": "success", "message": f"Deleted {filename}"}
+        raise HTTPException(status_code=404, detail="Overlay file not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ======================== VOICE CLONING ENDPOINTS ========================
+
+@app.get("/api/clone-status")
+def get_clone_status():
+    """Returns voice cloning system status (available, model info, samples)."""
+    try:
+        from .voice_cloner import get_clone_status as _get_status
+        return _get_status()
+    except ImportError:
+        return {
+            "available": False,
+            "model_name": "Kokoro-82M",
+            "install_command": "pip install kokoro soundfile numpy",
+            "samples_count": 0,
+            "samples": []
+        }
+
+@app.get("/api/kokoro-voices")
+def get_kokoro_voices():
+    """Returns available Kokoro voice presets for the UI dropdown."""
+    try:
+        from .voice_cloner import KOKORO_VOICES
+        return KOKORO_VOICES
+    except ImportError:
+        return []
+
+@app.post("/api/upload-voice-sample")
+async def upload_voice_sample(file: UploadFile = File(...)):
+    """Uploads a 3-10 second voice reference audio sample for cloning."""
+    try:
+        from .config import VOICE_SAMPLES_DIR
+        VOICE_SAMPLES_DIR.mkdir(parents=True, exist_ok=True)
+        raw_name = file.filename or "voice_sample.mp3"
+        clean_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', raw_name)
+        if not clean_name.strip('_'):
+            clean_name = "voice_sample.mp3"
+        filename = f"sample_{int(time.time())}_{clean_name}"
+        target_path = VOICE_SAMPLES_DIR / filename
+        content = await file.read()
+        with open(target_path, "wb") as buffer:
+            buffer.write(content)
+
+        return {
+            "status": "success",
+            "filename": file.filename,
+            "path": str(target_path),
+            "size_kb": round(len(content) / 1024, 1),
+            "web_url": f"/media/voice_samples/{filename}"
+        }
+    except Exception as e:
+        print(f"[Server] upload_voice_sample error: {e}")
+        raise HTTPException(status_code=500, detail=f"Voice sample upload failed: {str(e)}")
+
 # ======================== EDITING TEMPLATES ENDPOINTS ========================
 
 from .templates import list_templates, get_template, resolve_template_variant, EDITING_TEMPLATES

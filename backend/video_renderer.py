@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional
 from .config import find_ffmpeg, find_ffprobe, TEMP_DIR, OUTPUT_DIR, BASE_DIR, DATA_DIR, load_settings
 from .transcriber import get_audio_duration
+from .video_overlay import resolve_overlay_path, build_overlay_filter
 
 # Modern transition pool for random mixing (YouTube/TikTok creator style)
 TRANSITION_POOL = ["smoothleft", "smoothright", "zoomin", "fade", "fadefast", "circlecrop", "dissolve"]
@@ -152,6 +153,14 @@ def render_final_video(
     transition_sfx_volume = float(custom_options.get("transition_sfx_volume", 0.40))
     emphasis_zoom_enabled = bool(custom_options.get("emphasis_zoom_enabled", False))
     emphasis_zoom_intensity = float(custom_options.get("emphasis_zoom_intensity", 1.15))
+
+    # Video Overlay options
+    overlay_video_path = custom_options.get("overlay_video", None)
+    overlay_opacity = float(custom_options.get("overlay_opacity", 0.30))
+    overlay_position = str(custom_options.get("overlay_position", "bottom_right")).lower().strip()
+    overlay_scale = float(custom_options.get("overlay_scale", 20.0))
+    resolved_overlay_path = resolve_overlay_path(overlay_video_path)
+    has_overlay = bool(resolved_overlay_path and os.path.exists(resolved_overlay_path))
 
     # Resolution Configuration (1080p, 4K UHD, 8K UHD)
     target_res = str(custom_options.get("target_resolution", "1080p")).lower().strip()
@@ -452,30 +461,67 @@ def render_final_video(
         "-i", str(resolved_audio_path)
     ]
 
+    # Track the next available FFmpeg input index (0=video, 1=audio)
+    next_input_idx = 2
+    overlay_in_idx = None
     sfx_in_idx = None
+
+    # Add overlay video/image as input if enabled
+    if has_overlay:
+        overlay_in_idx = next_input_idx
+        next_input_idx += 1
+        final_cmd.extend(["-i", str(resolved_overlay_path)])
+        print(f"[Renderer] Adding video overlay: {resolved_overlay_path} at opacity {overlay_opacity:.0%} ({overlay_position})")
+
     if has_bgm:
         final_cmd.extend(["-i", str(resolved_bgm_path)])
         print(f"[Renderer] Mixing BGM track: {resolved_bgm_path} at volume {bgm_volume:.2f}")
+        bgm_in_idx = next_input_idx
+        next_input_idx += 1
         if has_sfx:
-            sfx_in_idx = 3
+            sfx_in_idx = next_input_idx
+            next_input_idx += 1
             final_cmd.extend(["-i", str(resolved_sfx_path)])
             print(f"[Renderer] Mixing transition SFX: {resolved_sfx_path} at volume {transition_sfx_volume:.2f}")
     else:
+        bgm_in_idx = None
         if has_sfx:
-            sfx_in_idx = 2
+            sfx_in_idx = next_input_idx
+            next_input_idx += 1
             final_cmd.extend(["-i", str(resolved_sfx_path)])
             print(f"[Renderer] Mixing transition SFX: {resolved_sfx_path} at volume {transition_sfx_volume:.2f}")
 
-    # Build filter_complex for Video (ASS Subtitles) + Audio (Voiceover + BGM + SFX mix)
+    # Build filter_complex for Video (Overlay + ASS Subtitles) + Audio (Voiceover + BGM + SFX mix)
     filter_complex_parts = []
     
+    # 0. Video Filter: Overlay layer (applied FIRST so subtitles render on top)
+    current_video_label = "[0:v]"
+    if has_overlay and overlay_in_idx is not None:
+        is_video_ovr = resolved_overlay_path.lower().endswith((".mp4", ".mov", ".webm", ".avi"))
+        ovr_filter, ovr_label = build_overlay_filter(
+            overlay_input_idx=overlay_in_idx,
+            video_input_label=current_video_label,
+            position=overlay_position,
+            opacity=overlay_opacity,
+            target_w=target_w,
+            target_h=target_h,
+            scale_percent=overlay_scale,
+            is_video_overlay=is_video_ovr
+        )
+        filter_complex_parts.append(ovr_filter)
+        current_video_label = ovr_label
+
     # 1. Video Filter: ASS subtitles if present
     if ass_subtitle_path and os.path.exists(ass_subtitle_path):
         escaped_ass = str(Path(ass_subtitle_path).resolve()).replace("\\", "/").replace(":", "\\:")
-        filter_complex_parts.append(f"[0:v]ass='{escaped_ass}'[vout]")
+        filter_complex_parts.append(f"{current_video_label}ass='{escaped_ass}'[vout]")
         video_map_label = "[vout]"
     else:
-        video_map_label = "0:v:0"
+        # If we had overlay filter, use its output label; otherwise raw stream
+        if has_overlay:
+            video_map_label = current_video_label
+        else:
+            video_map_label = "0:v:0"
 
     # 2. Audio Filter: Sound Stings (SFX) with adelay + Voiceover (100%) + BGM (ducked)
     transition_timestamps = []
@@ -504,7 +550,7 @@ def render_final_video(
     if has_bgm and has_sfx:
         audio_filter = (
             f"[1:a]volume=1.0[vo];"
-            f"[2:a]aloop=loop=-1:size=2e+09,volume={bgm_volume:.2f}[bgm];"
+            f"[{bgm_in_idx}:a]aloop=loop=-1:size=2e+09,volume={bgm_volume:.2f}[bgm];"
             f"[vo][bgm][sfx_all]amix=inputs=3:duration=first:dropout_transition=2,aresample=async=1[aout]"
         )
         filter_complex_parts.append(audio_filter)
@@ -512,7 +558,7 @@ def render_final_video(
     elif has_bgm and not has_sfx:
         audio_filter = (
             f"[1:a]volume=1.0[vo];"
-            f"[2:a]aloop=loop=-1:size=2e+09,volume={bgm_volume:.2f}[bgm];"
+            f"[{bgm_in_idx}:a]aloop=loop=-1:size=2e+09,volume={bgm_volume:.2f}[bgm];"
             f"[vo][bgm]amix=inputs=2:duration=first:dropout_transition=2,aresample=async=1[aout]"
         )
         filter_complex_parts.append(audio_filter)
@@ -569,6 +615,8 @@ def render_final_video(
             "-i", str(stitched_video),
             "-i", str(resolved_audio_path)
         ]
+        if has_overlay:
+            cpu_cmd.extend(["-i", str(resolved_overlay_path)])
         if has_bgm:
             cpu_cmd.extend(["-i", str(resolved_bgm_path)])
         if has_sfx:

@@ -131,7 +131,31 @@ VideoGen Studio is an automated AI-driven YouTube Full HD (1080p) / 4K UHD video
 
 ---
 
-## 3. High-Value Architectural Suggestions for Claude & Next Steps
+## 4. Video Overlay Engine (New)
+
+* **Architecture**: A dedicated `backend/video_overlay.py` module handles overlay path resolution, FFmpeg filter generation, and position/opacity calculations.
+* **FFmpeg Integration**: Overlays are applied in the `filter_complex` chain **before** ASS subtitles, so kinetic captions always render on top of the overlay layer.
+* **Filter Pipeline**: `[overlay_input] → scale → format=rgba → colorchannelmixer(aa=opacity) → overlay(position) → [vovr]`
+* **Position Presets**: `top_left`, `top_right`, `bottom_left`, `bottom_right`, `center` — each maps to exact FFmpeg overlay coordinates with 10px padding.
+* **Opacity Control**: Uses `colorchannelmixer=aa=0.XX` (0.0 invisible → 1.0 fully opaque), default 30%.
+* **Auto-Scaling**: Overlay auto-scales to a configurable percentage of the main frame width (default 20%), preserving aspect ratio.
+* **Supported Formats**: Video overlays (`.mp4`, `.mov`, `.webm`) use `shortest=1` to match main video length. Image overlays (`.png`, `.jpg`, `.gif`) are static.
+
+---
+
+## 5. Free Voice Cloning — Kokoro-82M (New)
+
+* **Engine**: Kokoro-82M, an Apache 2.0 licensed, CPU-friendly TTS model (~200MB).
+* **Zero Cost**: Fully local inference, no API keys, no cloud dependency, no usage limits.
+* **Integration**: Added as a new TTS provider (`kokoro_clone`) in `tts_generator.py`, alongside Edge-TTS, ElevenLabs, and OpenAI.
+* **21 Voice Presets**: American English (male/female) and British English (male/female) presets.
+* **Graceful Fallback**: If Kokoro is not installed (`pip install kokoro soundfile`), the system automatically falls back to Microsoft Edge-TTS Andrew V2.
+* **Pipeline**: `KPipeline(lang_code='a') → generate segments → concatenate → WAV → FFmpeg MP3 conversion → pipeline-ready audio`
+* **First-Run**: Model auto-downloads (~200MB) on first use, no manual setup required.
+
+---
+
+## 6. High-Value Architectural Suggestions for Claude & Next Steps
 
 ### Suggestion 1: Automated Multimodal Visual Relevance Validator (CLIP / Gemini Flash)
 * **Concept**: While negative keyword clash penalties (-200 pts) catch obvious errors, an AI visual verification pass provides 100% guarantee.
@@ -146,45 +170,51 @@ VideoGen Studio is an automated AI-driven YouTube Full HD (1080p) / 4K UHD video
 * **Architecture**:
   - Add visual speed controls (0.8x, 1.0x, 1.25x) and a seamless ping-pong reverse loop option directly in the Scene Editor bar in the Studio tab.
 
-### Suggestion 3: Unified Workspace Data Directory for Portable EXE and Source
-* **Concept**: Ensure `desktop_launcher.py` and `backend/config.py` resolve `DATA_DIR` identically whether run via `1_RUN_APP_Python_Source.bat` or `2_RUN_APP_Standalone_EXE.bat`.
-* **Architecture**:
-  - Normalize `DATA_DIR` so that both runtime modes share the exact same projects history, cache, output videos, and thumbnails without needing synchronization scripts.
-
 ---
 
-## 4. Current File Structure & Module Responsibilities
+## 7. Current File Structure & Module Responsibilities
 
 ```
-ATS-Video/
+VideoGen-Studio/
 ├── backend/
 │   ├── server.py              # FastAPI endpoints, WebSocket progress, Explorer & Docs APIs
 │   ├── scene_analyzer.py      # Gemini Flash / Groq LLM scene analyzer & 80+ keyword map
 │   ├── stock_downloader.py    # Multi-worker Pexels/Pixabay downloader with -200pt clash scoring
 │   ├── image_generator.py     # 1-Click 16:9 AI Image Generator & Ken Burns MP4 video synthesis
-│   ├── video_renderer.py      # FFmpeg CFR normalization, centered transitions, BGM/SFX mixing
+│   ├── video_renderer.py      # FFmpeg CFR normalization, transitions, BGM/SFX/Overlay mixing
+│   ├── video_overlay.py       # [NEW] Video overlay engine (logo, watermark, facecam + opacity)
+│   ├── voice_cloner.py        # [NEW] Free voice cloning via Kokoro-82M (Apache 2.0, CPU)
 │   ├── subtitle_generator.py  # ASS kinetic subtitles & callout badge generator
 │   ├── thumbnail_generator.py # YouTube Thumbnail Studio (Viral Punch & Cinematic Mystery)
 │   ├── seo_generator.py       # AI YouTube SEO Suite (Titles, Description, Timestamps, Tags)
-│   ├── tts_generator.py       # Edge-TTS Neural, ElevenLabs, OpenAI voice engines
+│   ├── tts_generator.py       # Edge-TTS Neural, ElevenLabs, OpenAI, Kokoro voice engines
+│   ├── transcriber.py         # Groq Whisper speech-to-text with word micro-timestamps
 │   ├── capcut_exporter.py     # Native CapCut desktop draft project generator
 │   ├── templates.py           # Master templates, pools & variant resolution
 │   └── config.py              # Global settings, paths, SFX library & defaults
 ├── frontend/
 │   ├── index.html             # Studio, Preview, Thumbnail, Projects, Settings, Docs & Export modals
 │   ├── styles.css             # Glassmorphic Obsidian UI, Ken Burns animations, responsive styles
-│   ├── app.js                 # UI controllers, preview engine, folder & CapCut handlers
+│   ├── app.js                 # UI controllers, preview engine, overlay & clone handlers
 │   ├── caption_engine.js      # Word-level kinetic subtitle animator & drag positioning
 │   ├── docs.html              # Built-in User Guide & operational manual
 │   ├── favicon.ico / png      # Application brand badges
-├── data/                      # Persistent storage (output, thumbnails, temp, cache, seo, sfx)
+├── data/                      # Persistent storage
+│   ├── assets/bgm/            # Background music loops
+│   ├── assets/overlays/       # [NEW] Uploaded video/image overlays
+│   ├── models/                # [NEW] Kokoro-82M voice cloning model cache
+│   ├── voice_samples/         # [NEW] User voice reference audio samples
+│   ├── output/                # Rendered videos & thumbnails
+│   ├── thumbnails/            # YouTube thumbnail JPEGs
+│   ├── seo/                   # Generated SEO metadata JSON
+│   └── sfx/                   # Sound effects & voice preview MP3s
 ├── 1_RUN_APP_Python_Source.bat # 1-Click launcher for Python source mode
 ├── 2_RUN_APP_Standalone_EXE.bat# 1-Click launcher for compiled executable
 ├── 3_BUILD_NEW_Standalone_EXE.bat # PyInstaller executable compiler
 ├── desktop_launcher.py        # Desktop app launcher with Edge App mode & port management
-├── requirements.txt           # Python dependencies
+├── requirements.txt           # Python dependencies (including kokoro, soundfile, numpy)
 └── CLAUDE_REVIEW.md           # Master architectural review document
 ```
 
 ---
-*Maintained by Antigravity AI • ATS Video 4K/8K UHD AI Video Engine*
+*Maintained by Antigravity AI • VideoGen Studio 4K/8K UHD AI Video Engine*

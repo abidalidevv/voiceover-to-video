@@ -497,7 +497,37 @@
                     <option value="ur-PK-UzmaNeural">🇵🇰 Uzma (Polished & Expressive Urdu Female)</option>
                     <option value="hi-IN-MadhurNeural">🇮🇳 Madhur (Dynamic & Expressive Hindi Male)</option>
                     <option value="hi-IN-SwaraNeural">🇮🇳 Swara (Friendly & Conversational Hindi Female)</option>
+                    <option disabled>── Free Local AI Voice Cloning ──</option>
+                    <option value="clone_custom">🧬 Clone My Voice (Free Local AI — Kokoro-82M)</option>
                   </select>
+                </div>
+
+                <!-- Kokoro Voice Clone Panel (shows when Clone My Voice is selected) -->
+                <div id="kokoro-clone-panel" class="hidden" style="margin-top:10px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.3);border-radius:8px;padding:10px;">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                    <span style="font-size:13px;font-weight:600;color:#a78bfa;">🧬 Kokoro-82M Voice Cloning</span>
+                    <span id="kokoro-status-badge" style="font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(139,92,246,0.2);color:#c4b5fd;">Checking...</span>
+                  </div>
+                  <div class="form-group">
+                    <label class="sub-label">Kokoro Voice Preset</label>
+                    <select id="kokoro-voice-preset" class="form-select" onchange="updateKokoroVoice()">
+                      <option value="af_heart" selected>💜 Heart (Warm Female) — Recommended</option>
+                      <option value="am_adam">🎤 Adam (Deep Male)</option>
+                      <option value="am_michael">🎤 Michael (Warm Male)</option>
+                      <option value="af_bella">💜 Bella (Soft Female)</option>
+                      <option value="am_onyx">🎤 Onyx (Authoritative Male)</option>
+                      <option value="af_nova">💜 Nova (Energetic Female)</option>
+                      <option value="bf_emma">🇬🇧 Emma (British Female)</option>
+                      <option value="bm_george">🇬🇧 George (British Male)</option>
+                      <option value="am_eric">🎤 Eric (Professional Male)</option>
+                      <option value="af_jessica">💜 Jessica (Confident Female)</option>
+                      <option value="af_sarah">💜 Sarah (Natural Female)</option>
+                      <option value="bm_lewis">🇬🇧 Lewis (Documentary British Male)</option>
+                    </select>
+                  </div>
+                  <p style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:6px;">
+                    Apache 2.0 • CPU-friendly • ~200MB model auto-downloads on first use • Zero API cost
+                  </p>
                 </div>
 
                 <div class="form-row mt-10" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
@@ -1125,6 +1155,43 @@
             <div class="form-group flex-1">
               <label class="sub-label">BGM Volume Level (<span id="bgm-volume-val">10</span>%)</label>
               <input type="range" id="bgm-volume-slider" min="0" max="30" step="1" value="10" oninput="updateBgmVolume(this.value)">
+            </div>
+          </div>
+        </div>
+
+        <!-- Video Overlay (Logo, Watermark, Facecam) -->
+        <div class="inspector-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <label class="section-title" style="margin-bottom:0;">🎭 Video Overlay</label>
+            <button class="btn btn-secondary btn-xs" id="upload-overlay-btn" onclick="document.getElementById('overlay-file-input').click()" title="Upload a video or image overlay (logo, watermark, facecam)">
+              ➕ Upload Overlay
+            </button>
+            <input type="file" id="overlay-file-input" accept=".mp4,.mov,.webm,.avi,.png,.jpg,.jpeg,.gif,.webp" style="display:none;" onchange="handleOverlayUpload(event)">
+          </div>
+          <div id="overlay-active-badge" class="hidden" style="margin-bottom:8px;font-size:11px;color:var(--accent-cyan);display:flex;align-items:center;gap:6px;background:rgba(0,240,255,0.08);padding:6px 8px;border-radius:4px;border:1px solid rgba(0,240,255,0.2);">
+            <span>✅ Overlay:</span> <strong id="overlay-filename" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></strong>
+            <button class="btn-icon" onclick="removeOverlay()" title="Remove overlay" style="margin-left:auto;font-size:14px;cursor:pointer;background:none;border:none;color:#ff6b6b;">✕</button>
+          </div>
+          <div class="form-group">
+            <label class="sub-label">Overlay Position</label>
+            <select id="overlay-position-select" class="form-select" onchange="updateOverlayPosition()">
+              <option value="bottom_right" selected>↘️ Bottom-Right (Recommended)</option>
+              <option value="bottom_left">↙️ Bottom-Left</option>
+              <option value="top_right">↗️ Top-Right</option>
+              <option value="top_left">↖️ Top-Left</option>
+              <option value="center">⊕ Center (Full Watermark)</option>
+            </select>
+          </div>
+          <div class="form-row mt-10">
+            <div class="form-group flex-1">
+              <label class="sub-label">Opacity (<span id="overlay-opacity-val">30</span>%)</label>
+              <input type="range" id="overlay-opacity-slider" min="5" max="100" step="5" value="30" oninput="updateOverlayOpacity(this.value)">
+            </div>
+          </div>
+          <div class="form-row mt-8">
+            <div class="form-group flex-1">
+              <label class="sub-label">Size (<span id="overlay-scale-val">20</span>% of frame)</label>
+              <input type="range" id="overlay-scale-slider" min="5" max="80" step="5" value="20" oninput="updateOverlayScale(this.value)">
             </div>
           </div>
         </div>

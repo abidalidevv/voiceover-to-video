@@ -1337,6 +1337,141 @@ async function handleBgmUpload(event) {
   }
 }
 
+// ==================== VIDEO OVERLAY HANDLERS ====================
+
+let currentOverlayPath = null;
+
+async function handleOverlayUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const btn = document.getElementById('upload-overlay-btn');
+  const originalText = btn ? btn.innerHTML : '➕ Upload Overlay';
+  if (btn) btn.innerHTML = '⏳ Uploading...';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch('/api/upload-overlay', {
+      method: 'POST',
+      body: formData
+    });
+    if (!res.ok) throw new Error('Upload failed with HTTP status ' + res.status);
+    const data = await res.json();
+
+    currentOverlayPath = data.overlay_key || data.path;
+
+    const badge = document.getElementById('overlay-active-badge');
+    const fname = document.getElementById('overlay-filename');
+    if (badge && fname) {
+      fname.textContent = data.filename || file.name;
+      badge.classList.remove('hidden');
+    }
+
+    showToast(`🎭 Overlay uploaded: <strong>${data.filename || file.name}</strong> (${data.type}, ${data.size_kb}KB)`);
+  } catch (e) {
+    console.error(e);
+    alert('Failed to upload overlay: ' + e.message);
+  } finally {
+    if (btn) btn.innerHTML = originalText;
+    event.target.value = '';
+  }
+}
+
+function removeOverlay() {
+  currentOverlayPath = null;
+  const badge = document.getElementById('overlay-active-badge');
+  if (badge) badge.classList.add('hidden');
+  showToast('🎭 Overlay removed');
+}
+
+function updateOverlayPosition() {
+  // Position saved on render — no immediate action needed
+}
+
+function updateOverlayOpacity(val) {
+  const el = document.getElementById('overlay-opacity-val');
+  if (el) el.textContent = val;
+}
+
+function updateOverlayScale(val) {
+  const el = document.getElementById('overlay-scale-val');
+  if (el) el.textContent = val;
+}
+
+function getOverlaySettings() {
+  if (!currentOverlayPath) return {};
+  return {
+    overlay_video: currentOverlayPath,
+    overlay_opacity: parseFloat(document.getElementById('overlay-opacity-slider')?.value || 30) / 100,
+    overlay_position: document.getElementById('overlay-position-select')?.value || 'bottom_right',
+    overlay_scale: parseFloat(document.getElementById('overlay-scale-slider')?.value || 20)
+  };
+}
+
+// ==================== KOKORO VOICE CLONING HANDLERS ====================
+
+function onTTSVoiceChange() {
+  const select = document.getElementById('tts-voice-select');
+  const panel = document.getElementById('kokoro-clone-panel');
+  if (select && panel) {
+    if (select.value === 'clone_custom') {
+      panel.classList.remove('hidden');
+      checkKokoroStatus();
+      return;
+    } else {
+      panel.classList.add('hidden');
+    }
+  }
+  if (typeof previewSelectedVoice === 'function') {
+    previewSelectedVoice();
+  }
+}
+
+async function checkKokoroStatus() {
+  const badge = document.getElementById('kokoro-status-badge');
+  if (!badge) return;
+  
+  try {
+    const res = await fetch('/api/clone-status');
+    const data = await res.json();
+    
+    if (data.available) {
+      badge.textContent = '✅ Ready';
+      badge.style.background = 'rgba(34,197,94,0.2)';
+      badge.style.color = '#86efac';
+    } else {
+      badge.textContent = '⚠️ Not Installed';
+      badge.style.background = 'rgba(234,179,8,0.2)';
+      badge.style.color = '#fde047';
+    }
+  } catch (e) {
+    badge.textContent = '❌ Error';
+    badge.style.background = 'rgba(239,68,68,0.2)';
+    badge.style.color = '#fca5a5';
+  }
+}
+
+function updateKokoroVoice() {
+  // Voice preset selection stored in the dropdown, read on generation
+}
+
+function getSelectedTTSVoice() {
+  const mainSelect = document.getElementById('tts-voice-select');
+  if (!mainSelect) return 'en-US-ChristopherNeural';
+  
+  if (mainSelect.value === 'clone_custom') {
+    const kokoroPreset = document.getElementById('kokoro-voice-preset');
+    if (kokoroPreset) {
+      return 'kokoro_' + kokoroPreset.value;
+    }
+    return 'clone_custom';
+  }
+  
+  return mainSelect.value;
+}
+
 // ==================== MISSING CLIPS ALERT & 1-CLICK AI IMAGE GENERATION ====================
 function checkMissingClipsAlert(scenes) {
   const alertEl = document.getElementById('missing-clips-alert');
@@ -1571,7 +1706,8 @@ async function startExportRender() {
     enable_captions: document.getElementById('enable-captions-toggle')?.checked ?? true,
     target_resolution: document.getElementById('export-resolution')?.value || '1080p',
     transition_sfx: document.getElementById('sfx-track-select')?.value || 'whoosh_soft',
-    transition_sfx_volume: parseFloat(document.getElementById('sfx-volume-slider')?.value || '40') / 100
+    transition_sfx_volume: parseFloat(document.getElementById('sfx-volume-slider')?.value || '40') / 100,
+    ...getOverlaySettings()
   };
 
   const renderModal = document.getElementById('render-progress-modal');
@@ -2680,8 +2816,21 @@ async function loadTTSVoices() {
     select.innerHTML = '';
 
     const edgeVoices = voices.filter(v => v.provider === 'edge');
+    const kokoroVoices = voices.filter(v => v.provider === 'kokoro_clone');
     const elevenVoices = voices.filter(v => v.provider === 'elevenlabs');
     const openaiVoices = voices.filter(v => v.provider === 'openai');
+
+    if (kokoroVoices.length > 0) {
+      const group = document.createElement('optgroup');
+      group.label = '🧬 Local AI Voice Cloning (Kokoro-82M / Free)';
+      kokoroVoices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = `${v.flag || '🧬'} ${v.name} - ${v.style}`;
+        group.appendChild(opt);
+      });
+      select.appendChild(group);
+    }
 
     if (edgeVoices.length > 0) {
       const group = document.createElement('optgroup');
@@ -2773,9 +2922,6 @@ function previewSelectedVoice() {
   });
 }
 
-function onTTSVoiceChange() {
-  previewSelectedVoice();
-}
 
 function onTTSRateChange(val) {
   const el = document.getElementById('tts-rate-val');
@@ -2801,7 +2947,7 @@ async function generateAIVoiceover() {
     return;
   }
 
-  const voice = document.getElementById('tts-voice-select')?.value || 'en-US-ChristopherNeural';
+  const voice = getSelectedTTSVoice();
   const rateVal = parseInt(document.getElementById('tts-rate-slider')?.value || '0', 10);
   const rate = rateVal >= 0 ? `+${rateVal}%` : `${rateVal}%`;
 

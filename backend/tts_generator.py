@@ -201,6 +201,18 @@ CURATED_VOICES = [
         "recommended": False,
         "provider": "edge"
     },
+    # Kokoro Voice Cloning (Free, Local AI — zero API cost)
+    {
+        "id": "clone_custom",
+        "name": "🧬 Clone My Voice (Free Local AI)",
+        "lang": "English",
+        "locale": "en-US",
+        "gender": "Custom",
+        "style": "Clone any voice from a 3-second audio sample (Kokoro-82M, Apache 2.0)",
+        "flag": "🧬",
+        "recommended": True,
+        "provider": "kokoro_clone"
+    },
     # ElevenLabs Free Tier Compatible Models (optional via user key in Settings)
     {
         "id": "eleven_adam",
@@ -353,6 +365,31 @@ async def generate_speech_async(
 
     p = Path(output_path)
     p.parent.mkdir(parents=True, exist_ok=True)
+
+    # Check if Kokoro Voice Cloning was selected
+    if voice == "clone_custom" or voice.startswith("kokoro_"):
+        try:
+            from backend.voice_cloner import clone_voice, is_cloning_available, KOKORO_VOICES
+            if is_cloning_available():
+                # Determine Kokoro voice preset
+                kokoro_voice = "af_heart"  # Default warm female
+                if voice.startswith("kokoro_"):
+                    kokoro_voice = voice.replace("kokoro_", "")
+                
+                print(f"[TTS] Synthesizing via Kokoro-82M voice cloning ({kokoro_voice})...")
+                result = clone_voice(
+                    text=cleaned,
+                    output_path=str(p),
+                    voice_name=kokoro_voice
+                )
+                return result
+            else:
+                print("[TTS] Kokoro not available, falling back to Microsoft Neural V2...")
+        except Exception as e:
+            print(f"[TTS] Kokoro voice cloning notice: {e}, falling back to Microsoft Neural V2...")
+        
+        # Fallback to Edge-TTS Andrew V2
+        voice = "en-US-AndrewMultilingualNeural"
 
     # Check if ElevenLabs voice was selected
     if voice.startswith("eleven_"):

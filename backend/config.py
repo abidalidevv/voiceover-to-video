@@ -21,12 +21,17 @@ TEMP_DIR = DATA_DIR / "temp"
 SFX_DIR = DATA_DIR / "sfx"
 BIN_DIR = BASE_DIR / "bin"
 
+# Voice Cloning & Overlay directories
+MODELS_DIR = DATA_DIR / "models"
+VOICE_SAMPLES_DIR = DATA_DIR / "voice_samples"
+OVERLAY_DIR = DATA_DIR / "assets" / "overlays"
+
 # Resolve Frontend directory (checks bundle directory first, then root folder)
 FRONTEND_DIR = BUNDLE_DIR / "frontend"
 if not FRONTEND_DIR.exists():
     FRONTEND_DIR = BASE_DIR / "frontend"
 
-for d in [DATA_DIR, CACHE_DIR, OUTPUT_DIR, TEMP_DIR, SFX_DIR, BIN_DIR]:
+for d in [DATA_DIR, CACHE_DIR, OUTPUT_DIR, TEMP_DIR, SFX_DIR, BIN_DIR, MODELS_DIR, VOICE_SAMPLES_DIR, OVERLAY_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
 
