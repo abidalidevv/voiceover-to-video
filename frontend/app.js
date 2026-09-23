@@ -1517,10 +1517,15 @@ function updateLiveOverlayPreview() {
     return;
   }
 
-  const opacity = (parseFloat(document.getElementById('overlay-opacity-slider')?.value || 30)) / 100;
-  const scalePercent = parseFloat(document.getElementById('overlay-scale-slider')?.value || 20);
-  const position = document.getElementById('overlay-position-select')?.value || 'bottom_right';
+  const opacity = (parseFloat(document.getElementById('overlay-opacity-slider')?.value || 85)) / 100;
+  const scalePercent = parseFloat(document.getElementById('overlay-scale-slider')?.value || 100);
+  const position = document.getElementById('overlay-position-select')?.value || 'full_screen';
+  // Always muted by default; user can uncheck explicitly
   const isMuted = document.getElementById('overlay-mute-checkbox')?.checked ?? true;
+
+  // Show/hide size slider — not useful in full_screen mode
+  const sizeRow = document.getElementById('overlay-size-row');
+  if (sizeRow) sizeRow.style.display = (position === 'full_screen') ? 'none' : '';
 
   const isVideo = /\.(mp4|mov|webm|avi)($|\?)/i.test(currentOverlayPath);
   const activeEl = isVideo ? ovrVideo : ovrImg;
@@ -1532,42 +1537,49 @@ function updateLiveOverlayPreview() {
 
   activeEl.style.display = 'block';
   activeEl.style.opacity = opacity;
+  // Always absolutely positioned inside video-container (overflow:hidden keeps it clipped)
   activeEl.style.position = 'absolute';
   activeEl.style.zIndex = '12';
   activeEl.style.pointerEvents = 'none';
 
   if (position === 'full_screen') {
+    // Fills entire video-container — 16:9 overlay on 16:9 container = perfect fit
     activeEl.style.top = '0';
     activeEl.style.left = '0';
     activeEl.style.right = '0';
     activeEl.style.bottom = '0';
     activeEl.style.width = '100%';
     activeEl.style.height = '100%';
+    activeEl.style.maxWidth = '100%';
+    activeEl.style.maxHeight = '100%';
     activeEl.style.transform = 'none';
     activeEl.style.objectFit = 'cover';
   } else {
-    activeEl.style.width = `${scalePercent}%`;
-    activeEl.style.maxHeight = `${scalePercent}%`;
+    // Corner / center placement: size is user-controlled percentage
+    const sz = scalePercent + '%';
+    activeEl.style.width = sz;
+    activeEl.style.height = 'auto';
+    activeEl.style.maxWidth = sz;
+    activeEl.style.maxHeight = sz;
     activeEl.style.objectFit = 'contain';
-
-    activeEl.style.top = '';
-    activeEl.style.bottom = '';
-    activeEl.style.left = '';
     activeEl.style.right = '';
+    activeEl.style.bottom = '';
+    activeEl.style.top = '';
+    activeEl.style.left = '';
     activeEl.style.transform = 'none';
 
     if (position === 'bottom_right') {
-      activeEl.style.bottom = '16px';
-      activeEl.style.right = '16px';
+      activeEl.style.bottom = '12px';
+      activeEl.style.right = '12px';
     } else if (position === 'bottom_left') {
-      activeEl.style.bottom = '16px';
-      activeEl.style.left = '16px';
+      activeEl.style.bottom = '12px';
+      activeEl.style.left = '12px';
     } else if (position === 'top_right') {
-      activeEl.style.top = '16px';
-      activeEl.style.right = '16px';
+      activeEl.style.top = '12px';
+      activeEl.style.right = '12px';
     } else if (position === 'top_left') {
-      activeEl.style.top = '16px';
-      activeEl.style.left = '16px';
+      activeEl.style.top = '12px';
+      activeEl.style.left = '12px';
     } else if (position === 'center') {
       activeEl.style.top = '50%';
       activeEl.style.left = '50%';
@@ -1579,7 +1591,8 @@ function updateLiveOverlayPreview() {
   if (activeEl.getAttribute('src') !== resolvedUrl) {
     activeEl.src = resolvedUrl;
     if (isVideo) {
-      ovrVideo.muted = isMuted;
+      ovrVideo.muted = true; // always muted on first load
+      ovrVideo.loop = true;
       ovrVideo.load();
       if (isPlaying) {
         ovrVideo.play().catch(() => {});
@@ -1619,9 +1632,9 @@ function getOverlaySettings() {
   if (!currentOverlayPath) return {};
   return {
     overlay_video: currentOverlayPath,
-    overlay_opacity: parseFloat(document.getElementById('overlay-opacity-slider')?.value || 30) / 100,
-    overlay_position: document.getElementById('overlay-position-select')?.value || 'bottom_right',
-    overlay_scale: parseFloat(document.getElementById('overlay-scale-slider')?.value || 20),
+    overlay_opacity: parseFloat(document.getElementById('overlay-opacity-slider')?.value || 85) / 100,
+    overlay_position: document.getElementById('overlay-position-select')?.value || 'full_screen',
+    overlay_scale: parseFloat(document.getElementById('overlay-scale-slider')?.value || 100),
     overlay_muted: document.getElementById('overlay-mute-checkbox')?.checked ?? true
   };
 }

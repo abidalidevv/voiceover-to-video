@@ -974,8 +974,9 @@
               <video id="preview-video" preload="auto" playsinline muted></video>
               
               <!-- Live Video/Image Overlay Layer (Logo, Watermark, Facecam) -->
-              <video id="preview-overlay-video" playsinline muted loop style="display:none; position:absolute; pointer-events:none; z-index:12; object-fit:contain;"></video>
-              <img id="preview-overlay-img" style="display:none; position:absolute; pointer-events:none; z-index:12; object-fit:contain;" alt="Overlay preview">
+              <!-- Overlay is absolutely positioned WITHIN video-container (overflow:hidden) so it cannot escape -->
+              <video id="preview-overlay-video" playsinline muted loop style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:12; object-fit:cover;"></video>
+              <img id="preview-overlay-img" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:12; object-fit:cover;" alt="Overlay preview">
 
               <!-- Voiceover Audio Element (Plays input audio in preview) -->
               <audio id="preview-audio" preload="auto"></audio>
@@ -1297,24 +1298,24 @@
           <div class="form-group">
             <label class="sub-label">Overlay Position</label>
             <select id="overlay-position-select" class="form-select" onchange="updateOverlayPosition()">
-              <option value="bottom_right" selected>↘️ Bottom-Right (Recommended)</option>
+              <option value="full_screen" selected>⛶ Full Screen (Avatar / Texture Overlay)</option>
+              <option value="bottom_right">↘️ Bottom-Right (Watermark)</option>
               <option value="bottom_left">↙️ Bottom-Left</option>
               <option value="top_right">↗️ Top-Right</option>
               <option value="top_left">↖️ Top-Left</option>
-              <option value="center">⊕ Center (Full Watermark)</option>
-              <option value="full_screen">⛶ Full Screen (Transparent Texture)</option>
+              <option value="center">⊕ Center (Logo)</option>
             </select>
           </div>
           <div class="form-row mt-10">
             <div class="form-group flex-1">
-              <label class="sub-label">Opacity (<span id="overlay-opacity-val">30</span>%)</label>
-              <input type="range" id="overlay-opacity-slider" min="5" max="100" step="5" value="30" oninput="updateOverlayOpacity(this.value)">
+              <label class="sub-label">Opacity (<span id="overlay-opacity-val">85</span>%)</label>
+              <input type="range" id="overlay-opacity-slider" min="5" max="100" step="5" value="85" oninput="updateOverlayOpacity(this.value)">
             </div>
           </div>
-          <div class="form-row mt-8">
+          <div class="form-row mt-8" id="overlay-size-row">
             <div class="form-group flex-1">
-              <label class="sub-label">Size (<span id="overlay-scale-val">20</span>% of frame)</label>
-              <input type="range" id="overlay-scale-slider" min="5" max="80" step="5" value="20" oninput="updateOverlayScale(this.value)">
+              <label class="sub-label">Size (<span id="overlay-scale-val">100</span>% of frame)</label>
+              <input type="range" id="overlay-scale-slider" min="5" max="100" step="5" value="100" oninput="updateOverlayScale(this.value)">
             </div>
           </div>
           <div class="form-row mt-8">
