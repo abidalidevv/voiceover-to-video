@@ -332,7 +332,8 @@ def build_scenes(
     # AI Enhancement if API key is provided (Gemini, Groq, or OpenAI)
     gemini_key = settings.get("gemini_api_key", "").strip()
     gemini_keys = settings.get("gemini_api_keys") or ([gemini_key] if gemini_key else [])
-    groq_key = settings.get("groq_api_key", "").strip()
+    groq_keys = settings.get("groq_api_keys") or ([settings.get("groq_api_key")] if settings.get("groq_api_key") else [])
+    groq_key = groq_keys[0] if groq_keys else ""
     openai_key = settings.get("openai_api_key", "").strip()
     if (gemini_keys or groq_key or openai_key) and scenes:
         try:
@@ -799,10 +800,13 @@ def analyze_script_editorial_direction(
             settings = load_settings()
             g_key = settings.get("gemini_api_key", "").strip()
             gemini_keys = settings.get("gemini_api_keys") or ([g_key] if g_key else [])
-            groq_key = settings.get("groq_api_key", "").strip()
+            groq_keys = settings.get("groq_api_keys") or ([settings.get("groq_api_key")] if settings.get("groq_api_key") else [])
+            groq_key = groq_keys[0] if groq_keys else ""
             openai_key = settings.get("openai_api_key", "").strip()
         except Exception:
             gemini_keys = []
+            groq_key = ""
+            openai_key = ""
 
     if not gemini_keys and not groq_key and not openai_key:
         return default_editorial

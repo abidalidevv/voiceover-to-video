@@ -60,6 +60,7 @@ DEFAULT_SETTINGS = {
     
     # AI & Transcription APIs
     "groq_api_key": "",
+    "groq_api_keys": [],             # Multi-key pool for free Groq accounts
     "openai_api_key": "",
     "gemini_api_key": "",
     "gemini_api_keys": [],
@@ -191,6 +192,14 @@ def load_settings() -> dict:
     merged["gemini_api_keys"] = g_keys
     merged["gemini_api_key"] = g_keys[0] if g_keys else ""
 
+    # Normalize Groq key pool
+    gr_keys = _clean_key_list(merged.get("groq_api_keys", []))
+    single_gr = str(merged.get("groq_api_key", "")).strip()
+    if single_gr and single_gr not in gr_keys:
+        gr_keys.insert(0, single_gr)
+    merged["groq_api_keys"] = gr_keys
+    merged["groq_api_key"] = gr_keys[0] if gr_keys else ""
+
     # Ensure output directories are never empty
     if not str(merged.get("output_dir", "")).strip():
         merged["output_dir"] = str(OUTPUT_DIR)
@@ -222,6 +231,24 @@ def save_settings(new_settings: dict) -> dict:
             all_k.insert(0, single_k.strip())
         new_settings["pixabay_api_keys"] = all_k
         new_settings["pixabay_api_key"] = all_k[0] if all_k else ""
+
+    if "gemini_api_keys" in new_settings or "gemini_api_key" in new_settings:
+        raw_keys = new_settings.get("gemini_api_keys", current.get("gemini_api_keys", []))
+        single_k = new_settings.get("gemini_api_key", current.get("gemini_api_key", ""))
+        all_k = _clean_key_list(raw_keys)
+        if single_k and single_k.strip() not in all_k:
+            all_k.insert(0, single_k.strip())
+        new_settings["gemini_api_keys"] = all_k
+        new_settings["gemini_api_key"] = all_k[0] if all_k else ""
+
+    if "groq_api_keys" in new_settings or "groq_api_key" in new_settings:
+        raw_keys = new_settings.get("groq_api_keys", current.get("groq_api_keys", []))
+        single_k = new_settings.get("groq_api_key", current.get("groq_api_key", ""))
+        all_k = _clean_key_list(raw_keys)
+        if single_k and single_k.strip() not in all_k:
+            all_k.insert(0, single_k.strip())
+        new_settings["groq_api_keys"] = all_k
+        new_settings["groq_api_key"] = all_k[0] if all_k else ""
 
     current.update(new_settings)
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:

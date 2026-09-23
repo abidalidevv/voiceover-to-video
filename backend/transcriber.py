@@ -33,13 +33,14 @@ def transcribe_audio(audio_path: str, niche: str = "General") -> Dict[str, Any]:
     settings = load_settings()
     duration = get_audio_duration(audio_path)
 
-    # 1. Try Groq Whisper (Ultra-fast whisper-large-v3)
-    groq_key = settings.get("groq_api_key", "").strip()
-    if groq_key:
+    # 1. Try Groq Whisper (Ultra-fast whisper-large-v3 across key pool)
+    gr_keys = settings.get("groq_api_keys") or ([settings.get("groq_api_key")] if settings.get("groq_api_key") else [])
+    gr_keys = [k.strip() for k in gr_keys if k and k.strip()]
+    for groq_key in gr_keys:
         try:
             return _transcribe_groq(audio_path, groq_key, duration)
         except Exception as e:
-            print(f"[Transcriber] Groq failed: {e}, attempting OpenAI fallback")
+            print(f"[Transcriber] Groq key failed: {e}, trying next key...")
 
     # 2. Try OpenAI Whisper
     openai_key = settings.get("openai_api_key", "").strip()

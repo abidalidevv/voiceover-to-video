@@ -133,9 +133,6 @@ async function loadSettings() {
     if (document.getElementById('input-pexels-key-3')) document.getElementById('input-pexels-key-3').value = pKeys[2] || '';
     if (document.getElementById('input-pexels-key-4')) document.getElementById('input-pexels-key-4').value = pKeys[3] || '';
     if (document.getElementById('input-pexels-key-5')) document.getElementById('input-pexels-key-5').value = pKeys[4] || '';
-    if (pKeys.length > 1 && document.getElementById('pexels-extra-keys')) {
-      document.getElementById('pexels-extra-keys').style.display = 'block';
-    }
 
     const pbKeys = data.pixabay_api_keys || (data.pixabay_api_key ? [data.pixabay_api_key] : []);
     if (document.getElementById('input-pixabay-key')) document.getElementById('input-pixabay-key').value = pbKeys[0] || '';
@@ -143,9 +140,6 @@ async function loadSettings() {
     if (document.getElementById('input-pixabay-key-3')) document.getElementById('input-pixabay-key-3').value = pbKeys[2] || '';
     if (document.getElementById('input-pixabay-key-4')) document.getElementById('input-pixabay-key-4').value = pbKeys[3] || '';
     if (document.getElementById('input-pixabay-key-5')) document.getElementById('input-pixabay-key-5').value = pbKeys[4] || '';
-    if (pbKeys.length > 1 && document.getElementById('pixabay-extra-keys')) {
-      document.getElementById('pixabay-extra-keys').style.display = 'block';
-    }
 
     if (document.getElementById('input-coverr-key')) document.getElementById('input-coverr-key').value = data.coverr_api_key || '';
     if (document.getElementById('input-videvo-key')) document.getElementById('input-videvo-key').value = data.videvo_api_key || '';
@@ -156,8 +150,14 @@ async function loadSettings() {
     if (document.getElementById('input-rapidapi-key')) document.getElementById('input-rapidapi-key').value = data.rapidapi_stock_key || '';
     if (document.getElementById('input-custom-webhook')) document.getElementById('input-custom-webhook').value = data.custom_stock_webhook || '';
 
-    // AI & Transcription
-    if (document.getElementById('input-groq-key')) document.getElementById('input-groq-key').value = data.groq_api_key || '';
+    // AI & Transcription - Groq 5-Key Pool
+    const grKeys = data.groq_api_keys || (data.groq_api_key ? [data.groq_api_key] : []);
+    if (document.getElementById('input-groq-key')) document.getElementById('input-groq-key').value = grKeys[0] || '';
+    if (document.getElementById('input-groq-key-2')) document.getElementById('input-groq-key-2').value = grKeys[1] || '';
+    if (document.getElementById('input-groq-key-3')) document.getElementById('input-groq-key-3').value = grKeys[2] || '';
+    if (document.getElementById('input-groq-key-4')) document.getElementById('input-groq-key-4').value = grKeys[3] || '';
+    if (document.getElementById('input-groq-key-5')) document.getElementById('input-groq-key-5').value = grKeys[4] || '';
+
     if (document.getElementById('input-openai-key')) document.getElementById('input-openai-key').value = data.openai_api_key || '';
     if (document.getElementById('input-elevenlabs-key')) document.getElementById('input-elevenlabs-key').value = data.elevenlabs_api_key || '';
 
@@ -238,6 +238,21 @@ async function saveAppSettings() {
     });
   });
 
+  // Gather all non-empty Groq keys
+  const rawGroq = [
+    document.getElementById('input-groq-key')?.value || '',
+    document.getElementById('input-groq-key-2')?.value || '',
+    document.getElementById('input-groq-key-3')?.value || '',
+    document.getElementById('input-groq-key-4')?.value || '',
+    document.getElementById('input-groq-key-5')?.value || '',
+  ];
+  const groqKeys = [];
+  rawGroq.forEach(val => {
+    val.split(/[\r\n,;]+/).map(k => k.trim()).filter(Boolean).forEach(k => {
+      if (!groqKeys.includes(k)) groqKeys.push(k);
+    });
+  });
+
   const payload = {
     // 10+ Stock Video APIs - Multi-Account Pool
     pexels_api_key: pexelsKeys[0] || '',
@@ -257,8 +272,9 @@ async function saveAppSettings() {
     gemini_api_key: geminiKeys[0] || '',
     gemini_api_keys: geminiKeys,
 
-    // AI & Transcription
-    groq_api_key: document.getElementById('input-groq-key')?.value.trim() || '',
+    // AI & Transcription (Groq 5-Key Pool + OpenAI)
+    groq_api_key: groqKeys[0] || '',
+    groq_api_keys: groqKeys,
     openai_api_key: document.getElementById('input-openai-key')?.value.trim() || '',
     elevenlabs_api_key: document.getElementById('input-elevenlabs-key')?.value.trim() || '',
 
@@ -371,7 +387,13 @@ async function testApiConnections() {
   if (data.pexels?.status === 'ok') connected.push(`📷 Pexels: Active (${data.pexels.active_keys}/${data.pexels.total_keys} keys)`);
   if (data.pixabay?.status === 'ok') connected.push(`🎥 Pixabay: Active (${data.pixabay.active_keys}/${data.pixabay.total_keys} keys)`);
   if (data.gemini?.status === 'ok') connected.push(`✨ Google Gemini: Active (${data.gemini.active_keys}/${data.gemini.total_keys} keys)`);
-  if (data.groq?.status === 'ok') connected.push('🎙️ Groq Whisper: Active');
+  if (data.groq?.status === 'ok') {
+    if (data.groq.active_keys !== undefined && data.groq.total_keys !== undefined) {
+      connected.push(`🎙️ Groq Whisper: Active (${data.groq.active_keys}/${data.groq.total_keys} keys)`);
+    } else {
+      connected.push('🎙️ Groq Whisper: Active');
+    }
+  }
   if (data.openai?.status === 'ok') connected.push('🤖 OpenAI: Active');
   if (data.nasa?.status === 'ok') connected.push('🚀 NASA Open Media: Active');
   if (data.coverr?.status === 'ok') connected.push('🎬 Coverr: Active');

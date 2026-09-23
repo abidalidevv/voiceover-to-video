@@ -1732,56 +1732,86 @@
           </div>
           <p class="help-text">Connect multiple stock footage providers. When you generate a video, workers query all configured APIs concurrently to grab 1080p landscape clips.</p>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="mt-16">
-            <!-- 1. Pexels (Multi-Account Pool) -->
-            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <label class="form-label" style="margin-bottom:0;">
-                  <span>1. Pexels API Pool <span style="font-size:10px;color:var(--accent-green);">(Multi-Account 20k/mo each)</span></span>
+          <!-- 1. Pexels 5-Key API Pool -->
+          <div style="background:var(--bg-card-sub);padding:16px;border-radius:10px;border:1px solid rgba(59,130,246,0.3);margin-top:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <label class="form-label" style="margin-bottom:0;font-size:14px;font-weight:600;color:#fff;">
+                  <span>1. Pexels API Pool (Enter up to 5 Accounts - 100k clips/mo)</span>
                 </label>
-                <div style="display:flex;gap:8px;align-items:center;">
-                  <button type="button" class="btn btn-xs btn-outline" onclick="document.getElementById('pexels-extra-keys').style.display = document.getElementById('pexels-extra-keys').style.display === 'none' ? 'block' : 'none'" style="font-size:11px;padding:2px 8px;">
-                    ➕ Pool (5 Accounts)
-                  </button>
-                  <a href="https://www.pexels.com/api/" target="_blank" class="external-link">Get Key ↗</a>
-                </div>
+                <span id="badge-pexels" class="badge" style="background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid rgba(59,130,246,0.4);">Checking...</span>
+                <span class="badge" style="background:rgba(16,185,129,0.15);color:#6ee7b7;font-size:10px;">⚡ Up to 16 Concurrent Workers</span>
               </div>
-              <input type="password" id="input-pexels-key" class="form-input mt-8" placeholder="Account #1 API Key (Primary)...">
-              
-              <div id="pexels-extra-keys" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.1);">
-                <span style="font-size:11px;color:var(--accent-blue);font-weight:600;">⚡ Load-Balanced Multi-Account Pool (Up to 5 Accounts):</span>
-                <input type="password" id="input-pexels-key-2" class="form-input mt-4" placeholder="Account #2 API Key (Optional)...">
-                <input type="password" id="input-pexels-key-3" class="form-input mt-4" placeholder="Account #3 API Key (Optional)...">
-                <input type="password" id="input-pexels-key-4" class="form-input mt-4" placeholder="Account #4 API Key (Optional)...">
-                <input type="password" id="input-pexels-key-5" class="form-input mt-4" placeholder="Account #5 API Key (Optional)...">
-                <p style="font-size:10px;color:var(--text-muted);margin-top:4px;">Queries are distributed evenly across all accounts. No single key hits the 200/hr limit.</p>
+              <a href="https://www.pexels.com/api/" target="_blank" class="external-link" style="color:#60a5fa;font-size:12px;font-weight:600;">Get Free Keys on pexels.com/api ↗</a>
+            </div>
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">
+              Queries & downloads run simultaneously across all configured accounts. Each account adds 2-4 concurrent download threads, preventing the 200 req/hr rate limit and multiplying generation speed!
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Account #1 (Primary Key):</label>
+                <input type="password" id="input-pexels-key" class="form-input" placeholder="Pexels Key 1 (Primary)...">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Account #2 (High-Speed Worker):</label>
+                <input type="password" id="input-pexels-key-2" class="form-input" placeholder="Pexels Key 2 (Worker)...">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Account #3 (High-Speed Worker):</label>
+                <input type="password" id="input-pexels-key-3" class="form-input" placeholder="Pexels Key 3 (Worker)...">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Account #4 (High-Speed Worker):</label>
+                <input type="password" id="input-pexels-key-4" class="form-input" placeholder="Pexels Key 4 (Worker)...">
+              </div>
+              <div style="grid-column: span 2;">
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Account #5 (High-Speed Worker):</label>
+                <input type="password" id="input-pexels-key-5" class="form-input" placeholder="Pexels Key 5 (Worker)...">
               </div>
             </div>
+          </div>
 
-            <!-- 2. Pixabay (Multi-Account Pool) -->
-            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <label class="form-label" style="margin-bottom:0;">
-                  <span>2. Pixabay API Pool <span style="font-size:10px;color:var(--accent-green);">(Free Unlimited)</span></span>
+          <!-- 2. Pixabay 5-Key API Pool -->
+          <div style="background:var(--bg-card-sub);padding:16px;border-radius:10px;border:1px solid rgba(16,185,129,0.3);margin-top:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <label class="form-label" style="margin-bottom:0;font-size:14px;font-weight:600;color:#fff;">
+                  <span>2. Pixabay API Pool (Enter up to 5 Accounts - Free Unlimited 1080p)</span>
                 </label>
-                <div style="display:flex;gap:8px;align-items:center;">
-                  <button type="button" class="btn btn-xs btn-outline" onclick="document.getElementById('pixabay-extra-keys').style.display = document.getElementById('pixabay-extra-keys').style.display === 'none' ? 'block' : 'none'" style="font-size:11px;padding:2px 8px;">
-                    ➕ Pool (5 Accounts)
-                  </button>
-                  <a href="https://pixabay.com/api/docs/" target="_blank" class="external-link">Get Key ↗</a>
-                </div>
+                <span id="badge-pixabay" class="badge" style="background:rgba(16,185,129,0.2);color:#86efac;border:1px solid rgba(16,185,129,0.4);">Checking...</span>
+                <span class="badge" style="background:rgba(59,130,246,0.15);color:#93c5fd;font-size:10px;">⚡ Parallel 1080p Streams</span>
               </div>
-              <input type="password" id="input-pixabay-key" class="form-input mt-8" placeholder="Account #1 API Key (Primary)...">
-
-              <div id="pixabay-extra-keys" style="display:none;margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.1);">
-                <span style="font-size:11px;color:var(--accent-blue);font-weight:600;">⚡ Load-Balanced Multi-Account Pool (Up to 5 Accounts):</span>
-                <input type="password" id="input-pixabay-key-2" class="form-input mt-4" placeholder="Account #2 API Key (Optional)...">
-                <input type="password" id="input-pixabay-key-3" class="form-input mt-4" placeholder="Account #3 API Key (Optional)...">
-                <input type="password" id="input-pixabay-key-4" class="form-input mt-4" placeholder="Account #4 API Key (Optional)...">
-                <input type="password" id="input-pixabay-key-5" class="form-input mt-4" placeholder="Account #5 API Key (Optional)...">
-                <p style="font-size:10px;color:var(--text-muted);margin-top:4px;">Queries and downloads run across all accounts in parallel with automatic rate-limit cascade.</p>
+              <a href="https://pixabay.com/api/docs/" target="_blank" class="external-link" style="color:#6ee7b7;font-size:12px;font-weight:600;">Get Free Keys on pixabay.com ↗</a>
+            </div>
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">
+              Parallel workers search and download 1080p clips simultaneously across all configured accounts with automated failover and rate-limit cascade.
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Account #1 (Primary Key):</label>
+                <input type="password" id="input-pixabay-key" class="form-input" placeholder="Pixabay Key 1 (Primary)...">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Account #2 (Worker):</label>
+                <input type="password" id="input-pixabay-key-2" class="form-input" placeholder="Pixabay Key 2 (Worker)...">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Account #3 (Worker):</label>
+                <input type="password" id="input-pixabay-key-3" class="form-input" placeholder="Pixabay Key 3 (Worker)...">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Account #4 (Worker):</label>
+                <input type="password" id="input-pixabay-key-4" class="form-input" placeholder="Pixabay Key 4 (Worker)...">
+              </div>
+              <div style="grid-column: span 2;">
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Account #5 (Worker):</label>
+                <input type="password" id="input-pixabay-key-5" class="form-input" placeholder="Pixabay Key 5 (Worker)...">
               </div>
             </div>
+          </div>
+
+          <h4 style="margin-top:20px;margin-bottom:12px;font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Additional Stock Footage Sources (Free & Community Fallbacks)</h4>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
 
             <!-- 3. Coverr -->
             <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
@@ -1864,22 +1894,52 @@
           </div>
           <p class="help-text">High-speed transcription engine to extract sentence timestamps, emotion cues, and visual context.</p>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="mt-16">
-            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
-              <label class="form-label" style="display:flex;justify-content:space-between;">
-                <span>11. Groq API Key <span style="font-size:10px;color:var(--accent-green);">(100% Free - 1.5s Whisper)</span></span>
-                <a href="https://console.groq.com/keys" target="_blank" class="external-link">Get Free Key ↗</a>
-              </label>
-              <input type="password" id="input-groq-key" class="form-input" placeholder="gsk_...">
+          <!-- 11. Groq Cloud AI 5-Key Pool -->
+          <div style="background:var(--bg-card-sub);padding:16px;border-radius:10px;border:1px solid rgba(245,158,11,0.3);margin-top:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <label class="form-label" style="margin-bottom:0;font-size:14px;font-weight:600;color:#fff;">
+                  <span>11. Groq Cloud AI Pool (Enter up to 5 Free Keys - 1.5s Whisper)</span>
+                </label>
+                <span id="badge-groq" class="badge" style="background:rgba(245,158,11,0.2);color:#fcd34d;border:1px solid rgba(245,158,11,0.4);">Checking...</span>
+                <span class="badge" style="background:rgba(16,185,129,0.15);color:#6ee7b7;font-size:10px;">100% Free • Multi-Key</span>
+              </div>
+              <a href="https://console.groq.com/keys" target="_blank" class="external-link" style="color:#fbbf24;font-size:12px;font-weight:600;">Get Free Keys on console.groq.com ↗</a>
             </div>
+            <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">
+              Enter 1 to 5 free Groq keys. Transcribes audio and extracts scene keywords in under 2 seconds. Multi-key pool rotates across keys to prevent hitting the 30 RPM limit!
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Groq Key #1 (Primary):</label>
+                <input type="password" id="input-groq-key" class="form-input" placeholder="gsk_... Key 1 (Primary)">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Groq Key #2 (Backup):</label>
+                <input type="password" id="input-groq-key-2" class="form-input" placeholder="gsk_... Key 2 (Backup)">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Groq Key #3 (Backup):</label>
+                <input type="password" id="input-groq-key-3" class="form-input" placeholder="gsk_... Key 3 (Backup)">
+              </div>
+              <div>
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Groq Key #4 (Backup):</label>
+                <input type="password" id="input-groq-key-4" class="form-input" placeholder="gsk_... Key 4 (Backup)">
+              </div>
+              <div style="grid-column: span 2;">
+                <label style="font-size:11px;color:#94a3b8;margin-bottom:4px;display:block;">Groq Key #5 (Backup):</label>
+                <input type="password" id="input-groq-key-5" class="form-input" placeholder="gsk_... Key 5 (Backup)">
+              </div>
+            </div>
+          </div>
 
-            <div class="form-group" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
-              <label class="form-label" style="display:flex;justify-content:space-between;">
-                <span>12. OpenAI API Key <span style="font-size:10px;color:var(--accent-blue);">(Whisper / GPT Fallback)</span></span>
-                <a href="https://platform.openai.com/api-keys" target="_blank" class="external-link">Get Key ↗</a>
-              </label>
-              <input type="password" id="input-openai-key" class="form-input" placeholder="sk-...">
-            </div>
+          <!-- 12. OpenAI API Key -->
+          <div class="form-group mt-16" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);">
+            <label class="form-label" style="display:flex;justify-content:space-between;">
+              <span>12. OpenAI API Key <span style="font-size:10px;color:var(--accent-blue);">(Whisper / GPT Fallback)</span></span>
+              <a href="https://platform.openai.com/api-keys" target="_blank" class="external-link">Get Key ↗</a>
+            </label>
+            <input type="password" id="input-openai-key" class="form-input" placeholder="sk-...">
           </div>
         </div>
 

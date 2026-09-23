@@ -146,7 +146,7 @@ SESSION.mount("https://", adapter)
 SESSION.mount("http://", adapter)
 
 
-def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback=None, target_resolution: str = "1080p", niche: str = "") -> List[Dict[str, Any]]:
+def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback=None, target_resolution: str = "1080p", niche: str = "", pipeline: str = "Main") -> List[Dict[str, Any]]:
     """
     Downloads stock videos for all scenes in parallel using a ThreadPoolExecutor.
     Load-balances queries across multiple API keys (Pexels, Pixabay, etc.).
@@ -164,7 +164,7 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
     total_keys = len(p_keys) + len(pb_keys)
     num_workers = max(configured_workers, min(16, max(4, total_keys * 2)))
 
-    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers (Resolution: {target_resolution}, Niche: '{niche}', Pexels Accounts: {len(p_keys)}, Pixabay Accounts: {len(pb_keys)})...")
+    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers (Resolution: {target_resolution}, Niche: '{niche}', Pipeline: '{pipeline}', Pexels Accounts: {len(p_keys)}, Pixabay Accounts: {len(pb_keys)})...")
 
     completed_scenes = [None] * len(scenes)
     completed_count = 0
@@ -192,7 +192,8 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
                 target_resolution=target_resolution,
                 pexels_pool=pexels_pool,
                 pixabay_pool=pixabay_pool,
-                niche=scene_niche
+                niche=scene_niche,
+                pipeline=pipeline
             )
             if clip_data:
                 vid_id = clip_data.get("video_id")
@@ -268,7 +269,8 @@ def _score_candidate(
     query_words: List[str], 
     metadata_text: str, 
     target_resolution: str = "1080p",
-    niche: str = ""
+    niche: str = "",
+    pipeline: str = ""
 ) -> float:
     """Ranks candidate video clips based on resolution, duration headroom, keyword match, and niche relevance."""
     score = 0.0
@@ -357,6 +359,17 @@ def _score_candidate(
         if any(c in meta_lower for c in nat_clashes):
             score -= 100.0
 
+    # 5. PIPELINE AESTHETIC BOOST (Nature & Scenery vs Cinematic Film)
+    pipe_clean = str(pipeline or "").lower().strip()
+    if pipe_clean == "nature":
+        nature_keywords = {"nature", "landscape", "drone", "aerial", "mountain", "forest", "ocean", "river", "sunset", "clouds", "waterfall", "wildlife", "greenery", "scenery"}
+        if any(w in meta_lower for w in nature_keywords):
+            score += 35.0
+    elif pipe_clean == "cinematic":
+        cinematic_keywords = {"cinematic", "dramatic", "film", "dark", "moody", "atmospheric", "silhouette", "slow motion", "lens", "shadow", "35mm"}
+        if any(w in meta_lower for w in cinematic_keywords):
+            score += 35.0
+
     return score
 
 
@@ -368,14 +381,16 @@ def find_and_download_stock_video(
     pexels_pool: Optional[ApiKeyPool] = None,
     pixabay_pool: Optional[ApiKeyPool] = None,
     allow_simplify: bool = True,
-    niche: str = ""
+    niche: str = "",
+    pipeline: str = "Main"
 ) -> Optional[Dict[str, Any]]:
     """
     Cascading Fallback Provider Architecture with Multi-Account Pools:
-    1. Queries primary provider (Pexels) across configured account keys. If candidates match, returns immediately!
-    2. Only if all Pexels keys fail or rate-limit, cascades to Pixabay multi-account pool.
-    3. If Pixabay fails, cascades to free archives (Coverr / NASA / Wikimedia).
-    4. If no results and query has >= 3 words, retries with simplified 2-word salient query.
+    1. Enriches search query based on selected Pipeline (Main vs Nature & Scenery vs Cinematic Film).
+    2. Queries primary provider (Pexels) across configured account keys. If candidates match, returns immediately!
+    3. Only if all Pexels keys fail or rate-limit, cascades to Pixabay multi-account pool.
+    4. If Pixabay fails, cascades to free archives (Coverr / NASA / Wikimedia).
+    5. If no results and query has >= 3 words, retries with simplified 2-word salient query.
     """
     settings = load_settings()
     provider_pref = settings.get("video_provider", "all")
@@ -394,45 +409,57 @@ def find_and_download_stock_video(
     wiki_enabled = bool(settings.get("wikimedia_video_enabled", False))
     webhook_url = settings.get("custom_stock_webhook", "").strip()
 
+    # Enrich query with pipeline aesthetic bias
+    effective_query = query
+    p_lower = str(pipeline or "Main").lower().strip()
+    if p_lower == "nature":
+        nature_markers = ("nature", "landscape", "scenery", "forest", "mountain", "ocean", "river", "drone", "waterfall", "wildlife", "sunset")
+        if not any(k in query.lower() for k in nature_markers):
+            effective_query = f"{query} nature landscape"
+    elif p_lower == "cinematic":
+        cinematic_markers = ("cinematic", "film", "dramatic", "moody", "35mm", "slow motion")
+        if not any(k in query.lower() for k in cinematic_markers):
+            effective_query = f"{query} cinematic"
+
     # Priority 1: Pexels (best quality)
     if (provider_pref in ("all", "pexels")) and pexels_pool.has_keys():
-        clip = _search_pexels(query, pexels_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche)
+        clip = _search_pexels(effective_query, pexels_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline)
         if clip:
             return clip
 
     # Priority 2: Pixabay (fast secondary fallback)
     if (provider_pref in ("all", "pixabay")) and pixabay_pool.has_keys():
-        clip = _search_pixabay(query, pixabay_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche)
+        clip = _search_pixabay(effective_query, pixabay_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline)
         if clip:
             return clip
 
     # Priority 3: Coverr (free clips)
     if (provider_pref in ("all", "coverr")) and coverr_key:
-        clip = _search_coverr(query, coverr_key, min_duration)
+        clip = _search_coverr(effective_query, coverr_key, min_duration)
         if clip:
             return clip
 
     # Priority 4: Videvo
     if (provider_pref in ("all", "videvo")) and videvo_key:
-        clip = _search_videvo(query, videvo_key, min_duration)
+        clip = _search_videvo(effective_query, videvo_key, min_duration)
         if clip:
             return clip
 
     # Priority 5: NASA Open Video (especially good for Space niche!)
     if (provider_pref in ("all", "nasa")) and nasa_enabled:
-        clip = _search_nasa(query, min_duration)
+        clip = _search_nasa(effective_query, min_duration)
         if clip:
             return clip
 
     # Priority 6: Wikimedia Commons
     if (provider_pref in ("all", "wikimedia")) and wiki_enabled:
-        clip = _search_wikimedia(query, min_duration)
+        clip = _search_wikimedia(effective_query, min_duration)
         if clip:
             return clip
 
     # Priority 7: Webhook Proxy
     if webhook_url:
-        clip = _search_custom_webhook(query, webhook_url, settings.get("rapidapi_stock_key", ""), min_duration)
+        clip = _search_custom_webhook(effective_query, webhook_url, settings.get("rapidapi_stock_key", ""), min_duration)
         if clip:
             return clip
 
@@ -448,7 +475,8 @@ def find_and_download_stock_video(
                 pexels_pool=pexels_pool,
                 pixabay_pool=pixabay_pool,
                 allow_simplify=False,
-                niche=niche
+                niche=niche,
+                pipeline=pipeline
             )
             if simplified_clip:
                 return simplified_clip
@@ -456,7 +484,7 @@ def find_and_download_stock_video(
     return None
 
 
-def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p", niche: str = "") -> Optional[Dict[str, Any]]:
+def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p", niche: str = "", pipeline: str = "") -> Optional[Dict[str, Any]]:
     clean_query = re.sub(r'#', '', query).strip()
     candidate_keys = pool.get_candidate_keys()
     if not candidate_keys:
@@ -514,7 +542,8 @@ def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_c
                         query_words=query_tokens,
                         metadata_text=meta_text,
                         target_resolution=target_resolution,
-                        niche=niche
+                        niche=niche,
+                        pipeline=pipeline
                     )
                     scored.append((score, vid, best_file))
 
@@ -542,7 +571,7 @@ def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_c
     return None
 
 
-def _search_pixabay(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p", niche: str = "") -> Optional[Dict[str, Any]]:
+def _search_pixabay(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p", niche: str = "", pipeline: str = "") -> Optional[Dict[str, Any]]:
     clean_query = re.sub(r'#', '', query).strip()
     candidate_keys = pool.get_candidate_keys()
     if not candidate_keys:
@@ -588,7 +617,8 @@ def _search_pixabay(query: str, pool: ApiKeyPool, min_duration: float, sentence_
                     query_words=query_tokens,
                     metadata_text=tags_text,
                     target_resolution=target_resolution,
-                    niche=niche
+                    niche=niche,
+                    pipeline=pipeline
                 )
                 scored.append((score, h, selected))
 

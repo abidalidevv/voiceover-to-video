@@ -207,14 +207,26 @@ def test_apis():
         return "gemini", {"status": "error", "error": last_err or "All Gemini keys failed"}
 
     def test_groq():
-        g_key = settings.get("groq_api_key", "").strip()
-        if not g_key:
+        gr_keys = settings.get("groq_api_keys") or ([settings.get("groq_api_key")] if settings.get("groq_api_key") else [])
+        gr_keys = [k for k in gr_keys if k and k.strip()]
+        if not gr_keys:
             return "groq", {"status": "unconfigured"}
-        try:
-            r = requests.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {g_key}"}, timeout=4)
-            return "groq", {"status": "ok" if r.status_code == 200 else "error", "code": r.status_code}
-        except Exception as e:
-            return "groq", {"status": "error", "error": str(e)}
+        valid_gr = 0
+        last_err = ""
+        for gk in gr_keys:
+            try:
+                r = requests.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {gk}"}, timeout=4)
+                if r.status_code == 200:
+                    valid_gr += 1
+                elif r.status_code == 429:
+                    last_err = "429 Rate Limit"
+                else:
+                    last_err = f"HTTP {r.status_code}"
+            except Exception as e:
+                last_err = str(e)
+        if valid_gr > 0:
+            return "groq", {"status": "ok", "active_keys": valid_gr, "total_keys": len(gr_keys), "code": 200}
+        return "groq", {"status": "error", "error": last_err or "All Groq keys failed"}
 
     def test_openai():
         o_key = settings.get("openai_api_key", "").strip()
@@ -426,7 +438,8 @@ def start_generation_job(req: GenerateRequest):
                 scenes,
                 progress_callback=on_progress,
                 target_resolution=req.target_resolution,
-                niche=req.niche
+                niche=req.niche,
+                pipeline=req.pipeline
             )
 
             # Web URLs
@@ -493,7 +506,7 @@ def generate_project(req: GenerateRequest):
         niche=req.niche
     )
     scenes = build_scenes(transcription, niche=req.niche, editorial_direction=editorial_dir)
-    processed_scenes = download_scenes_concurrently(scenes, niche=req.niche)
+    processed_scenes = download_scenes_concurrently(scenes, niche=req.niche, pipeline=req.pipeline)
 
     for sc in processed_scenes:
         if sc.get("video_clip") and sc["video_clip"].get("file_path"):
