@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings();
   await checkApiStatus();
   await loadProjectsLibrary();
+  initWaveformVisualizer();
 
   // If there is an existing project in library, auto-initialize it in preview editor
   try {
@@ -739,6 +740,9 @@ function loadProjectIntoPreview(project) {
     audioEl.onerror = () => {
       console.warn("[VideoGen] Notice: voiceover audio could not load from", project.audio_url);
     };
+    loadAudioWaveform(project.audio_url);
+  } else if (project.scenes) {
+    fallbackWaveformSynthesis();
   }
   const videoEl = document.getElementById('preview-video');
   if (videoEl) {
@@ -1049,6 +1053,7 @@ function updatePlaybackUI() {
   // Update progress bar
   const progressPct = (currentPlaybackTime / totalDuration) * 100;
   document.getElementById('timeline-progress').style.width = `${progressPct}%`;
+  updateWaveformPlayhead(progressPct);
   updateTimeDisplay(currentPlaybackTime, totalDuration);
 
   // Sync Subtitles
@@ -3699,4 +3704,286 @@ function copyText(text, toastMsg) {
     document.body.removeChild(ta);
     showToast(`📋 ${toastMsg || 'Copied to clipboard!'}`);
   });
+}
+
+
+// ==================== VISUAL WAVEFORM AUDIO BAR ====================
+let waveformData = null; // Array of normalized amplitude peaks [0.0 ... 1.0]
+let waveformAudioCtx = null;
+let isWaveformDragging = false;
+
+function initWaveformVisualizer() {
+  const canvas = document.getElementById('waveform-canvas');
+  if (!canvas) return;
+
+  // Window resize handler
+  window.addEventListener('resize', () => {
+    if (waveformData) {
+      drawWaveform(waveformData);
+    }
+  });
+
+  const wrap = document.getElementById('waveform-wrap');
+  if (wrap) {
+    wrap.addEventListener('mousedown', (e) => {
+      isWaveformDragging = true;
+      seekWaveform(e);
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (isWaveformDragging) {
+        seekWaveform(e);
+      }
+    });
+    window.addEventListener('mouseup', () => {
+      isWaveformDragging = false;
+    });
+  }
+}
+
+async function loadAudioWaveform(audioUrl) {
+  const badge = document.getElementById('waveform-status-badge');
+  if (badge) {
+    badge.textContent = 'Analyzing Waveform...';
+    badge.style.color = '#38bdf8';
+  }
+
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) {
+      fallbackWaveformSynthesis();
+      return;
+    }
+
+    if (!waveformAudioCtx) {
+      waveformAudioCtx = new AudioContextClass();
+    }
+    if (waveformAudioCtx.state === 'suspended') {
+      await waveformAudioCtx.resume();
+    }
+
+    const response = await fetch(audioUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await waveformAudioCtx.decodeAudioData(arrayBuffer);
+
+    // Extract channel 0 PCM samples
+    const rawData = audioBuffer.getChannelData(0);
+    const numBars = 160;
+    const blockSize = Math.floor(rawData.length / numBars);
+    const peaks = [];
+
+    for (let i = 0; i < numBars; i++) {
+      const start = i * blockSize;
+      let sum = 0;
+      let maxPeak = 0;
+      const count = Math.min(blockSize, rawData.length - start);
+
+      for (let j = 0; j < count; j++) {
+        const val = Math.abs(rawData[start + j]);
+        if (val > maxPeak) maxPeak = val;
+        sum += val * val;
+      }
+      const rms = Math.sqrt(sum / count);
+      // Blend peak and RMS for natural speech dynamics (detecting speech cadence vs pause valleys)
+      const dynamicVal = (0.65 * maxPeak) + (0.35 * rms);
+      peaks.push(dynamicVal);
+    }
+
+    // Normalize peaks between 0.04 and 1.0
+    const highest = Math.max(...peaks, 0.001);
+    waveformData = peaks.map(p => {
+      const norm = p / highest;
+      // Exponential scaling for punchy visual contrast between pause valleys and speech peaks
+      return Math.max(0.04, Math.min(1.0, Math.pow(norm, 0.85)));
+    });
+
+    if (badge) {
+      badge.textContent = 'Voiceover Synced';
+      badge.style.color = 'var(--accent-cyan)';
+    }
+
+    drawWaveform(waveformData);
+  } catch (err) {
+    console.warn("[Waveform] Audio decode fallback:", err);
+    fallbackWaveformSynthesis();
+  }
+}
+
+function fallbackWaveformSynthesis() {
+  const badge = document.getElementById('waveform-status-badge');
+  if (badge) {
+    badge.textContent = 'Speech Pattern Mode';
+    badge.style.color = 'var(--text-secondary)';
+  }
+  if (currentProject && currentProject.scenes && currentProject.scenes.length > 0) {
+    synthesizeWaveformFromScenes(currentProject.scenes, totalDuration || 30.0);
+  } else {
+    // Generate organic speech-like waveform rhythm
+    const numBars = 160;
+    const synthetic = [];
+    for (let i = 0; i < numBars; i++) {
+      const t = i / numBars;
+      const cadence = Math.sin(t * Math.PI * 18);
+      const isPause = (i % 28 < 5) || (cadence < -0.4);
+      if (isPause) {
+        synthetic.push(0.05 + Math.random() * 0.04);
+      } else {
+        const energy = 0.35 + Math.abs(cadence) * 0.55 + Math.random() * 0.1;
+        synthetic.push(Math.min(1.0, energy));
+      }
+    }
+    waveformData = synthetic;
+    drawWaveform(waveformData);
+  }
+}
+
+function synthesizeWaveformFromScenes(scenes, duration) {
+  const numBars = 160;
+  const bars = new Array(numBars).fill(0.05);
+  const dur = Math.max(1, duration);
+
+  scenes.forEach(sc => {
+    const sStart = sc.start || 0;
+    const sEnd = sc.end || (sStart + (sc.duration || 3));
+    const startBar = Math.floor((sStart / dur) * numBars);
+    const endBar = Math.min(numBars, Math.floor((sEnd / dur) * numBars));
+
+    for (let b = startBar; b < endBar; b++) {
+      const rel = (b - startBar) / Math.max(1, (endBar - startBar));
+      const speechRhythm = Math.abs(Math.sin(rel * Math.PI * 6));
+      bars[b] = Math.max(0.12, 0.4 + speechRhythm * 0.5 + Math.random() * 0.1);
+    }
+  });
+
+  waveformData = bars;
+  drawWaveform(waveformData);
+}
+
+function drawWaveform(peaks) {
+  const canvas = document.getElementById('waveform-canvas');
+  if (!canvas) return;
+
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width <= 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(rect.width * dpr);
+  canvas.height = Math.floor(rect.height * dpr);
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  if (!peaks || peaks.length === 0) return;
+
+  const width = rect.width;
+  const height = rect.height;
+  const numBars = peaks.length;
+  const barWidth = Math.max(2, (width / numBars) - 1.5);
+  const gap = (width - (numBars * barWidth)) / Math.max(1, numBars - 1);
+  const progressRatio = totalDuration > 0 ? (currentPlaybackTime / totalDuration) : 0;
+
+  for (let i = 0; i < numBars; i++) {
+    const x = i * (barWidth + gap);
+    const barRatio = i / numBars;
+    const isPlayed = barRatio <= progressRatio;
+    const amp = peaks[i]; // 0.04 ... 1.0
+    const barHeight = Math.max(4, amp * (height - 8));
+    const y = (height - barHeight) / 2;
+
+    // Distinguish Pause Valleys vs Spoken Peaks vs High Pitch Climax
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, barWidth, barHeight, 2);
+    } else {
+      ctx.rect(x, y, barWidth, barHeight);
+    }
+
+    if (amp <= 0.12) {
+      // Pause valley / silence: dim soft muted gray
+      ctx.fillStyle = isPlayed ? 'rgba(0, 240, 255, 0.35)' : 'rgba(148, 163, 184, 0.22)';
+    } else if (amp > 0.72) {
+      // High pitch / vocal climax peak: vivid gradient with electric purple/pink highlight
+      const grad = ctx.createLinearGradient(0, y, 0, y + barHeight);
+      if (isPlayed) {
+        grad.addColorStop(0, '#e879f9');
+        grad.addColorStop(0.5, '#00f0ff');
+        grad.addColorStop(1, '#3b82f6');
+      } else {
+        grad.addColorStop(0, 'rgba(232, 121, 249, 0.75)');
+        grad.addColorStop(1, 'rgba(59, 130, 246, 0.5)');
+      }
+      ctx.fillStyle = grad;
+    } else {
+      // Normal speech dialogue: rich electric cyan / neon blue
+      const grad = ctx.createLinearGradient(0, y, 0, y + barHeight);
+      if (isPlayed) {
+        grad.addColorStop(0, '#00f0ff');
+        grad.addColorStop(1, '#0284c7');
+      } else {
+        grad.addColorStop(0, 'rgba(0, 240, 255, 0.65)');
+        grad.addColorStop(1, 'rgba(2, 132, 199, 0.35)');
+      }
+      ctx.fillStyle = grad;
+    }
+
+    ctx.fill();
+  }
+}
+
+function updateWaveformPlayhead(progressPct) {
+  const playhead = document.getElementById('waveform-playhead');
+  if (playhead) {
+    const clampedPct = Math.max(0, Math.min(100, progressPct));
+    playhead.style.left = `${clampedPct}%`;
+  }
+  // Redraw waveform to update active played glowing fill
+  if (waveformData) {
+    drawWaveform(waveformData);
+  }
+}
+
+function seekWaveform(event) {
+  if (!totalDuration) return;
+  const wrap = document.getElementById('waveform-wrap');
+  if (!wrap) return;
+
+  const rect = wrap.getBoundingClientRect();
+  const clickX = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
+  const ratio = clickX / rect.width;
+  const targetTime = ratio * totalDuration;
+
+  seekVideoToTime(targetTime);
+  updateWaveformPlayhead(ratio * 100);
+}
+
+function hoverWaveform(event) {
+  if (!totalDuration) return;
+  const wrap = document.getElementById('waveform-wrap');
+  const hoverLine = document.getElementById('waveform-hover-line');
+  const hoverTime = document.getElementById('waveform-hover-time');
+  if (!wrap) return;
+
+  const rect = wrap.getBoundingClientRect();
+  const hoverX = Math.max(0, Math.min(event.clientX - rect.left, rect.width));
+  const ratio = hoverX / rect.width;
+  const time = ratio * totalDuration;
+
+  if (hoverLine) {
+    hoverLine.style.display = 'block';
+    hoverLine.style.left = `${hoverX}px`;
+  }
+  if (hoverTime) {
+    hoverTime.textContent = formatTime(time);
+  }
+}
+
+function leaveWaveform() {
+  const hoverLine = document.getElementById('waveform-hover-line');
+  const hoverTime = document.getElementById('waveform-hover-time');
+  if (hoverLine) {
+    hoverLine.style.display = 'none';
+  }
+  if (hoverTime) {
+    hoverTime.textContent = formatTime(currentPlaybackTime);
+  }
 }

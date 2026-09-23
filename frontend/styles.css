@@ -1037,6 +1037,127 @@ input[type="range"]::-webkit-slider-thumb:hover {
   accent-color: var(--accent-cyan);
 }
 
+/* ==================== SPEECH WAVEFORM AUDIO BAR ==================== */
+.waveform-container {
+  background: rgba(10, 14, 23, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 12px 10px 12px;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.waveform-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+
+.waveform-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.waveform-icon {
+  font-size: 12px;
+}
+
+.waveform-badge {
+  background: rgba(0, 240, 255, 0.12);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.waveform-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.waveform-time-tag {
+  color: var(--accent-cyan);
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.waveform-hint {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.waveform-canvas-wrap {
+  position: relative;
+  width: 100%;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.waveform-canvas-wrap:hover {
+  border-color: rgba(0, 240, 255, 0.35);
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.1);
+}
+
+#waveform-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.waveform-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0%;
+  width: 2px;
+  background: #00f0ff;
+  box-shadow: 0 0 8px #00f0ff, 0 0 16px rgba(0, 240, 255, 0.8);
+  pointer-events: none;
+  z-index: 5;
+  transition: transform 0.03s linear;
+}
+
+.waveform-playhead::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 8px;
+  height: 8px;
+  background: #00f0ff;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #00f0ff;
+}
+
+.waveform-hover-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+  display: none;
+  z-index: 4;
+}
+
 /* Scene Director Strip */
 .scene-director-panel {
   background: var(--bg-card);

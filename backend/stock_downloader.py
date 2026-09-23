@@ -15,12 +15,19 @@ VIDEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 import threading
 
 
-def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int, target_resolution: str = "1080p") -> str:
+def trim_and_fit_clip(
+    raw_path: str,
+    target_dur: float,
+    scene_id: int,
+    target_resolution: str = "1080p",
+    aspect_ratio: str = "16:9"
+) -> str:
     """
-    Intelligently crops and trims a downloaded stock video to the EXACT scene duration.
-    - Strips all excess video beyond the sentence duration so clips never spill into next sentences.
-    - If the clip is shorter than the sentence, applies seamless looping (-stream_loop -1).
-    - Enforces target resolution (1080p Full HD, 4K UHD, or 8K UHD) 16:9 center-crop, 30fps, setsar=1.
+    Intelligently crops and trims a downloaded stock video to the EXACT scene duration in parallel background threads.
+    - Strips all excess video beyond sentence duration so clips never spill into next sentences.
+    - If clip is shorter than sentence, applies seamless looping (-stream_loop -1).
+    - Enforces target resolution (1080p Full HD, 4K UHD, 8K UHD) with 16:9 Landscape or 9:16 Vertical Shorts.
+    - Uses hardware GPU encoder (QSV / NVENC / AMF) when available for 5x-10x pre-scaling speed.
     - Strips native audio (-an) to prevent ambient noise clash.
     """
     if not raw_path or not os.path.exists(raw_path):
@@ -29,13 +36,23 @@ def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int, target_re
     ffmpeg_exe = find_ffmpeg()
     target_dur = max(0.5, round(float(target_dur), 2))
     res_str = str(target_resolution or "1080p").lower().strip()
-    if res_str == "8k":
-        w, h = 7680, 4320
-    elif res_str == "4k":
-        w, h = 3840, 2160
+    is_vertical = str(aspect_ratio or "").lower().strip() in ("9:16", "vertical", "portrait", "shorts", "tiktok")
+
+    if is_vertical:
+        if res_str == "8k":
+            w, h = 4320, 7680
+        elif res_str == "4k":
+            w, h = 2160, 3840
+        else:
+            w, h = 1080, 1920
     else:
-        w, h = 1920, 1080
-    
+        if res_str == "8k":
+            w, h = 7680, 4320
+        elif res_str == "4k":
+            w, h = 3840, 2160
+        else:
+            w, h = 1920, 1080
+
     probe_dur = 0.0
     ffprobe_exe = find_ffprobe()
     try:
@@ -47,8 +64,8 @@ def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int, target_re
 
     scene_clip_dir = CACHE_DIR / "scene_clips"
     scene_clip_dir.mkdir(parents=True, exist_ok=True)
-    
-    path_hash = hashlib.md5(f"{raw_path}_{target_dur}_{res_str}".encode("utf-8")).hexdigest()[:8]
+
+    path_hash = hashlib.md5(f"{raw_path}_{target_dur}_{res_str}_{w}x{h}".encode("utf-8")).hexdigest()[:8]
     out_name = f"sc_{scene_id:04d}_{res_str}_{path_hash}.mp4"
     out_path = scene_clip_dir / out_name
 
@@ -56,14 +73,20 @@ def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int, target_re
         return str(out_path)
 
     # Content-Aware Action Window Selection:
-    # Stock footage typically starts with 1-2s camera prep or stabilizer shake.
-    # The primary planned action and subject motion occurs in the middle 35% to 70% of the footage.
     start_offset = 0.0
     if probe_dur >= (target_dur + 2.0):
         headroom = probe_dur - target_dur
-        # Center in the golden action zone (~40% through available headroom)
         candidate_offset = round(headroom * 0.40, 2)
         start_offset = max(1.5, min(candidate_offset, round(headroom - 0.4, 2)))
+
+    # Detect fastest encoder
+    encoder = "libx264"
+    encoder_args = ["-preset", "ultrafast", "-crf", "18", "-pix_fmt", "yuv420p", "-threads", "0"]
+    try:
+        from .video_renderer import get_best_video_encoder
+        encoder, encoder_args = get_best_video_encoder(ffmpeg_exe, use_gpu=True)
+    except Exception:
+        pass
 
     cmd = [ffmpeg_exe, "-y"]
     if probe_dur > 0 and probe_dur < (target_dur + start_offset):
@@ -79,20 +102,35 @@ def trim_and_fit_clip(raw_path: str, target_dur: float, scene_id: int, target_re
         "-i", str(raw_path),
         "-t", f"{trim_dur:.2f}",
         "-vf", scale_filter,
-        "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-crf", "18",
-        "-pix_fmt", "yuv420p",
-        "-threads", "0",
+        "-c:v", encoder,
+        *encoder_args,
         "-an",
         str(out_path)
     ])
     try:
         subprocess.run(cmd, capture_output=True, check=True)
         return str(out_path)
-    except Exception as e:
-        print(f"[StockDownloader] Notice: trimming raw clip failed: {e}, falling back to raw path")
-        return raw_path
+    except Exception:
+        # Fallback to multi-threaded CPU libx264
+        try:
+            cpu_cmd = [
+                ffmpeg_exe, "-y",
+                "-i", str(raw_path),
+                "-t", f"{trim_dur:.2f}",
+                "-vf", scale_filter,
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-crf", "18",
+                "-pix_fmt", "yuv420p",
+                "-threads", "0",
+                "-an",
+                str(out_path)
+            ]
+            subprocess.run(cpu_cmd, capture_output=True, check=True)
+            return str(out_path)
+        except Exception as e2:
+            print(f"[StockDownloader] Notice: trimming raw clip failed: {e2}, falling back to raw path")
+            return raw_path
 
 
 class ApiKeyPool:
@@ -146,11 +184,12 @@ SESSION.mount("https://", adapter)
 SESSION.mount("http://", adapter)
 
 
-def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback=None, target_resolution: str = "1080p", niche: str = "", pipeline: str = "Main") -> List[Dict[str, Any]]:
+def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback=None, target_resolution: str = "1080p", niche: str = "", pipeline: str = "Main", aspect_ratio: str = "16:9") -> List[Dict[str, Any]]:
     """
     Downloads stock videos for all scenes in parallel using a ThreadPoolExecutor.
     Load-balances queries across multiple API keys (Pexels, Pixabay, etc.).
     Includes visual diversity tracking to prevent adjacent scenes from getting identical clips.
+    Pre-scales each clip to target resolution and aspect ratio using hardware GPU encoding.
     """
     settings = load_settings()
     configured_workers = int(settings.get("workers", 8))
@@ -164,7 +203,7 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
     total_keys = len(p_keys) + len(pb_keys)
     num_workers = max(configured_workers, min(16, max(4, total_keys * 2)))
 
-    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers (Resolution: {target_resolution}, Niche: '{niche}', Pipeline: '{pipeline}', Pexels Accounts: {len(p_keys)}, Pixabay Accounts: {len(pb_keys)})...")
+    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers (Resolution: {target_resolution}, Aspect: {aspect_ratio}, Niche: '{niche}', Pipeline: '{pipeline}', Pexels Accounts: {len(p_keys)}, Pixabay Accounts: {len(pb_keys)})...")
 
     completed_scenes = [None] * len(scenes)
     completed_count = 0
@@ -179,6 +218,7 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
         tags = scene_item.get("search_tags", ["cinematic inspiring"])
         selected_tag = scene_item.get("selected_tag") or tags[0]
         duration = float(scene_item.get("duration", 4.0))
+        scene_aspect = scene_item.get("aspect_ratio") or aspect_ratio or "16:9"
 
         clip_data = None
         # Try selected tag first, then other candidate tags
@@ -212,7 +252,13 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
 
         # Intelligently trim the clip to the exact sentence duration (stripping excess video)
         if clip_data and clip_data.get("file_path"):
-            trimmed_path = trim_and_fit_clip(clip_data["file_path"], duration, scene_idx, target_resolution=target_resolution)
+            trimmed_path = trim_and_fit_clip(
+                clip_data["file_path"],
+                duration,
+                scene_idx,
+                target_resolution=target_resolution,
+                aspect_ratio=scene_aspect
+            )
             clip_data["raw_file_path"] = clip_data["file_path"]
             clip_data["file_path"] = trimmed_path
             clip_data["duration"] = duration

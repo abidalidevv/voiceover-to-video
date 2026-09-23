@@ -375,6 +375,7 @@ class GenerateRequest(BaseModel):
     niche: str = "Motivation Psychology"
     pipeline: str = "Main"
     target_resolution: str = "1080p"
+    aspect_ratio: str = "16:9"
 
 
 @app.post("/api/start-generate")
@@ -440,7 +441,8 @@ def start_generation_job(req: GenerateRequest):
                 progress_callback=on_progress,
                 target_resolution=req.target_resolution,
                 niche=req.niche,
-                pipeline=req.pipeline
+                pipeline=req.pipeline,
+                aspect_ratio=req.aspect_ratio
             )
 
             # Web URLs
@@ -455,6 +457,7 @@ def start_generation_job(req: GenerateRequest):
                 "niche": req.niche,
                 "pipeline": req.pipeline,
                 "target_resolution": req.target_resolution,
+                "aspect_ratio": req.aspect_ratio,
                 "audio_filename": req.audio_filename,
                 "audio_path": str(audio_path),
                 "audio_url": f"/media/temp/{req.audio_filename}",
@@ -819,8 +822,10 @@ def render_video(req: RenderRequest):
         "color_grade": req.custom_options.get("color_grade", project.get("color_grade", "clean")),
         "transition": req.custom_options.get("transition", project.get("transition", "none")),
         "transition_mode": req.custom_options.get("transition_mode", project.get("transition_mode", "fixed")),
-        "transition_sfx": req.custom_options.get("transition_sfx", project.get("transition_sfx", None)),
+        "transition_sfx": req.custom_options.get("transition_sfx", project.get("transition_sfx", "whoosh_soft")),
         "transition_sfx_volume": float(req.custom_options.get("transition_sfx_volume", project.get("transition_sfx_volume", 0.40))),
+        "enable_sfx": bool(req.custom_options.get("enable_sfx", project.get("enable_sfx", True))),
+        "hardware_encoder": req.custom_options.get("hardware_encoder", project.get("hardware_encoder", settings.get("hardware_encoder", "auto"))),
         "emphasis_zoom_enabled": bool(req.custom_options.get("emphasis_zoom_enabled", project.get("emphasis_zoom_enabled", False))),
         "emphasis_zoom_intensity": float(req.custom_options.get("emphasis_zoom_intensity", project.get("emphasis_zoom_intensity", 1.15))),
         "mute_stock_audio": bool(req.custom_options.get("mute_stock_audio", True)),
@@ -942,8 +947,10 @@ def start_render_job(req: RenderRequest):
                 "color_grade": req.custom_options.get("color_grade", project.get("color_grade", "clean")),
                 "transition": req.custom_options.get("transition", project.get("transition", "none")),
                 "transition_mode": req.custom_options.get("transition_mode", project.get("transition_mode", "fixed")),
-                "transition_sfx": req.custom_options.get("transition_sfx", project.get("transition_sfx", None)),
+                "transition_sfx": req.custom_options.get("transition_sfx", project.get("transition_sfx", "whoosh_soft")),
                 "transition_sfx_volume": float(req.custom_options.get("transition_sfx_volume", project.get("transition_sfx_volume", 0.40))),
+                "enable_sfx": bool(req.custom_options.get("enable_sfx", project.get("enable_sfx", True))),
+                "hardware_encoder": req.custom_options.get("hardware_encoder", project.get("hardware_encoder", load_settings().get("hardware_encoder", "auto"))),
                 "emphasis_zoom_enabled": bool(req.custom_options.get("emphasis_zoom_enabled", project.get("emphasis_zoom_enabled", False))),
                 "emphasis_zoom_intensity": float(req.custom_options.get("emphasis_zoom_intensity", project.get("emphasis_zoom_intensity", 1.15))),
                 "mute_stock_audio": bool(req.custom_options.get("mute_stock_audio", True)),

@@ -154,7 +154,8 @@ def render_final_video(
     mute_stock_audio = bool(custom_options.get("mute_stock_audio", True))
     bgm_track = custom_options.get("bgm_track", settings.get("default_bgm", "cinematic_ambient")) if enable_bgm else "none"
     bgm_volume = float(custom_options.get("bgm_volume", 0.10)) if enable_bgm else 0.0
-    transition_sfx = custom_options.get("transition_sfx", settings.get("default_transition_sfx", None)) if enable_sfx else "none"
+    raw_sfx = custom_options.get("transition_sfx") or settings.get("default_transition_sfx") or "whoosh_soft"
+    transition_sfx = raw_sfx if enable_sfx else "none"
     transition_sfx_volume = float(custom_options.get("transition_sfx_volume", 0.40)) if enable_sfx else 0.0
     emphasis_zoom_enabled = bool(custom_options.get("emphasis_zoom_enabled", False)) and enable_polish
     emphasis_zoom_intensity = float(custom_options.get("emphasis_zoom_intensity", 1.15))
@@ -208,7 +209,8 @@ def render_final_video(
             motion_w2, motion_h2 = 2048, 1152
 
     # Detect fastest hardware or CPU encoder once
-    encoder, encoder_args = get_best_video_encoder(ffmpeg_exe, use_gpu=use_gpu)
+    preferred_encoder = custom_options.get("hardware_encoder") or settings.get("hardware_encoder", "auto")
+    encoder, encoder_args = get_best_video_encoder(ffmpeg_exe, use_gpu=use_gpu, preferred=preferred_encoder)
 
     # Verify input voiceover audio
     resolved_audio_path = _resolve_audio_path(audio_path)
@@ -694,31 +696,51 @@ def render_final_video(
     return str(final_output_path)
 
 
-_DETECTED_ENCODER_CACHE = None
+_DETECTED_ENCODER_CACHE = {}
 
-def get_best_video_encoder(ffmpeg_exe: str, use_gpu: bool = True):
+def get_best_video_encoder(ffmpeg_exe: str, use_gpu: bool = True, preferred: Optional[str] = None):
     """
-    Detects the fastest available H.264 video encoder on Windows.
+    Detects and returns the optimal video encoder on Windows.
+    Checks user setting ("auto", "nvenc", "qsv", "amf", "cpu") or preferred override.
     Probes in priority order:
-    1. NVIDIA NVENC (h264_nvenc)
-    2. Intel QuickSync (h264_qsv)
-    3. AMD AMF (h264_amf)
+    1. NVIDIA NVENC (h264_nvenc) - Ultra-fast GPU
+    2. Intel QuickSync (h264_qsv) - Very fast iGPU/dGPU
+    3. AMD AMF (h264_amf) - AMD Radeon GPU
     4. Windows MediaFoundation (h264_mf)
     5. Fallback: Highly optimized CPU libx264 using all CPU cores (-threads 0)
     """
     global _DETECTED_ENCODER_CACHE
-    if not use_gpu:
+    settings = load_settings()
+    user_choice = (preferred or settings.get("hardware_encoder", "auto") or "auto").lower().strip()
+
+    if not use_gpu or user_choice == "cpu":
         return ("libx264", ["-preset", "ultrafast", "-crf", "20", "-pix_fmt", "yuv420p", "-threads", "0"])
 
-    if _DETECTED_ENCODER_CACHE is not None:
-        return _DETECTED_ENCODER_CACHE
+    cache_key = f"{user_choice}_{use_gpu}"
+    if isinstance(_DETECTED_ENCODER_CACHE, dict) and cache_key in _DETECTED_ENCODER_CACHE:
+        return _DETECTED_ENCODER_CACHE[cache_key]
 
-    candidates = [
-        ("h264_nvenc", ["-preset", "p1", "-tune", "ll", "-cq", "23", "-pix_fmt", "yuv420p"]),
-        ("h264_qsv", ["-preset", "veryfast", "-global_quality", "23", "-pix_fmt", "nv12"]),
-        ("h264_amf", ["-usage", "transcoding", "-quality", "speed", "-rc", "cqp", "-qp_p", "23", "-pix_fmt", "yuv420p"]),
-        ("h264_mf", ["-rate_control", "cbr", "-b:v", "8M", "-pix_fmt", "yuv420p"])
+    encoder_map = {
+        "nvenc": ("h264_nvenc", ["-preset", "p4", "-tune", "hq", "-cq", "22", "-pix_fmt", "yuv420p"]),
+        "qsv": ("h264_qsv", ["-preset", "veryfast", "-global_quality", "23", "-pix_fmt", "nv12"]),
+        "amf": ("h264_amf", ["-usage", "transcoding", "-quality", "speed", "-rc", "cqp", "-qp_p", "23", "-pix_fmt", "yuv420p"]),
+        "mf": ("h264_mf", ["-rate_control", "cbr", "-b:v", "8M", "-pix_fmt", "yuv420p"])
+    }
+
+    candidates = []
+    # If user explicitly chose a specific GPU encoder, test that first
+    if user_choice in encoder_map:
+        candidates.append(encoder_map[user_choice])
+
+    standard_order = [
+        encoder_map["nvenc"],
+        encoder_map["qsv"],
+        encoder_map["amf"],
+        encoder_map["mf"]
     ]
+    for c in standard_order:
+        if c not in candidates:
+            candidates.append(c)
 
     for enc, args in candidates:
         try:
@@ -729,14 +751,19 @@ def get_best_video_encoder(ffmpeg_exe: str, use_gpu: bool = True):
             res = subprocess.run(test_cmd, capture_output=True, timeout=5)
             if res.returncode == 0:
                 print(f"[Renderer] Hardware Acceleration Active: '{enc}' (args: {args})")
-                _DETECTED_ENCODER_CACHE = (enc, args)
-                return _DETECTED_ENCODER_CACHE
+                if not isinstance(_DETECTED_ENCODER_CACHE, dict):
+                    _DETECTED_ENCODER_CACHE = {}
+                _DETECTED_ENCODER_CACHE[cache_key] = (enc, args)
+                return (enc, args)
         except Exception:
             pass
 
-    print("[Renderer] Hardware acceleration not available. Using multi-threaded CPU libx264 (-threads 0)")
-    _DETECTED_ENCODER_CACHE = ("libx264", ["-preset", "ultrafast", "-crf", "20", "-pix_fmt", "yuv420p", "-threads", "0"])
-    return _DETECTED_ENCODER_CACHE
+    print("[Renderer] Hardware acceleration not available or failed probe. Using multi-threaded CPU libx264 (-threads 0)")
+    cpu_result = ("libx264", ["-preset", "ultrafast", "-crf", "20", "-pix_fmt", "yuv420p", "-threads", "0"])
+    if not isinstance(_DETECTED_ENCODER_CACHE, dict):
+        _DETECTED_ENCODER_CACHE = {}
+    _DETECTED_ENCODER_CACHE[cache_key] = cpu_result
+    return cpu_result
 
 
 def _render_xfade_single(ffmpeg_exe, seg_files, valid_clips, transition, trans_dur, output_path, transition_mode="fixed", encoder="libx264", encoder_args=None):

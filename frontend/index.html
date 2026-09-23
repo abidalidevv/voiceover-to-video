@@ -410,28 +410,20 @@
     <section class="tab-pane active" id="tab-studio">
       <div class="studio-card">
         <div class="studio-card-header">
-          <div class="studio-header-row" style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <h2 style="margin:0;font-size:21px;white-space:nowrap;">Create YouTube Videos & Shorts</h2>
+          <div class="studio-header-row">
+            <div>
+              <h2>Create YouTube Videos & Shorts</h2>
+              <p class="subtitle">Transcribe audio, auto-segment scenes, grab 1080p stock footage with concurrent threads, and apply CapCut kinetic captions, transitions & BGM.</p>
             </div>
-            
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;flex:1;">
-              <!-- Right-side compact pipeline info pill -->
-              <div class="studio-desc-pill" style="max-width:540px;font-size:11.5px;color:#94a3b8;line-height:1.4;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:6px 12px;display:flex;align-items:center;gap:8px;">
-                <span style="font-size:14px;color:var(--accent-cyan);flex-shrink:0;">⚡</span>
-                <span>Transcribe audio, auto-segment scenes, grab 1080p stock footage with concurrent threads, and apply CapCut kinetic captions, transitions & BGM.</span>
-              </div>
-
-              <!-- Studio Mode Toggle: Single vs Bulk -->
-              <div class="studio-mode-toggle-wrap" style="flex-shrink:0;">
-                <div class="studio-mode-switch">
-                  <button class="mode-tab active" id="mode-single-btn" onclick="switchStudioMode('single')">
-                    <span>🎙️ Single Studio</span>
-                  </button>
-                  <button class="mode-tab" id="mode-bulk-btn" onclick="switchStudioMode('bulk')">
-                    <span>⚡ Bulk Queue <span class="badge badge-accent">Batch</span></span>
-                  </button>
-                </div>
+            <!-- Studio Mode Toggle: Single vs Bulk -->
+            <div class="studio-mode-toggle-wrap">
+              <div class="studio-mode-switch">
+                <button class="mode-tab active" id="mode-single-btn" onclick="switchStudioMode('single')">
+                  <span>🎙️ Single Studio</span>
+                </button>
+                <button class="mode-tab" id="mode-bulk-btn" onclick="switchStudioMode('bulk')">
+                  <span>⚡ Bulk Queue <span class="badge badge-accent">Batch</span></span>
+                </button>
               </div>
             </div>
           </div>
@@ -1011,6 +1003,26 @@
                 <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1" oninput="changeVolume(this.value)">
               </div>
               <button class="btn-ctrl" onclick="toggleFullscreen()">⛶</button>
+            </div>
+
+            <!-- Visual Waveform Audio Bar (Speech Pacing & Pause Visualizer) -->
+            <div class="waveform-container" id="waveform-container">
+              <div class="waveform-header">
+                <div class="waveform-title">
+                  <span class="waveform-icon">🎙️</span>
+                  <span class="waveform-title-text">Voiceover Speech Waveform</span>
+                  <span class="waveform-badge" id="waveform-status-badge">Speech Peaks &amp; Pauses</span>
+                </div>
+                <div class="waveform-meta">
+                  <span id="waveform-hover-time" class="waveform-time-tag">00:00</span>
+                  <span class="waveform-hint">Click or drag to scrub audio timeline</span>
+                </div>
+              </div>
+              <div class="waveform-canvas-wrap" id="waveform-wrap" onclick="seekWaveform(event)">
+                <canvas id="waveform-canvas" height="50"></canvas>
+                <div class="waveform-playhead" id="waveform-playhead"></div>
+                <div class="waveform-hover-line" id="waveform-hover-line"></div>
+              </div>
             </div>
           </div>
 
