@@ -37,6 +37,8 @@ data/batch_jobs.json
 # Secrets & Local Credentials
 api.txt
 extra/api.txt
+api.md
+extra/api.md
 .env
 
 # Dependencies & Build
