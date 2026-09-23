@@ -186,7 +186,7 @@ async function loadSettings() {
       handleWorkerSliderChange(workers);
     }
     const badge = document.getElementById('worker-count-badge');
-    if (badge) badge.textContent = `${workers} Workers Ready`;
+    if (badge) badge.textContent = `${workers} Workers`;
   } catch (err) {
     console.error('Failed to load settings:', err);
   }
@@ -299,7 +299,7 @@ async function saveAppSettings() {
     const poolInfo = `Pexels: ${pexelsKeys.length} keys, Pixabay: ${pixabayKeys.length} keys`;
     showToast(`💾 Settings and API keys saved! (${poolInfo}, ${payload.workers} Workers Active)`);
     const badge = document.getElementById('worker-count-badge');
-    if (badge) badge.textContent = `${payload.workers} Workers Ready`;
+    if (badge) badge.textContent = `${payload.workers} Workers`;
   } catch (err) {
     alert('Error saving settings: ' + err.message);
   }
