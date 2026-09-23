@@ -348,7 +348,9 @@ class CaptionEngine {
       }
 
       if (isActive) {
-        if (this.style.animation === 'word_box') {
+        if (this.style.animation === 'none') {
+          return `<span class="caption-word active" style="color:${this.style.highlightColor}; -webkit-text-fill-color:${this.style.highlightColor}; ${strokeStyle}">${rawText}</span>`;
+        } else if (this.style.animation === 'word_box') {
           return `<span class="caption-word active box-style anim-box" style="background:${this.style.highlightColor}; color:#000000 !important; -webkit-text-fill-color:#000000 !important; -webkit-text-stroke: 0px !important;">${rawText}</span>`;
         } else if (this.style.animation === 'word_glow') {
           return `<span class="caption-word active anim-glow" style="color:${this.style.highlightColor}; -webkit-text-fill-color:${this.style.highlightColor}; ${strokeStyle} text-shadow: 0 0 16px ${this.style.highlightColor};">${rawText}</span>`;

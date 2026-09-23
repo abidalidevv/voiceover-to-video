@@ -51,20 +51,30 @@ def generate_scene_image(
     scene_id: int = 0,
     tags: Optional[List[str]] = None,
     niche: str = "General",
-    target_resolution: str = "1080p"
+    target_resolution: str = "1080p",
+    aspect_ratio: str = "16:9"
 ) -> Path:
     """
-    Generates an Ultra HD 16:9 cinematic image for a scene.
-    1. Tries Google Nano Banana / Gemini Image API if quota is active.
-    2. Automatically cascades to Pollinations Flux 16:9 (fast, free, photorealistic 1920x1080).
+    Generates an Ultra HD cinematic image for a scene (16:9 Landscape or 9:16 Vertical Shorts).
+    1. Tries Google Nano Banana / Gemini Flash Image API if quota is active (fast 4s timeout).
+    2. Seamlessly cascades to Pollinations Flux (Fast, Free, Ultra HD 16:9 or 9:16).
     Saves to image cache and returns Path.
     """
     settings = load_settings()
     gemini_key = settings.get("gemini_api_key", "").strip()
     gemini_keys = settings.get("gemini_api_keys") or ([gemini_key] if gemini_key else [])
 
+    is_vertical = str(aspect_ratio).strip().lower() in ("9:16", "vertical", "portrait", "shorts", "tiktok")
+    w, h = (1080, 1920) if is_vertical else (1920, 1080)
+    aspect_tag = "9:16 vertical shorts composition" if is_vertical else "wide angle 16:9"
+
     enriched_prompt = _enrich_image_prompt(prompt, tags=tags, niche=niche)
-    prompt_hash = hashlib.md5(f"{enriched_prompt}_{target_resolution}".encode("utf-8")).hexdigest()[:10]
+    if is_vertical and "16:9" in enriched_prompt:
+        enriched_prompt = enriched_prompt.replace("wide angle 16:9", "vertical 9:16 portrait composition")
+    elif not is_vertical and "9:16" in enriched_prompt:
+        enriched_prompt = enriched_prompt.replace("vertical 9:16", "wide angle 16:9")
+
+    prompt_hash = hashlib.md5(f"{enriched_prompt}_{w}x{h}_{target_resolution}".encode("utf-8")).hexdigest()[:10]
     out_filename = f"sc_{scene_id:04d}_{prompt_hash}.jpg"
     out_path = IMAGE_CACHE_DIR / out_filename
 
@@ -72,50 +82,67 @@ def generate_scene_image(
     if out_path.exists() and out_path.stat().st_size > 5000:
         return out_path
 
-    # Resolution dimensions
-    res_str = str(target_resolution or "1080p").lower().strip()
-    if res_str in ("4k", "8k"):
-        w, h = 1920, 1080  # AI generation native 1080p, upscaled to 4K during FFmpeg assembly
-    else:
-        w, h = 1920, 1080
-
-    # Priority 1: Google Imagen 3 API if key is available
     image_bytes = None
+
+    # Priority 1: Google Gemini Nano Banana / Flash Image API (fast 4s check)
     if gemini_keys:
         for g_key in gemini_keys:
             if not g_key:
                 continue
-            for model_id in ["imagen-3.0-generate-002", "imagen-3.0-generate-001"]:
+            for model_id in ["gemini-2.5-flash-image", "nano-banana-pro-preview", "imagen-3.0-generate-002"]:
                 try:
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:predict?key={g_key}"
-                    payload = {
-                        "instances": [{"prompt": enriched_prompt}],
-                        "parameters": {"aspectRatio": "16:9", "sampleCount": 1}
-                    }
-                    res = requests.post(url, json=payload, timeout=20)
-                    if res.status_code == 200:
-                        data = res.json()
-                        preds = data.get("predictions", [])
-                        if preds and "bytesBase64Encoded" in preds[0]:
-                            import base64
-                            image_bytes = base64.b64decode(preds[0]["bytesBase64Encoded"])
-                            print(f"[ImageGenerator] Successfully generated Ultra HD 16:9 image via Google {model_id} for Scene #{scene_id+1}")
-                            break
+                    if "imagen" in model_id:
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:predict?key={g_key}"
+                        payload = {
+                            "instances": [{"prompt": enriched_prompt}],
+                            "parameters": {"aspectRatio": "9:16" if is_vertical else "16:9", "sampleCount": 1}
+                        }
+                        res = requests.post(url, json=payload, timeout=4)
+                        if res.status_code == 200:
+                            data = res.json()
+                            preds = data.get("predictions", [])
+                            if preds and "bytesBase64Encoded" in preds[0]:
+                                import base64
+                                image_bytes = base64.b64decode(preds[0]["bytesBase64Encoded"])
+                                print(f"[ImageGenerator] Generated image via Google {model_id} for Scene #{scene_id+1}")
+                                break
+                    else:
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={g_key}"
+                        payload = {
+                            "contents": [{"parts": [{"text": f"Generate a photorealistic Ultra HD {aspect_tag} cinematic image of: {enriched_prompt}"}]}]
+                        }
+                        res = requests.post(url, json=payload, timeout=4)
+                        if res.status_code == 200:
+                            data = res.json()
+                            candidates = data.get("candidates", [])
+                            if candidates:
+                                parts = candidates[0].get("content", {}).get("parts", [])
+                                for p in parts:
+                                    if "inlineData" in p and "data" in p["inlineData"]:
+                                        import base64
+                                        image_bytes = base64.b64decode(p["inlineData"]["data"])
+                                        print(f"[ImageGenerator] Generated image via Google {model_id} for Scene #{scene_id+1}")
+                                        break
+                                if image_bytes:
+                                    break
                 except Exception:
-                    continue
+                    pass
             if image_bytes:
                 break
 
-    # Priority 2: High-Performance Pollinations Flux 16:9 Generator (Fast, Free, Ultra HD 16:9)
+    # Priority 2: High-Performance Pollinations Flux (Fast, Free, Ultra HD 16:9 or 9:16)
     if not image_bytes:
-        try:
-            print(f"[ImageGenerator] Generating Ultra HD 16:9 AI Image for Scene #{scene_id+1}: '{enriched_prompt[:60]}...'")
-            poll_url = f"https://image.pollinations.ai/prompt/{requests.utils.quote(enriched_prompt)}?width={w}&height={h}&nologo=true&model=flux"
-            r = requests.get(poll_url, timeout=30)
-            if r.status_code == 200 and len(r.content) > 5000:
-                image_bytes = r.content
-        except Exception as e:
-            print(f"[ImageGenerator] Notice: Pollinations request notice: {e}")
+        for model in ["flux", "turbo"]:
+            try:
+                print(f"[ImageGenerator] Generating Ultra HD {w}x{h} AI Image ({model}) for Scene #{scene_id+1}: '{enriched_prompt[:55]}...'")
+                encoded = requests.utils.quote(enriched_prompt)
+                poll_url = f"https://image.pollinations.ai/prompt/{encoded}?width={w}&height={h}&nologo=true&model={model}&seed={prompt_hash}"
+                r = requests.get(poll_url, timeout=18)
+                if r.status_code == 200 and len(r.content) > 5000:
+                    image_bytes = r.content
+                    break
+            except Exception as e:
+                print(f"[ImageGenerator] Pollinations ({model}) attempt notice: {e}")
 
     # Fallback to local high-contrast canvas if network fails
     if not image_bytes:
@@ -143,10 +170,12 @@ def convert_image_to_scene_clip(
     duration: float,
     scene_id: int,
     target_resolution: str = "1080p",
-    motion: bool = True
+    motion: bool = True,
+    aspect_ratio: str = "16:9"
 ) -> str:
     """
-    Renders an Ultra HD 16:9 image into an MP4 video clip matching the EXACT voiceover sentence duration.
+    Renders an Ultra HD image into an MP4 video clip matching the EXACT voiceover sentence duration.
+    Supports both 16:9 Landscape and 9:16 Vertical Shorts.
     Applies subtle cinematic Ken Burns zoom/pan motion so images blend seamlessly into video timeline.
     """
     if not image_path or not os.path.exists(image_path):
@@ -154,15 +183,25 @@ def convert_image_to_scene_clip(
 
     ffmpeg_exe = find_ffmpeg()
     target_dur = max(0.5, round(float(duration), 2))
+    is_vertical = str(aspect_ratio).strip().lower() in ("9:16", "vertical", "portrait", "shorts", "tiktok")
     res_str = str(target_resolution or "1080p").lower().strip()
-    if res_str == "8k":
-        w, h = 7680, 4320
-    elif res_str == "4k":
-        w, h = 3840, 2160
-    else:
-        w, h = 1920, 1080
 
-    path_hash = hashlib.md5(f"{image_path}_{target_dur}_{res_str}_{motion}".encode("utf-8")).hexdigest()[:8]
+    if is_vertical:
+        if res_str == "8k":
+            w, h = 4320, 7680
+        elif res_str == "4k":
+            w, h = 2160, 3840
+        else:
+            w, h = 1080, 1920
+    else:
+        if res_str == "8k":
+            w, h = 7680, 4320
+        elif res_str == "4k":
+            w, h = 3840, 2160
+        else:
+            w, h = 1920, 1080
+
+    path_hash = hashlib.md5(f"{image_path}_{target_dur}_{w}x{h}_{motion}".encode("utf-8")).hexdigest()[:8]
     out_name = f"sc_{scene_id:04d}_ai_{path_hash}.mp4"
     out_path = SCENE_CLIP_DIR / out_name
 

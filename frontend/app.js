@@ -975,6 +975,13 @@ function startPlayback() {
     }
   }
 
+  // Synchronize live overlay video if visible
+  const ovrVideo = document.getElementById('preview-overlay-video');
+  if (ovrVideo && ovrVideo.style.display !== 'none' && ovrVideo.src) {
+    ovrVideo.muted = document.getElementById('overlay-mute-checkbox')?.checked ?? true;
+    ovrVideo.play().catch(() => {});
+  }
+
   const startStamp = performance.now() - (currentPlaybackTime * 1000);
 
   clearInterval(playbackTimer);
@@ -1006,6 +1013,9 @@ function pausePlayback() {
 
   const videoEl = document.getElementById('preview-video');
   if (videoEl) videoEl.pause();
+
+  const ovrVideo = document.getElementById('preview-overlay-video');
+  if (ovrVideo) ovrVideo.pause();
 }
 
 function updatePlaybackUI() {
@@ -1050,6 +1060,14 @@ function seekVideoToTime(targetTime) {
       }
     } catch (e) {}
   }
+
+  const ovrVideo = document.getElementById('preview-overlay-video');
+  if (ovrVideo && ovrVideo.style.display !== 'none' && ovrVideo.duration) {
+    try {
+      ovrVideo.currentTime = currentPlaybackTime % ovrVideo.duration;
+    } catch (e) {}
+  }
+
   updatePlaybackUI();
 
   if (currentProject && currentProject.scenes) {
@@ -1402,6 +1420,7 @@ async function handleBgmUpload(event) {
 // ==================== VIDEO OVERLAY HANDLERS ====================
 
 let currentOverlayPath = null;
+let currentOverlayUrl = null;
 
 async function handleOverlayUpload(event) {
   const file = event.target.files && event.target.files[0];
@@ -1423,6 +1442,7 @@ async function handleOverlayUpload(event) {
     const data = await res.json();
 
     currentOverlayPath = data.overlay_key || data.path;
+    currentOverlayUrl = data.web_url || ('/media/' + currentOverlayPath.replace(/^data[\\/]/, '').replace(/\\/g, '/'));
 
     const badge = document.getElementById('overlay-active-badge');
     const fname = document.getElementById('overlay-filename');
@@ -1431,7 +1451,8 @@ async function handleOverlayUpload(event) {
       badge.classList.remove('hidden');
     }
 
-    showToast(`🎭 Overlay uploaded: <strong>${data.filename || file.name}</strong> (${data.type}, ${data.size_kb}KB)`);
+    updateLiveOverlayPreview();
+    showToast(`🎭 Overlay active in preview: <strong>${data.filename || file.name}</strong> (${data.type})`);
   } catch (e) {
     console.error(e);
     alert('Failed to upload overlay: ' + e.message);
@@ -1443,23 +1464,123 @@ async function handleOverlayUpload(event) {
 
 function removeOverlay() {
   currentOverlayPath = null;
+  currentOverlayUrl = null;
   const badge = document.getElementById('overlay-active-badge');
   if (badge) badge.classList.add('hidden');
+  updateLiveOverlayPreview();
   showToast('🎭 Overlay removed');
 }
 
+function updateLiveOverlayPreview() {
+  const ovrVideo = document.getElementById('preview-overlay-video');
+  const ovrImg = document.getElementById('preview-overlay-img');
+  if (!ovrVideo || !ovrImg) return;
+
+  if (!currentOverlayPath) {
+    ovrVideo.style.display = 'none';
+    ovrVideo.pause();
+    ovrVideo.removeAttribute('src');
+    ovrImg.style.display = 'none';
+    ovrImg.removeAttribute('src');
+    return;
+  }
+
+  const opacity = (parseFloat(document.getElementById('overlay-opacity-slider')?.value || 30)) / 100;
+  const scalePercent = parseFloat(document.getElementById('overlay-scale-slider')?.value || 20);
+  const position = document.getElementById('overlay-position-select')?.value || 'bottom_right';
+  const isMuted = document.getElementById('overlay-mute-checkbox')?.checked ?? true;
+
+  const isVideo = /\.(mp4|mov|webm|avi)($|\?)/i.test(currentOverlayPath);
+  const activeEl = isVideo ? ovrVideo : ovrImg;
+  const inactiveEl = isVideo ? ovrImg : ovrVideo;
+
+  inactiveEl.style.display = 'none';
+  inactiveEl.removeAttribute('src');
+  if (inactiveEl.tagName === 'VIDEO') inactiveEl.pause();
+
+  activeEl.style.display = 'block';
+  activeEl.style.opacity = opacity;
+  activeEl.style.position = 'absolute';
+  activeEl.style.zIndex = '12';
+  activeEl.style.pointerEvents = 'none';
+
+  if (position === 'full_screen') {
+    activeEl.style.top = '0';
+    activeEl.style.left = '0';
+    activeEl.style.right = '0';
+    activeEl.style.bottom = '0';
+    activeEl.style.width = '100%';
+    activeEl.style.height = '100%';
+    activeEl.style.transform = 'none';
+    activeEl.style.objectFit = 'cover';
+  } else {
+    activeEl.style.width = `${scalePercent}%`;
+    activeEl.style.maxHeight = `${scalePercent}%`;
+    activeEl.style.objectFit = 'contain';
+
+    activeEl.style.top = '';
+    activeEl.style.bottom = '';
+    activeEl.style.left = '';
+    activeEl.style.right = '';
+    activeEl.style.transform = 'none';
+
+    if (position === 'bottom_right') {
+      activeEl.style.bottom = '16px';
+      activeEl.style.right = '16px';
+    } else if (position === 'bottom_left') {
+      activeEl.style.bottom = '16px';
+      activeEl.style.left = '16px';
+    } else if (position === 'top_right') {
+      activeEl.style.top = '16px';
+      activeEl.style.right = '16px';
+    } else if (position === 'top_left') {
+      activeEl.style.top = '16px';
+      activeEl.style.left = '16px';
+    } else if (position === 'center') {
+      activeEl.style.top = '50%';
+      activeEl.style.left = '50%';
+      activeEl.style.transform = 'translate(-50%, -50%)';
+    }
+  }
+
+  const resolvedUrl = currentOverlayUrl || ('/media/' + currentOverlayPath.replace(/^data[\\/]/, '').replace(/\\/g, '/'));
+  if (activeEl.getAttribute('src') !== resolvedUrl) {
+    activeEl.src = resolvedUrl;
+    if (isVideo) {
+      ovrVideo.muted = isMuted;
+      ovrVideo.load();
+      if (isPlaying) {
+        ovrVideo.play().catch(() => {});
+      }
+    }
+  }
+
+  if (isVideo) {
+    ovrVideo.muted = isMuted;
+  }
+}
+
 function updateOverlayPosition() {
-  // Position saved on render — no immediate action needed
+  updateLiveOverlayPreview();
 }
 
 function updateOverlayOpacity(val) {
   const el = document.getElementById('overlay-opacity-val');
   if (el) el.textContent = val;
+  updateLiveOverlayPreview();
 }
 
 function updateOverlayScale(val) {
   const el = document.getElementById('overlay-scale-val');
   if (el) el.textContent = val;
+  updateLiveOverlayPreview();
+}
+
+function updateOverlayMute(isMuted) {
+  const ovrVideo = document.getElementById('preview-overlay-video');
+  if (ovrVideo) {
+    ovrVideo.muted = Boolean(isMuted);
+  }
 }
 
 function getOverlaySettings() {
@@ -1468,7 +1589,8 @@ function getOverlaySettings() {
     overlay_video: currentOverlayPath,
     overlay_opacity: parseFloat(document.getElementById('overlay-opacity-slider')?.value || 30) / 100,
     overlay_position: document.getElementById('overlay-position-select')?.value || 'bottom_right',
-    overlay_scale: parseFloat(document.getElementById('overlay-scale-slider')?.value || 20)
+    overlay_scale: parseFloat(document.getElementById('overlay-scale-slider')?.value || 20),
+    overlay_muted: document.getElementById('overlay-mute-checkbox')?.checked ?? true
   };
 }
 
@@ -1617,11 +1739,32 @@ async function generateSingleSceneAIImage(sceneId) {
   const sc = currentProject.scenes.find(s => s.id === sceneId);
   if (!sc) return;
 
-  const defaultPrompt = sc.selected_tag || (sc.search_tags && sc.search_tags[0]) || sc.text;
-  const promptInput = prompt(`Generate Ultra HD 16:9 AI Image for Scene #${sc.scene_number}:\nEnter custom visual prompt (or press OK to use default):`, defaultPrompt);
-  if (promptInput === null) return; // User cancelled
+  const scIdx = currentProject.scenes.findIndex(s => s.id === sceneId);
+  const cardEl = document.getElementById('scene-card-' + scIdx);
 
-  showToast(`🎨 Generating Ultra HD 16:9 AI Image for Scene #${sc.scene_number}...`);
+  // Attach interactive loader directly over scene card
+  let loaderEl = null;
+  if (cardEl) {
+    loaderEl = document.createElement('div');
+    loaderEl.className = 'scene-card-generating-overlay';
+    loaderEl.id = `card-loader-${sceneId}`;
+    loaderEl.innerHTML = `
+      <div class="card-loader-spinner"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--accent-cyan);text-align:center;margin-top:8px;">🎨 Generating AI Image...</div>
+      <div style="font-size:10px;color:#94a3b8;text-align:center;margin-top:2px;">Ultra HD Photorealistic</div>
+    `;
+    cardEl.style.position = 'relative';
+    cardEl.appendChild(loaderEl);
+
+    // Temporarily disable action buttons on card
+    cardEl.querySelectorAll('button').forEach(b => b.disabled = true);
+  }
+
+  const defaultPrompt = sc.selected_tag || (sc.search_tags && sc.search_tags[0]) || sc.text;
+  const aspectRatio = document.getElementById('export-aspect-ratio')?.value || '16:9';
+
+  showToast(`🎨 Generating Ultra HD ${aspectRatio} AI Image for Scene #${sc.scene_number}...`, 4000);
+
   try {
     const res = await fetch('/api/generate-single-scene-image', {
       method: 'POST',
@@ -1629,26 +1772,38 @@ async function generateSingleSceneAIImage(sceneId) {
       body: JSON.stringify({
         project_id: currentProject.id,
         scene_id: sceneId,
-        custom_prompt: promptInput.trim() || null
+        custom_prompt: defaultPrompt,
+        aspect_ratio: aspectRatio
       })
     });
+
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.detail || 'Failed to generate image');
     }
+
     const data = await res.json();
     if (data.scenes) {
       currentProject.scenes = data.scenes;
+      captionEngine.loadScenes(currentProject.scenes);
+      renderTimelineMarkers(currentProject.scenes);
       renderSceneCards(currentProject.scenes);
       checkMissingClipsAlert(currentProject.scenes);
-      if (currentSceneIdx === sceneId) {
-        loadSceneClip(sceneId, isPlaying);
+
+      if (currentSceneIdx === scIdx) {
+        loadSceneClip(scIdx, isPlaying);
       }
     }
-    showToast(`✨ Scene #${sc.scene_number} updated with Ultra HD 16:9 AI Image!`);
+    showToast(`✨ Scene #${sc.scene_number} replaced with Ultra HD AI Image!`, 4500);
   } catch (err) {
     console.error(err);
-    alert('Error generating image: ' + err.message);
+    if (loaderEl && loaderEl.parentNode) {
+      loaderEl.parentNode.removeChild(loaderEl);
+    }
+    if (cardEl) {
+      cardEl.querySelectorAll('button').forEach(b => b.disabled = false);
+    }
+    alert('Error generating AI image: ' + err.message);
   }
 }
 
@@ -1738,6 +1893,57 @@ async function selectSwapClip(clipItem) {
   }
 }
 
+// ==================== MASTER EFFECT TOGGLES ====================
+
+function onToggleAnimation(enabled) {
+  const wrapper = document.getElementById('animation-controls-wrapper');
+  if (wrapper) {
+    if (enabled) {
+      wrapper.classList.remove('controls-disabled');
+    } else {
+      wrapper.classList.add('controls-disabled');
+    }
+  }
+  updateCaptionStyle();
+  showToast(enabled ? '⚡ Kinetic Animation enabled' : '⚡ Kinetic Animation disabled');
+}
+
+function onToggleBgm(enabled) {
+  const wrapper = document.getElementById('bgm-controls-wrapper');
+  if (wrapper) {
+    if (enabled) {
+      wrapper.classList.remove('controls-disabled');
+    } else {
+      wrapper.classList.add('controls-disabled');
+    }
+  }
+  showToast(enabled ? '🎵 Background Music (BGM) enabled' : '🔇 Background Music (BGM) disabled');
+}
+
+function onToggleSfx(enabled) {
+  const wrapper = document.getElementById('sfx-controls-wrapper');
+  if (wrapper) {
+    if (enabled) {
+      wrapper.classList.remove('controls-disabled');
+    } else {
+      wrapper.classList.add('controls-disabled');
+    }
+  }
+  showToast(enabled ? '🔊 Transition SFX enabled' : '🚫 Transition SFX disabled');
+}
+
+function onTogglePolish(enabled) {
+  const wrapper = document.getElementById('polish-controls-wrapper');
+  if (wrapper) {
+    if (enabled) {
+      wrapper.classList.remove('controls-disabled');
+    } else {
+      wrapper.classList.add('controls-disabled');
+    }
+  }
+  showToast(enabled ? '🎬 Video Polish & Cinematic FX enabled' : '🎬 Video Polish & Cinematic FX disabled');
+}
+
 // ==================== FINAL EXPORT & RENDER ====================
 async function startExportRender() {
   if (!currentProject) {
@@ -1751,6 +1957,12 @@ async function startExportRender() {
   const activePresetBtn = document.querySelector('.preset-btn.active');
   const presetKey = activePresetBtn ? activePresetBtn.id.replace('preset-', '') : 'capcut_yellow';
 
+  const captionsEnabled = document.getElementById('enable-captions-toggle')?.checked ?? true;
+  const animationEnabled = document.getElementById('enable-animation-toggle')?.checked ?? true;
+  const bgmEnabled = document.getElementById('enable-bgm-toggle')?.checked ?? true;
+  const sfxEnabled = document.getElementById('enable-sfx-toggle')?.checked ?? true;
+  const polishEnabled = document.getElementById('enable-polish-toggle')?.checked ?? true;
+
   const customOptions = {
     font_name: document.getElementById('font-family-select').value,
     font_size: parseInt(document.getElementById('font-size-slider').value, 10),
@@ -1762,21 +1974,25 @@ async function startExportRender() {
     outline_width: parseFloat(document.getElementById('stroke-width-slider').value),
     margin_v: parseInt(document.getElementById('margin-v-slider').value, 10),
     uppercase: document.getElementById('uppercase-checkbox').checked,
-    animation: document.getElementById('animation-style-select').value,
-    bgm_track: document.getElementById('bgm-track-select')?.value || 'cinematic_ambient',
-    bgm_volume: (parseInt(document.getElementById('bgm-volume-slider')?.value || '10', 10)) / 100.0,
-    enable_motion: document.getElementById('kenburns-checkbox')?.checked ?? false,
-    enable_vignette: document.getElementById('vignette-checkbox')?.checked ?? false,
+    enable_captions: captionsEnabled,
+    enable_animation: animationEnabled,
+    animation: animationEnabled ? (document.getElementById('animation-style-select')?.value || 'word_bounce') : 'none',
+    enable_bgm: bgmEnabled,
+    bgm_track: bgmEnabled ? (document.getElementById('bgm-track-select')?.value || 'cinematic_ambient') : 'none',
+    bgm_volume: bgmEnabled ? ((parseInt(document.getElementById('bgm-volume-slider')?.value || '10', 10)) / 100.0) : 0.0,
+    enable_sfx: sfxEnabled,
+    transition_sfx: sfxEnabled ? (document.getElementById('sfx-track-select')?.value || 'whoosh_soft') : 'none',
+    transition_sfx_volume: sfxEnabled ? (parseFloat(document.getElementById('sfx-volume-slider')?.value || '40') / 100) : 0.0,
+    enable_polish: polishEnabled,
+    enable_motion: polishEnabled && (document.getElementById('kenburns-checkbox')?.checked ?? false),
+    enable_vignette: polishEnabled && (document.getElementById('vignette-checkbox')?.checked ?? false),
     mute_stock_audio: document.getElementById('mute-stock-checkbox')?.checked ?? true,
-    color_grade: document.getElementById('color-grade-select')?.value || 'clean',
-    transition: document.getElementById('transition-select')?.value || 'none',
+    color_grade: polishEnabled ? (document.getElementById('color-grade-select')?.value || 'clean') : 'clean',
+    transition: polishEnabled ? (document.getElementById('transition-select')?.value || 'none') : 'none',
     transition_mode: document.getElementById('transition-select')?.value === 'random' ? 'random' : 'fixed',
     transition_duration: parseFloat(document.getElementById('transition-speed-slider')?.value || '0.30'),
-    enable_captions: document.getElementById('enable-captions-toggle')?.checked ?? true,
     target_resolution: document.getElementById('export-resolution')?.value || '1080p',
     aspect_ratio: document.getElementById('export-aspect-ratio')?.value || '16:9',
-    transition_sfx: document.getElementById('sfx-track-select')?.value || 'whoosh_soft',
-    transition_sfx_volume: parseFloat(document.getElementById('sfx-volume-slider')?.value || '40') / 100,
     ...getOverlaySettings()
   };
 

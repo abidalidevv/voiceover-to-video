@@ -137,21 +137,26 @@ def render_final_video(
     fps = int(custom_options.get("fps", 30))
     use_gpu = bool(settings.get("gpu_acceleration", True))
     
+    # Master On/Off Toggles
+    enable_polish = bool(custom_options.get("enable_polish", True))
+    enable_bgm = bool(custom_options.get("enable_bgm", True))
+    enable_sfx = bool(custom_options.get("enable_sfx", True))
+
     # Options for visual FX and audio
-    enable_motion = bool(custom_options.get("enable_motion", False))
-    enable_vignette = bool(custom_options.get("enable_vignette", False))
-    color_grade = custom_options.get("color_grade", "clean")
-    transition = custom_options.get("transition", "none").lower().strip()
+    enable_motion = bool(custom_options.get("enable_motion", False)) and enable_polish
+    enable_vignette = bool(custom_options.get("enable_vignette", False)) and enable_polish
+    color_grade = custom_options.get("color_grade", "clean") if enable_polish else "clean"
+    transition = (custom_options.get("transition", "none").lower().strip()) if enable_polish else "none"
     transition_mode = custom_options.get("transition_mode", "fixed").lower().strip()
     if transition == "random":
         transition_mode = "random"
 
     mute_stock_audio = bool(custom_options.get("mute_stock_audio", True))
-    bgm_track = custom_options.get("bgm_track", settings.get("default_bgm", "cinematic_ambient"))
-    bgm_volume = float(custom_options.get("bgm_volume", 0.10)) # default 10%
-    transition_sfx = custom_options.get("transition_sfx", settings.get("default_transition_sfx", None))
-    transition_sfx_volume = float(custom_options.get("transition_sfx_volume", 0.40))
-    emphasis_zoom_enabled = bool(custom_options.get("emphasis_zoom_enabled", False))
+    bgm_track = custom_options.get("bgm_track", settings.get("default_bgm", "cinematic_ambient")) if enable_bgm else "none"
+    bgm_volume = float(custom_options.get("bgm_volume", 0.10)) if enable_bgm else 0.0
+    transition_sfx = custom_options.get("transition_sfx", settings.get("default_transition_sfx", None)) if enable_sfx else "none"
+    transition_sfx_volume = float(custom_options.get("transition_sfx_volume", 0.40)) if enable_sfx else 0.0
+    emphasis_zoom_enabled = bool(custom_options.get("emphasis_zoom_enabled", False)) and enable_polish
     emphasis_zoom_intensity = float(custom_options.get("emphasis_zoom_intensity", 1.15))
 
     # Video Overlay options

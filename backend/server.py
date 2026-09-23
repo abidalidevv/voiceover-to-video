@@ -571,6 +571,7 @@ class GenerateMissingImagesRequest(BaseModel):
     project_id: str
     scene_ids: Optional[List[int]] = None
     motion: bool = True
+    aspect_ratio: Optional[str] = "16:9"
 
 
 @app.post("/api/generate-missing-scene-images")
@@ -590,6 +591,9 @@ def generate_missing_scene_images(req: GenerateMissingImagesRequest):
 
     niche = project.get("niche", "General")
     target_res = load_settings().get("resolution", "1080p")
+    aspect_ratio = req.aspect_ratio or project.get("aspect_ratio", "16:9")
+    is_vertical = str(aspect_ratio).strip().lower() in ("9:16", "vertical", "portrait", "shorts", "tiktok")
+    w, h = (1080, 1920) if is_vertical else (1920, 1080)
     fixed_count = 0
     target_ids = set(req.scene_ids) if req.scene_ids is not None else None
 
@@ -608,14 +612,16 @@ def generate_missing_scene_images(req: GenerateMissingImagesRequest):
                     scene_id=sc_id,
                     tags=tags,
                     niche=niche,
-                    target_resolution=target_res
+                    target_resolution=target_res,
+                    aspect_ratio=aspect_ratio
                 )
                 clip_path = convert_image_to_scene_clip(
                     image_path=str(img_path),
                     duration=dur,
                     scene_id=sc_id,
                     target_resolution=target_res,
-                    motion=req.motion
+                    motion=req.motion,
+                    aspect_ratio=aspect_ratio
                 )
                 if clip_path and os.path.exists(clip_path):
                     sc["video_clip"] = {
@@ -627,8 +633,8 @@ def generate_missing_scene_images(req: GenerateMissingImagesRequest):
                         "web_url": _to_media_url(clip_path),
                         "thumbnail_url": _to_media_url(img_path),
                         "duration": dur,
-                        "width": 1920,
-                        "height": 1080,
+                        "width": w,
+                        "height": h,
                         "is_fallback": False
                     }
                     sc["fallback_used"] = False
@@ -650,6 +656,7 @@ class SingleSceneImageRequest(BaseModel):
     scene_id: int
     custom_prompt: Optional[str] = None
     motion: bool = True
+    aspect_ratio: Optional[str] = "16:9"
 
 
 @app.post("/api/generate-single-scene-image")
@@ -669,6 +676,9 @@ def generate_single_scene_image(req: SingleSceneImageRequest):
 
     niche = project.get("niche", "General")
     target_res = load_settings().get("resolution", "1080p")
+    aspect_ratio = req.aspect_ratio or project.get("aspect_ratio", "16:9")
+    is_vertical = str(aspect_ratio).strip().lower() in ("9:16", "vertical", "portrait", "shorts", "tiktok")
+    w, h = (1080, 1920) if is_vertical else (1920, 1080)
 
     for sc in project.get("scenes", []):
         if sc.get("id") == req.scene_id:
@@ -681,14 +691,16 @@ def generate_single_scene_image(req: SingleSceneImageRequest):
                     scene_id=req.scene_id,
                     tags=tags,
                     niche=niche,
-                    target_resolution=target_res
+                    target_resolution=target_res,
+                    aspect_ratio=aspect_ratio
                 )
                 clip_path = convert_image_to_scene_clip(
                     image_path=str(img_path),
                     duration=dur,
                     scene_id=req.scene_id,
                     target_resolution=target_res,
-                    motion=req.motion
+                    motion=req.motion,
+                    aspect_ratio=aspect_ratio
                 )
                 if not clip_path or not os.path.exists(clip_path):
                     raise HTTPException(status_code=500, detail=f"AI image generation succeeded but video clip conversion failed for scene {req.scene_id}")
@@ -701,8 +713,8 @@ def generate_single_scene_image(req: SingleSceneImageRequest):
                     "web_url": _to_media_url(clip_path),
                     "thumbnail_url": _to_media_url(img_path),
                     "duration": dur,
-                    "width": 1920,
-                    "height": 1080,
+                    "width": w,
+                    "height": h,
                     "is_fallback": False
                 }
                 sc["fallback_used"] = False

@@ -414,8 +414,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         raw_word = raw_word.upper()
 
                     if idx == active_idx:
-                        # Active word highlighted with accent color and subtle scale pop
-                        line_parts.append(f"{{\\c{highlight_c}\\fscx108\\fscy108\\b1}}{raw_word}{{\\c{primary_c}\\fscx100\\fscy100\\b{bold}}}")
+                        # Active word highlighted with accent color (and subtle scale pop if kinetic animation is enabled)
+                        anim_style = str((custom_options or {}).get("animation", "word_bounce")).lower().strip()
+                        if anim_style == "none":
+                            line_parts.append(f"{{\\c{highlight_c}}}{raw_word}{{\\c{primary_c}}}")
+                        else:
+                            line_parts.append(f"{{\\c{highlight_c}\\fscx108\\fscy108\\b1}}{raw_word}{{\\c{primary_c}\\fscx100\\fscy100\\b{bold}}}")
                     else:
                         line_parts.append(raw_word)
 
