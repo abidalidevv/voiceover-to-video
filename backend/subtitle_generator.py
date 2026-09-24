@@ -337,6 +337,46 @@ def generate_ass_subtitles(
     c_outline_w = callout_preset["outline_width"]
     c_margin_v = callout_preset["margin_v"]
 
+    # Determine aspect ratio and canvas resolution
+    aspect_ratio = str(custom_options.get("aspect_ratio", "16:9") if custom_options else "16:9").lower().strip()
+    is_vertical = aspect_ratio in ("9:16", "vertical", "portrait", "shorts", "tiktok")
+    is_square = aspect_ratio in ("1:1", "square")
+
+    if is_vertical:
+        play_res_x = 1080
+        play_res_y = 1920
+        # Mobile vertical video: large, punchy, easily readable kinetic typography
+        ass_font_size = round(font_size * 4.0)          # Slider 24 -> 96px on 1080x1920
+        ass_outline_w = round(outline_w * 2.8, 1)       # Outline 4 -> 11.2px
+        ass_shadow_d = round(shadow_d * 2.4, 1)
+        # Margin from bottom: keep safely above TikTok/Shorts interactive UI elements
+        ass_margin_v = round(margin_v * 5.0) if margin_v <= 50 else round(margin_v * 3.5)
+        c_size = round(callout_preset["font_size"] * 3.4)
+        c_outline_w = round(callout_preset["outline_width"] * 1.5, 1)
+        c_margin_v = round(callout_preset["margin_v"] * 3.8)
+    elif is_square:
+        play_res_x = 1080
+        play_res_y = 1080
+        ass_font_size = round(font_size * 3.4)
+        ass_outline_w = round(outline_w * 2.4, 1)
+        ass_shadow_d = round(shadow_d * 2.0, 1)
+        ass_margin_v = round(margin_v * 2.6) if margin_v <= 50 else round(margin_v * 1.8)
+        c_size = round(callout_preset["font_size"] * 2.6)
+        c_outline_w = round(callout_preset["outline_width"] * 1.2, 1)
+        c_margin_v = round(callout_preset["margin_v"] * 2.4)
+    else:
+        # Standard 16:9 Landscape (1920x1080)
+        play_res_x = 1920
+        play_res_y = 1080
+        # Proportional scaling to match web preview player visual prominence
+        ass_font_size = round(font_size * 3.4)          # Slider 24 -> 82px on 1920x1080
+        ass_outline_w = round(outline_w * 2.4, 1)       # Outline 4 -> 9.6px
+        ass_shadow_d = round(shadow_d * 2.0, 1)
+        ass_margin_v = round(margin_v * 3.2) if margin_v <= 50 else round(margin_v * 1.8)
+        c_size = round(callout_preset["font_size"] * 2.6)
+        c_outline_w = round(callout_preset["outline_width"] * 1.2, 1)
+        c_margin_v = round(callout_preset["margin_v"] * 2.2)
+
     # Word separator based on word_spacing parameter
     if word_spacing >= 16:
         word_separator = " \\h\\h "
@@ -348,14 +388,14 @@ def generate_ass_subtitles(
     header = f"""[Script Info]
 Title: VideoGen CapCut Subtitles
 ScriptType: v4.00+
-PlayResX: 1920
-PlayResY: 1080
+PlayResX: {play_res_x}
+PlayResY: {play_res_y}
 ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{font_family},{font_size * 2.2:.0f},{primary_c},&H000000FF,{outline_c},{shadow_c},{bold},0,0,0,100,100,{letter_spacing * 2:.1f},0,1,{outline_w * 2:.1f},{shadow_d * 2:.1f},{align},50,50,{margin_v * 2},1
-Style: Callout,{c_font},{c_size:.0f},{c_primary},&H000000FF,{c_outline},{c_back},1,0,0,0,100,100,1.2,0,{c_border_style},{c_outline_w:.1f},0,8,60,60,{c_margin_v * 2},1
+Style: Default,{font_family},{ass_font_size},{primary_c},&H000000FF,{outline_c},{shadow_c},{bold},0,0,0,100,100,{letter_spacing * 2.0:.1f},0,1,{ass_outline_w:.1f},{ass_shadow_d:.1f},{align},50,50,{ass_margin_v},1
+Style: Callout,{c_font},{c_size},{c_primary},&H000000FF,{c_outline},{c_back},1,0,0,0,100,100,1.2,0,{c_border_style},{c_outline_w:.1f},0,8,60,60,{c_margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -363,68 +403,151 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     dialogue_lines = []
 
-    # Inject Callout Dialogue lines if callouts enabled
+    # 1. Inject Callout Dialogue lines if callouts enabled (Layer 1, Alignment 8 Top Center)
     if callouts_enabled:
+        callout_cues = []
         for scene in scenes:
             callout = scene.get("callout_text")
             if callout and str(callout).strip():
-                c_start = format_ass_time(float(scene.get("start", 0)))
-                c_end = format_ass_time(float(scene.get("end", 0)))
+                c_start = float(scene.get("start", 0))
+                c_end = float(scene.get("end", c_start + 3.0))
+                if c_end <= c_start:
+                    c_end = c_start + 3.0
                 c_clean = str(callout).strip().replace('{', '(').replace('}', ')').upper()
-                anim = r"{\fad(180,180)\t(0,120,\fscx106\fscy106)\t(120,240,\fscx100\fscy100)}"
-                dialogue_lines.append(f"Dialogue: 1,{c_start},{c_end},Callout,,0,0,0,,{anim}{c_clean}")
+                callout_cues.append({"start": c_start, "end": c_end, "text": c_clean})
 
-    for scene in scenes:
+        callout_cues.sort(key=lambda c: c["start"])
+        for idx_c in range(len(callout_cues)):
+            if idx_c < len(callout_cues) - 1:
+                if callout_cues[idx_c]["end"] > callout_cues[idx_c + 1]["start"]:
+                    callout_cues[idx_c]["end"] = max(callout_cues[idx_c]["start"] + 0.5, callout_cues[idx_c + 1]["start"] - 0.05)
+            cs_str = format_ass_time(callout_cues[idx_c]["start"])
+            ce_str = format_ass_time(callout_cues[idx_c]["end"])
+            anim = r"{\fad(180,180)\t(0,120,\fscx106\fscy106)\t(120,240,\fscx100\fscy100)}"
+            dialogue_lines.append(f"Dialogue: 1,{cs_str},{ce_str},Callout,,0,0,0,,{anim}{callout_cues[idx_c]['text']}")
+
+    # 2. Build Raw Unified Cue Timeline
+    raw_cues = []
+
+    for s_idx, scene in enumerate(scenes):
         words = scene.get("words", [])
+        sc_start = float(scene.get("start", 0.0))
+        sc_end = float(scene.get("end", 0.0))
+        if sc_end <= sc_start:
+            sc_end = sc_start + 3.0
+
         if not words:
-            # Fallback if no word level timestamps: display whole sentence for scene duration
-            t_start = format_ass_time(float(scene.get("start", 0)))
-            t_end = format_ass_time(float(scene.get("end", 0)))
-            stext = scene.get("text", "").replace('{', '(').replace('}', ')')
+            # Fallback if no word-level timestamps: display whole sentence for scene duration
+            stext = scene.get("text", "").replace('{', '(').replace('}', '')
             if uppercase:
                 stext = stext.upper()
-            dialogue_lines.append(f"Dialogue: 0,{t_start},{t_end},Default,,0,0,0,,{stext}")
+            raw_cues.append({
+                "start": sc_start,
+                "end": sc_end,
+                "text": stext,
+                "is_last_in_chunk": True
+            })
             continue
 
         # Group words into chunks of 3-5 words for optimal TikTok/CapCut/YouTube Shorts readability
         word_chunks = _chunk_words(words, max_chunk_words=5)
 
-        for chunk in word_chunks:
-            chunk_start = chunk[0]["start"]
-            chunk_end = chunk[-1]["end"]
+        for c_idx, chunk in enumerate(word_chunks):
+            chunk_start = float(chunk[0]["start"])
+            chunk_end = float(chunk[-1]["end"])
+            is_last_chunk_in_scene = (c_idx == len(word_chunks) - 1)
 
             # For each word in the chunk, create a continuous sub-interval where that word is actively highlighted
             for active_idx, active_word in enumerate(chunk):
-                # Start: if first word, start at chunk_start; otherwise at word start
-                t_start_val = chunk_start if active_idx == 0 else active_word["start"]
-                # End: extend to the start of the next word to eliminate inter-word flicker gaps!
-                if active_idx < len(chunk) - 1:
-                    t_end_val = chunk[active_idx + 1]["start"]
-                else:
-                    t_end_val = max(active_word["end"], chunk_end + 0.15)
+                is_last_word_in_chunk = (active_idx == len(chunk) - 1)
+                t_start_val = chunk_start if active_idx == 0 else float(active_word["start"])
 
-                w_start = format_ass_time(t_start_val)
-                w_end = format_ass_time(t_end_val)
+                if not is_last_word_in_chunk:
+                    t_end_val = float(chunk[active_idx + 1]["start"])
+                else:
+                    t_end_val = float(active_word["end"])
 
                 # Build styled line
                 line_parts = []
                 for idx, w in enumerate(chunk):
-                    raw_word = w["word"].strip().replace('{', '(').replace('}', ')')
+                    raw_word = str(w.get("word", "")).strip().replace('{', '(').replace('}', ')')
                     if uppercase:
                         raw_word = raw_word.upper()
 
                     if idx == active_idx:
-                        # Active word highlighted with accent color (and subtle scale pop if kinetic animation is enabled)
+                        # Active word highlighted with accent color & kinetic animation
                         anim_style = str((custom_options or {}).get("animation", "word_bounce")).lower().strip()
                         if anim_style == "none":
-                            line_parts.append(f"{{\\c{highlight_c}}}{raw_word}{{\\c{primary_c}}}")
+                            line_parts.append(f"{{\\c{highlight_c}&}}{raw_word}{{\\c{primary_c}&}}")
+                        elif anim_style == "word_box":
+                            line_parts.append(f"{{\\c&H00000000&\\3c{highlight_c}&\\bord{ass_outline_w + 3:.1f}}}{raw_word}{{\\c{primary_c}&\\3c{outline_c}&\\bord{ass_outline_w:.1f}}}")
+                        elif anim_style == "word_glow":
+                            line_parts.append(f"{{\\c{highlight_c}&\\4c{highlight_c}&\\shad{ass_shadow_d + 4:.1f}}}{raw_word}{{\\c{primary_c}&\\4c{shadow_c}&\\shad{ass_shadow_d:.1f}}}")
                         else:
-                            line_parts.append(f"{{\\c{highlight_c}\\fscx108\\fscy108\\b1}}{raw_word}{{\\c{primary_c}\\fscx100\\fscy100\\b{bold}}}")
+                            # CapCut kinetic pop scale + accent highlight
+                            line_parts.append(f"{{\\c{highlight_c}&\\fscx108\\fscy108\\b1}}{raw_word}{{\\c{primary_c}&\\fscx100\\fscy100\\b{bold}}}")
                     else:
                         line_parts.append(raw_word)
 
                 dialogue_text = word_separator.join(line_parts)
-                dialogue_lines.append(f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{dialogue_text}")
+                raw_cues.append({
+                    "start": t_start_val,
+                    "end": t_end_val,
+                    "text": dialogue_text,
+                    "is_last_in_chunk": is_last_word_in_chunk and is_last_chunk_in_scene
+                })
+
+    # Sort all cues strictly by start time
+    raw_cues.sort(key=lambda c: (c["start"], c["end"]))
+
+    # 3. STRICT ZERO-OVERLAP RESOLVER
+    # LibASS performs automatic vertical collision avoidance (pushing lines UP and stacking new lines below)
+    # whenever two Dialogue events overlap in time at Alignment 2.
+    # We guarantee cue[i].end <= cue[i+1].start across all scenes and all words, completely preventing line jumping!
+    total_cues = len(raw_cues)
+    for i in range(total_cues):
+        c_start = raw_cues[i]["start"]
+        c_end = raw_cues[i]["end"]
+        is_last = raw_cues[i]["is_last_in_chunk"]
+
+        if i < total_cues - 1:
+            # Ensure next cue starts after current start
+            if raw_cues[i + 1]["start"] < c_start + 0.04:
+                raw_cues[i + 1]["start"] = round(c_start + 0.04, 3)
+
+            next_start = raw_cues[i + 1]["start"]
+
+            if c_end > next_start:
+                # OVERLAP ELIMINATION: Strictly clamp to next cue's start
+                c_end = next_start
+            else:
+                gap = next_start - c_end
+                if gap <= 0.22:
+                    # Tiny gap (between words or quick phrase transition):
+                    # Seamlessly extend end to next_start to eliminate black flicker/blinking!
+                    c_end = next_start
+                else:
+                    # Real pause between sentences: allow natural lingering up to 0.35s,
+                    # but strictly stay at least 0.04s before next_start!
+                    if is_last:
+                        linger = min(c_end + 0.35, next_start - 0.04)
+                        c_end = max(c_end, linger)
+                    else:
+                        c_end = next_start
+        else:
+            # Final cue of entire video
+            c_end = max(c_end, c_start + 0.6)
+
+        # Safety: guarantee positive duration of at least 1 video frame
+        if c_end <= c_start:
+            c_end = round(c_start + 0.04, 3)
+
+        raw_cues[i]["start"] = c_start
+        raw_cues[i]["end"] = c_end
+
+        w_start = format_ass_time(c_start)
+        w_end = format_ass_time(c_end)
+        dialogue_lines.append(f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{raw_cues[i]['text']}")
 
     content = header + "\n".join(dialogue_lines) + "\n"
     with open(output_path, "w", encoding="utf-8") as f:

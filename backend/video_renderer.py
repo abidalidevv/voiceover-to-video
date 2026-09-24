@@ -545,8 +545,13 @@ def render_final_video(
 
     # 1. Video Filter: ASS subtitles if present
     if ass_subtitle_path and os.path.exists(ass_subtitle_path):
-        escaped_ass = str(Path(ass_subtitle_path).resolve()).replace("\\", "/").replace(":", "\\:")
-        filter_complex_parts.append(f"{current_video_label}ass='{escaped_ass}'[vout]")
+        escaped_ass = str(Path(ass_subtitle_path).resolve()).replace("\\", "/").replace(":", r"\:")
+        fonts_dir_path = Path(__file__).resolve().parent.parent / "data" / "fonts"
+        if fonts_dir_path.exists():
+            escaped_fonts_dir = str(fonts_dir_path.resolve()).replace("\\", "/").replace(":", r"\:")
+            filter_complex_parts.append(f"{current_video_label}ass=f='{escaped_ass}':fontsdir='{escaped_fonts_dir}'[vout]")
+        else:
+            filter_complex_parts.append(f"{current_video_label}ass='{escaped_ass}'[vout]")
         video_map_label = "[vout]"
     else:
         # If we had overlay filter, use its output label; otherwise raw stream
