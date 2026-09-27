@@ -1424,7 +1424,7 @@ def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = N
                 _bring_explorer_to_foreground(str(target_path.parent.resolve()))
             except Exception as e:
                 print(f"[OpenFolder] explorer select failed: {e}")
-        return {"status": "success", "path": abs_path, "type": "file"}
+        return {"status": "success", "path": abs_path, "type": "file", "has_videos": True}
 
     # If target has a file extension (e.g. video.mp4) but doesn't exist yet, fallback to its parent folder
     if target_path.suffix:
@@ -1436,6 +1436,19 @@ def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = N
     except Exception as e:
         print(f"[OpenFolder] mkdir notice: {e}")
 
+    # If opening video output directory, auto-select the latest rendered MP4 file!
+    mp4_files = sorted(target_path.glob("*.mp4"), key=lambda f: f.stat().st_mtime, reverse=True)
+    if mp4_files:
+        latest_mp4 = mp4_files[0]
+        abs_mp4 = os.path.normpath(str(latest_mp4.resolve()))
+        if os.name == "nt":
+            try:
+                subprocess.Popen(f'explorer.exe /select,"{abs_mp4}"')
+                _bring_explorer_to_foreground(str(target_path.resolve()))
+                return {"status": "success", "path": abs_mp4, "type": "file", "filename": latest_mp4.name, "has_videos": True}
+            except Exception as e:
+                print(f"[OpenFolder] explorer select latest mp4 failed: {e}")
+
     abs_path = os.path.normpath(str(target_path.resolve()))
 
     if os.name == "nt":
@@ -1446,7 +1459,7 @@ def open_folder(req: Optional[OpenFolderRequest] = None, path: Optional[str] = N
         except Exception:
             pass
 
-    return {"status": "success", "path": abs_path, "type": "folder"}
+    return {"status": "success", "path": abs_path, "type": "folder", "has_videos": bool(mp4_files)}
 
 
 class CapCutExportRequest(BaseModel):

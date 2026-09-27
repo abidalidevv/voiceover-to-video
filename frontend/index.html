@@ -670,7 +670,10 @@
             <div class="form-group mt-20">
               <label class="form-label">Video Niche & Visual Context</label>
               <select id="niche-select" class="form-select">
-                <option value="Motivation Psychology" selected>🔥 Motivation Psychology (Dark / Stoic / High Energy)</option>
+                <option value="Auto" selected>⚡ Auto-Detect from Voiceover (Smart Topic Analysis — Recommended)</option>
+                <option value="Military & Defense">🎖️ Military & Defense (Armed Forces / Tactical / Tanks / Missiles)</option>
+                <option value="War & Conflict">⚔️ War & Conflict (Battlefield / Airstrikes / Combat / Artillery)</option>
+                <option value="Motivation Psychology">🔥 Motivation Psychology (Dark / Stoic / High Energy)</option>
                 <option value="Nature & Wildlife">🌿 Nature & Wildlife (Scenic 4K Landscapes / Relaxing)</option>
                 <option value="Tech & AI">🤖 Tech & AI (Futuristic / Coding / Cyberpunk / Robotics)</option>
                 <option value="Finance & Wealth">💰 Finance & Wealth (Stock Market / Crypto / Business / Cash)</option>
@@ -711,8 +714,19 @@
               </p>
             </div>
 
+            <!-- Auto-Render Direct to Output Folder Toggle -->
+            <div class="form-group mt-16" style="background:var(--bg-card-sub);padding:12px 14px;border-radius:8px;border:1px solid rgba(0,240,255,0.25);">
+              <label class="checkbox-label" style="cursor:pointer;margin:0;display:flex;align-items:center;gap:10px;">
+                <input type="checkbox" id="auto-render-export-checkbox" checked style="width:18px;height:18px;cursor:pointer;">
+                <span style="font-weight:600;font-size:13px;color:#f8fafc;">🚀 Auto-Render & Save Master MP4 Directly to Output Folder</span>
+              </label>
+              <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0 28px;">
+                Automatically renders the final video with kinetic subtitles and saves the finished <code>.mp4</code> straight into <code>data/output/</code>.
+              </p>
+            </div>
+
             <!-- Start Processing Button -->
-            <div class="action-wrap mt-24">
+            <div class="action-wrap mt-20">
               <button class="btn btn-primary btn-block btn-lg" id="generate-btn" onclick="startGeneration()">
                 ⚡ Start Processing & Generate Video
               </button>
@@ -1524,7 +1538,7 @@
               <a id="thumb-download-1" href="#" download class="btn btn-success btn-sm flex-1 disabled" style="text-align:center;text-decoration:none;">
                 💾 Download Style 1 (1280x720)
               </a>
-              <button class="btn btn-secondary btn-sm" onclick="openOutputFolder()" title="Show in Folder">
+              <button class="btn btn-secondary btn-sm" onclick="openOutputFolderCustom('thumbnails')" title="Show in Folder">
                 📂 Show in Folder
               </button>
             </div>
@@ -1550,7 +1564,7 @@
               <a id="thumb-download-2" href="#" download class="btn btn-success btn-sm flex-1 disabled" style="text-align:center;text-decoration:none;">
                 💾 Download Style 2 (1280x720)
               </a>
-              <button class="btn btn-secondary btn-sm" onclick="openOutputFolder()" title="Show in Folder">
+              <button class="btn btn-secondary btn-sm" onclick="openOutputFolderCustom('thumbnails')" title="Show in Folder">
                 📂 Show in Folder
               </button>
             </div>
@@ -1576,7 +1590,7 @@
               <a id="thumb-download-3" href="#" download class="btn btn-success btn-sm flex-1 disabled" style="text-align:center;text-decoration:none;">
                 💾 Download Style 3 (1280x720)
               </a>
-              <button class="btn btn-secondary btn-sm" onclick="openOutputFolder()" title="Show in Folder">
+              <button class="btn btn-secondary btn-sm" onclick="openOutputFolderCustom('thumbnails')" title="Show in Folder">
                 📂 Show in Folder
               </button>
             </div>

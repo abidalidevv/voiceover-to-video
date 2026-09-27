@@ -462,6 +462,8 @@ async function saveAppSettings(silent = false) {
       const poolInfo = `Pexels: ${pexelsKeys.length} keys, Pixabay: ${pixabayKeys.length} keys`;
       showToast(`💾 Settings and API keys saved! (${poolInfo}, ${payload.workers} Workers Active)`);
     }
+    const tabThumbBtn = document.getElementById('tab-thumbnails-btn');
+    if (tabThumbBtn) tabThumbBtn.style.display = payload.enable_thumbnails ? '' : 'none';
     const badge = document.getElementById('worker-count-badge');
     if (badge) badge.textContent = `${payload.workers} Workers`;
   } catch (err) {
@@ -602,7 +604,14 @@ async function openOutputFolder(customPath = null) {
     btn.style.transform = 'scale(0.96)';
   }
   try {
-    const targetPath = (typeof customPath === 'string' && customPath.trim()) ? customPath.trim() : 'output';
+    let resolvedPath = (typeof customPath === 'string' && customPath.trim()) ? customPath.trim() : null;
+    if (!resolvedPath && currentProject && currentProject.rendered_video && currentProject.rendered_video.file_path) {
+      resolvedPath = currentProject.rendered_video.file_path;
+    } else if (!resolvedPath && lastExportedVideoPath) {
+      resolvedPath = lastExportedVideoPath;
+    }
+    const targetPath = resolvedPath || 'output';
+
     let res = await fetch('/api/open-folder', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -620,8 +629,14 @@ async function openOutputFolder(customPath = null) {
     const folderPath = data.path || 'data/output';
     const folderName = (folderPath.split(/[\\/]/).pop()) || 'Output';
     const isFile = data.type === 'file' || /\.(mp4|mkv|mov|avi|jpg|png)$/i.test(folderPath);
-    const actionMsg = isFile ? `Selected file in Explorer: <strong>${folderName}</strong>` : `Opened folder in Windows Explorer: <strong>${folderName}</strong>`;
-    showToast(`📂 ${actionMsg}<br><span style="font-size:11px;color:#94a3b8;word-break:break-all;">${folderPath}</span>`, 4500);
+
+    if (isFile) {
+      showToast(`📂 Selected video in Explorer: <strong>${folderName}</strong><br><span style="font-size:11px;color:#94a3b8;word-break:break-all;">${folderPath}</span>`, 4500);
+    } else if (data.has_videos === false) {
+      showToast(`📂 Opened Output Folder.<br><span style="color:#fbbf24;font-size:12px;">ℹ️ No rendered video yet. Click <strong>🚀 Export Video</strong> in Studio Preview to render final MP4!</span>`, 5500);
+    } else {
+      showToast(`📂 Opened folder in Windows Explorer: <strong>${folderName}</strong><br><span style="font-size:11px;color:#94a3b8;word-break:break-all;">${folderPath}</span>`, 4500);
+    }
     if (btn) {
       btn.innerHTML = '✅ Opened!';
     }
@@ -856,18 +871,33 @@ async function startGeneration() {
           currentProject = job.project;
           document.getElementById('job-progress-bar').style.width = '100%';
           document.getElementById('job-progress-pct').textContent = '100%';
-          document.getElementById('modal-status-title').textContent = 'Video Ready!';
 
           const dock = document.getElementById('floating-task-dock');
           if (dock) dock.classList.add('hidden');
           activeMinimizedModal = null;
 
-          setTimeout(() => {
-            modal.classList.add('hidden');
-            loadProjectIntoPreview(currentProject);
-            switchTab('preview');
-            showToast('🎉 Interactive video preview ready in Studio!', 4000);
-          }, 600);
+          const autoExport = document.getElementById('auto-render-export-checkbox')?.checked ?? true;
+
+          if (autoExport) {
+            document.getElementById('modal-status-title').textContent = 'Scenes Ready! Auto-Rendering Final Video...';
+            document.getElementById('modal-status-desc').textContent = 'Launching master FFmpeg export into data/output folder...';
+            setTimeout(async () => {
+              modal.classList.add('hidden');
+              loadProjectIntoPreview(currentProject);
+              switchTab('preview');
+              showToast('🎬 Scenes & clips ready! Automatically rendering Master MP4 to Output folder...', 4500);
+              // Launch master render immediately
+              await startExportRender();
+            }, 600);
+          } else {
+            document.getElementById('modal-status-title').textContent = 'Studio Preview Ready!';
+            setTimeout(() => {
+              modal.classList.add('hidden');
+              loadProjectIntoPreview(currentProject);
+              switchTab('preview');
+              showToast('🎬 Project scenes ready! Click "🚀 Export Video" in Studio to render final MP4 into Output folder.', 5500);
+            }, 600);
+          }
         } else if (job.status === 'error') {
           clearInterval(pollInterval);
           modal.classList.add('hidden');
@@ -2582,9 +2612,11 @@ async function loadProjectsLibrary() {
             <button class="btn btn-capcut btn-sm" onclick="exportProjectCardToCapCut('${p.id}')" title="Open in CapCut Timeline">
               ✂️ CapCut
             </button>
-            <button class="btn btn-outline btn-sm" onclick="openOutputFolder()" title="Open Output Folder">
-              📂
-            </button>
+            ${rendered && rendered.file_path 
+              ? `<button class="btn btn-success btn-sm" onclick="openOutputFolder('${(rendered.file_path || '').replace(/\\/g, '/')}')" title="Show Rendered MP4 in Folder">📂 MP4</button>`
+              : `<button class="btn btn-primary btn-sm" onclick="quickRenderProjectFromLibrary('${p.id}', event)" title="Render Master MP4 into Output Folder">🚀 Export</button>
+                 <button class="btn btn-outline btn-sm" onclick="openOutputFolder()" title="Open Output Folder">📂</button>`
+            }
             <button class="btn btn-danger btn-sm" onclick="deleteProject('${p.id}', event)" title="Delete Project">
               🗑️
             </button>
@@ -2596,6 +2628,13 @@ async function loadProjectsLibrary() {
   } catch (err) {
     console.error('Error loading library:', err);
   }
+}
+
+async function quickRenderProjectFromLibrary(projectId, event) {
+  if (event) event.stopPropagation();
+  await openProjectInPreview(projectId);
+  showToast('🚀 Launching master render to output folder...', 3500);
+  await startExportRender();
 }
 
 async function openProjectInPreview(projectId) {

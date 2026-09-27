@@ -144,32 +144,53 @@ class ApiKeyPool:
         self.index = 0
         self.lock = threading.Lock()
         self.cooldowns: Dict[str, float] = {}
+        self._exhausted_logged: bool = False
 
     def has_keys(self) -> bool:
         return len(self.keys) > 0
 
+    def has_active_keys(self) -> bool:
+        """Returns True if there is at least one active, non-cooldown key available right now."""
+        with self.lock:
+            if not self.keys:
+                return False
+            now = time.time()
+            return any(self.cooldowns.get(k, 0.0) <= now for k in self.keys)
+
     def get_candidate_keys(self) -> List[str]:
-        """Returns ordered candidate keys prioritizing active non-cooldown keys."""
+        """
+        Returns ordered candidate keys prioritizing active non-cooldown keys.
+        If ALL keys are in cooldown, returns empty list immediately so the engine fails over to secondary providers!
+        """
         with self.lock:
             if not self.keys:
                 return []
             now = time.time()
             active = [k for k in self.keys if self.cooldowns.get(k, 0.0) <= now]
-            cooling = [k for k in self.keys if self.cooldowns.get(k, 0.0) > now]
             if active:
+                self._exhausted_logged = False
                 start_idx = self.index % len(active)
                 ordered_active = active[start_idx:] + active[:start_idx]
                 self.index = (self.index + 1) % len(active)
-                return ordered_active + cooling
+                return ordered_active
             else:
-                cooling.sort(key=lambda k: self.cooldowns.get(k, 0.0))
-                return cooling
+                # All keys in cooldown!
+                if not self._exhausted_logged:
+                    self._exhausted_logged = True
+                    wait_s = int(min(self.cooldowns.values()) - now) if self.cooldowns else 300
+                    print(f"[StockDownloader] [INFO] All {len(self.keys)} {self.provider_name} account keys are cooling down from rate limits (~{max(1, wait_s)}s left). Fast-failing over to backup providers...")
+                return []
 
     def mark_rate_limited(self, key: str, cooldown_seconds: int = 300):
         with self.lock:
             k_mask = f"...{key[-6:]}" if len(key) >= 6 else key
-            print(f"[StockDownloader] ⚠️ {self.provider_name} Key {k_mask} hit rate limit (429). Cooldown {cooldown_seconds}s. Load-balancing to next account key...")
             self.cooldowns[key] = time.time() + cooldown_seconds
+            now = time.time()
+            active_left = sum(1 for k in self.keys if self.cooldowns.get(k, 0.0) <= now)
+            if active_left > 0:
+                print(f"[StockDownloader] [WARNING] {self.provider_name} Key {k_mask} hit rate limit (429). Cooldown {cooldown_seconds}s. Load-balancing to remaining {active_left} active key(s)...")
+            else:
+                print(f"[StockDownloader] [WARNING] {self.provider_name} Key {k_mask} hit rate limit (429). All account keys now in cooldown ({cooldown_seconds}s). Cascading to Pixabay and fallback providers...")
 
 
 from urllib3.util import Retry
@@ -373,11 +394,17 @@ def _score_candidate(
         if any(c in meta_lower for c in space_clashes):
             score -= 200.0
 
-    elif any(k in niche_clean for k in ("military", "war", "defense")) or any(k in all_query_text for k in ("missile", "war", "tank", "bomb", "soldier", "radar", "fighter")):
-        mil_positives = {"military", "soldier", "army", "tank", "missile", "war", "weapon", "fighter", "aircraft", "radar", "navy", "combat", "explosion"}
+    elif any(k in niche_clean for k in ("military", "war", "defense")) or any(k in all_query_text for k in ("missile", "war", "tank", "bomb", "soldier", "radar", "fighter", "battlefield", "airforce", "navy")):
+        mil_positives = {"military", "soldier", "army", "tank", "missile", "war", "weapon", "fighter", "aircraft", "radar", "navy", "combat", "explosion", "battlefield", "artillery", "troops", "infantry"}
         if any(w in meta_lower for w in mil_positives):
             score += 40.0
-        mil_clashes = {"snail", "mollusk", "flower", "garden", "kitten", "puppy", "butterfly", "makeup", "fashion", "dress", "swim", "party", "baking"}
+        mil_clashes = {
+            "boxing", "boxer", "punching bag", "gym", "workout", "fitness", "bodybuilding",
+            "crossfit", "barbell", "dumbbell", "biceps", "swimming", "swimmer", "beach",
+            "pool", "resort", "cocktail", "snail", "mollusk", "flower", "garden",
+            "kitten", "puppy", "butterfly", "makeup", "fashion", "dress", "party",
+            "baking", "cooking", "kitchen", "dance", "dancing", "soccer", "football", "baseball"
+        }
         if any(c in meta_lower for c in mil_clashes):
             score -= 200.0
 
@@ -468,13 +495,13 @@ def find_and_download_stock_video(
             effective_query = f"{query} cinematic"
 
     # Priority 1: Pexels (best quality)
-    if (provider_pref in ("all", "pexels")) and pexels_pool.has_keys():
+    if (provider_pref in ("all", "pexels")) and pexels_pool.has_active_keys():
         clip = _search_pexels(effective_query, pexels_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline)
         if clip:
             return clip
 
     # Priority 2: Pixabay (fast secondary fallback)
-    if (provider_pref in ("all", "pixabay")) and pixabay_pool.has_keys():
+    if (provider_pref in ("all", "pixabay")) and pixabay_pool.has_active_keys():
         clip = _search_pixabay(effective_query, pixabay_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline)
         if clip:
             return clip

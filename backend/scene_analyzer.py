@@ -6,6 +6,8 @@ from .config import load_settings
 
 
 NICHE_VISUAL_FLAVORS = {
+    "Military & Defense": ["military armed soldiers tactical", "combat battlefield explosion smoke", "military aircraft fighter jet", "war tank armored vehicle", "tactical air defense radar", "military armed convoy patrol"],
+    "War & Conflict": ["war explosion battlefield smoke", "combat soldiers tactical firing", "military airstrike fighter jet", "artillery tank combat", "military base surveillance"],
     "Motivation Psychology": ["cinematic dramatic lighting", "focused entrepreneur", "person looking out window", "city night moody", "determined runner", "deep thought"],
     "Nature & Wildlife": ["majestic aerial landscape 4k", "dense emerald forest mist", "mountain waterfall scenic", "wild ocean waves sunset", "sunrise clouds timelapse"],
     "Tech & AI": ["futuristic server room glowing", "cyberpunk holographic data", "artificial intelligence robotic hand", "modern high tech workspace", "digital code matrix"],
@@ -46,7 +48,8 @@ KEYWORD_MAP = {
     "silence": ["calm peaceful lake reflection", "quiet empty room sunset light", "serene snowy forest silence"],
     "starving": ["longing hungry expression portrait", "pensive man staring into space", "reaching hand towards light"],
     "waiting": ["person waiting train platform", "clock ticking time passing timelapse", "sitting alone cafe window"],
-    "fight": ["boxer punching bag training", "determined warrior intense eyes", "overcoming struggle athletic"],
+    "fight": ["determined warrior dramatic", "heroic battle silhouette", "intense struggle overcome"],
+    "fighting": ["heroic warriors combat", "determined struggle dramatic", "intense combat action"],
     "morning": ["golden sunrise horizon dawn", "drinking coffee morning window", "morning sun rays trees"],
     "future": ["futuristic technology glowing interface", "modern architecture minimalist", "virtual reality headset person"],
     "missile": ["ballistic missile launch", "rocket launch night", "missile explosion"],
@@ -75,6 +78,27 @@ KEYWORD_MAP = {
     "fighter": ["fighter jet supersonic", "military aircraft flight", "air force jet takeoff"],
     "jet": ["fighter jet in clouds", "supersonic combat jet", "military aviation"],
     "aircraft": ["military aircraft carrier", "fighter jet takeoff", "warplane flying sky"],
+    "soldiers": ["soldiers in uniform patrol", "armed tactical soldiers", "combat troops marching"],
+    "tanks": ["military tanks moving", "armored vehicles battlefield", "tanks firing cannons"],
+    "missiles": ["ballistic missile launch", "military rocket trajectory", "air defense missiles"],
+    "weapons": ["military weapons arsenal", "tactical firearms shooting", "defense weapon systems"],
+    "bombs": ["bomb detonation explosion", "fighter jet bombing", "tactical bombs explosion"],
+    "explosions": ["huge fiery explosions", "battlefield explosions smoke", "artillery detonation"],
+    "warriors": ["combat soldiers armed troops", "tactical warriors battlefield", "military infantry"],
+    "battles": ["military battlefield soldiers fighting", "war combat armored forces", "infantry battle smoke"],
+    "attacks": ["military airstrikes explosions", "tactical combat offensive", "battlefield attacks"],
+    "navy": ["navy warship ocean sailing", "military aircraft carrier", "naval fleet battleship"],
+    "warship": ["navy warship ocean sailing", "military naval destroyer", "naval battleship fleet"],
+    "submarine": ["navy submarine underwater", "military submarine ocean", "naval submarine patrol"],
+    "submarines": ["military submarine ocean", "navy submarine underwater", "naval submarine patrol"],
+    "airforce": ["fighter jet supersonic takeoff", "military air force warplane", "fighter jets in formation"],
+    "artillery": ["military artillery firing cannon", "howitzer cannon smoke", "tactical artillery battery"],
+    "sniper": ["tactical military sniper", "special forces sniper rifle", "camouflaged soldier aiming"],
+    "convoy": ["military vehicle convoy desert", "armored troop convoy", "military truck patrol"],
+    "infantry": ["military infantry soldiers patrol", "armed troops marching", "tactical infantry combat"],
+    "combat": ["military battlefield combat", "tactical armed combat troops", "infantry soldiers fighting"],
+    "battlefield": ["war battlefield smoke explosion", "military combat zone", "battlefield soldiers"],
+    "frontline": ["soldiers on front line", "military trench combat", "frontline battlefield armed"],
     # Space & Astronomy
     "space": ["deep space galaxy stars", "astronaut spacewalk earth", "space shuttle launch"],
     "planet": ["planet earth orbit", "solar system planets", "jupiter saturn rings"],
@@ -144,6 +168,79 @@ KEYWORD_MAP = {
 
 
 
+def auto_detect_niche(text: str, current_niche: str = "") -> str:
+    """
+    Intelligently infers niche/topic if user forgot to select one, or selected 'General'/'Default'/'Auto'
+    or left the legacy 'Motivation Psychology' default while narrating military/conflict/other topics.
+    Analyzes vocabulary across semantic topic clusters including Roman Urdu and phonetic spellings.
+    """
+    cleaned_niche = str(current_niche or "").strip().lower()
+    text_lower = (text or "").lower()
+    if not text_lower.strip():
+        return current_niche or "General"
+
+    is_unselected = cleaned_niche in ("general", "default", "auto", "none", "", "select niche")
+
+    # 1. Military, Defense & War (English, Urdu, Roman Urdu, and common phonetic terms)
+    mil_markers = [
+        "military", "soldier", "soldiers", "army", "fauj", "fauji", "jang", "war", "missile", "missiles",
+        "blastoc", "misile", "tank", "tanks", "bomb", "bombs", "attack", "strike", "defense", "radar",
+        "fighter jet", "aircraft", "combat", "navy", "air force", "battlefield", "weapon", "weapons",
+        "artillery", "troops", "infantry", "patrol", "conflict", "invasion", "tactical", "dhamaka", "blast",
+        "tabahi", "tayaray", "hathyar", "nuclear", "warhead", "pentagon", "frontline", "airforce", "warship"
+    ]
+    if any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in mil_markers):
+        # Always prioritize Military & Defense if military markers detected and user didn't explicitly pick War & Conflict
+        if is_unselected or cleaned_niche in ("motivation psychology", "general", "default", "auto"):
+            return "Military & Defense"
+
+    # If user explicitly selected an active specialized niche (and it didn't clash with military), keep it
+    if cleaned_niche and not is_unselected and cleaned_niche != "motivation psychology":
+        return current_niche
+
+    # 2. Sci-Fi & Space
+    space_markers = ["space", "galaxy", "planet", "orbit", "astronaut", "nasa", "star", "stars", "cosmos", "universe", "nebula", "blackhole", "telescope", "mars", "solar system", "moon", "satellite"]
+    if any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in space_markers):
+        return "Sci-Fi & Space"
+
+    # 3. Finance & Wealth
+    fin_markers = ["crypto", "bitcoin", "stocks", "trading", "investment", "finance", "dollar", "wealth", "billionaire", "millionaire"]
+    if any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in fin_markers):
+        return "Finance & Wealth"
+
+    # 4. Fitness & Health
+    fit_markers = ["workout", "bodybuilding", "barbell", "dumbbell", "biceps", "cardio", "gym workout", "fitness training"]
+    if any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in fit_markers):
+        return "Fitness & Health"
+
+    # 5. Tech & AI
+    tech_markers = ["artificial intelligence", "machine learning", "coding", "software engineer", "cybersecurity", "neural network"]
+    if any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in tech_markers):
+        return "Tech & AI"
+
+    # 6. Nature & Wildlife
+    nat_markers = ["wildlife", "rainforest", "waterfall", "safari", "coral reef"]
+    if any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in nat_markers):
+        return "Nature & Wildlife"
+
+    # 7. Crime & Mystery
+    crime_markers = ["murder mystery", "detective", "crime scene", "serial killer", "fbi investigation"]
+    if any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in crime_markers):
+        return "Crime & Mystery"
+
+    # 8. History & Empires
+    hist_markers = ["ancient rome", "ancient egypt", "colosseum", "pyramids", "medieval castle", "ottoman empire"]
+    if any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in hist_markers):
+        return "History & Empires"
+
+    # 9. Motivation Psychology
+    mot_markers = ["discipline", "mindset", "focus on goals", "overcoming adversity", "procrastination"]
+    if any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in mot_markers):
+        return "Motivation Psychology"
+
+    return "General"
+
+
 def build_scenes(
     transcription: Dict[str, Any],
     niche: str = "General",
@@ -160,6 +257,15 @@ def build_scenes(
     editorial = editorial_direction or {}
     pacing_mult = float(editorial.get("pacing_multiplier", 1.0))
     climax_idx = editorial.get("climax_scene_index")
+
+    # Auto-detect niche from transcript if user didn't choose or left as General/Default
+    full_transcript = transcription.get("text", "")
+    if not full_transcript and transcription.get("words"):
+        full_transcript = " ".join(w.get("word", "") for w in transcription["words"])
+    detected_niche = auto_detect_niche(full_transcript, niche)
+    if detected_niche != niche:
+        print(f"[SceneAnalyzer] Auto-detected niche '{detected_niche}' from voiceover script (was '{niche}')")
+        niche = detected_niche
 
     total_dur = float(transcription.get("duration", 30.0))
     segments = transcription.get("segments", [])
@@ -333,11 +439,10 @@ def build_scenes(
     gemini_key = settings.get("gemini_api_key", "").strip()
     gemini_keys = settings.get("gemini_api_keys") or ([gemini_key] if gemini_key else [])
     groq_keys = settings.get("groq_api_keys") or ([settings.get("groq_api_key")] if settings.get("groq_api_key") else [])
-    groq_key = groq_keys[0] if groq_keys else ""
     openai_key = settings.get("openai_api_key", "").strip()
-    if (gemini_keys or groq_key or openai_key) and scenes:
+    if (gemini_keys or groq_keys or openai_key) and scenes:
         try:
-            enhanced_data = _enhance_tags_with_ai(scenes, niche, gemini_keys, groq_key, openai_key)
+            enhanced_data = _enhance_tags_with_ai(scenes, niche, gemini_keys, groq_keys, openai_key)
             for sc, item in zip(scenes, enhanced_data):
                 if isinstance(item, list):
                     sc["search_tags"] = item
@@ -433,23 +538,58 @@ def _merge_micro_fragments(groups: list) -> list:
 def _extract_tags_rulebased(text: str, niche: str, surrounding_context: str = "") -> List[str]:
     """Generates visual tags based on text tokens, emotions, niche context, and surrounding sentences."""
     text_lower = text.lower()
+    combined_context = (text_lower + " " + surrounding_context.lower()).strip()
     matched_queries = []
+
+    # 0. Detect military / war / armed forces context to prevent civilian/sports false positives (e.g. boxing)
+    is_military = any(k in niche.lower() for k in ("military", "war", "defense", "conflict", "army")) or any(k in combined_context for k in (
+        "military", "soldier", "soldiers", "army", "war", "missile", "missiles", "blastoc", "tank", "tanks",
+        "fauj", "fauji", "jang", "attack", "strike", "defense", "radar", "fighter jet", "aircraft", "bomb", "bombs",
+        "combat", "navy", "battlefield", "weapon", "weapons", "troops", "infantry", "artillery", "frontline"
+    ))
+
+    # Military context-specific overrides: prevent generic/sports terms like boxing, gym, etc.!
+    if is_military:
+        if niche not in ("War & Conflict", "Military & Defense"):
+            niche = "Military & Defense"
+        military_overrides = {
+            "fight": ["military combat soldiers battlefield", "tactical armed troops fighting", "combat troops battlefield"],
+            "fighting": ["military combat soldiers battlefield", "tactical armed troops fighting"],
+            "training": ["military tactical training boot camp", "soldiers armed forces drill"],
+            "target": ["military radar target crosshairs", "missile target precision strike"],
+            "strike": ["military airstrike explosion", "missile strike precision explosion"],
+            "attack": ["military armed attack tactical", "airstrike explosion attack"],
+            "battle": ["military battlefield soldiers fighting", "war combat armored forces"],
+            "struggle": ["soldiers marching harsh battlefield", "military endurance combat"],
+            "warrior": ["armed combat soldier warrior", "tactical special forces warrior"]
+        }
+        for kw, ov_queries in military_overrides.items():
+            if re.search(r'\b' + re.escape(kw) + r'\b', text_lower):
+                matched_queries.extend(ov_queries[:2])
+
     niche_flavor = NICHE_VISUAL_FLAVORS.get(niche, NICHE_VISUAL_FLAVORS.get("General", ["cinematic inspiring 4k"]))
 
-    # 1. Check for direct keyword mappings (Space, Tech, Finance, etc.)
-    has_direct_kw = False
+    # 1. Check for direct keyword mappings (plural & variation tolerant)
+    has_direct_kw = bool(matched_queries)
     for kw, queries in KEYWORD_MAP.items():
-        if re.search(r'\b' + re.escape(kw) + r'\b', text_lower):
-            matched_queries.extend(queries[:2])
-            has_direct_kw = True
+        pattern = r'\b' + re.escape(kw) + r'(?:s|es|ing|ed)?\b'
+        if re.search(pattern, text_lower):
+            # If military context, skip any sports/boxing queries
+            filtered = [q for q in queries if not any(bad in q.lower() for bad in ("boxer", "punching bag", "gym", "workout"))] if is_military else queries
+            if filtered:
+                matched_queries.extend(filtered[:2])
+                has_direct_kw = True
 
     # 2. Check surrounding context if current sentence has no direct keyword
     if not has_direct_kw and surrounding_context:
         ctx_lower = surrounding_context.lower()
         for kw, queries in KEYWORD_MAP.items():
-            if re.search(r'\b' + re.escape(kw) + r'\b', ctx_lower):
-                matched_queries.extend(queries[:1])
-                has_direct_kw = True
+            pattern = r'\b' + re.escape(kw) + r'(?:s|es|ing|ed)?\b'
+            if re.search(pattern, ctx_lower):
+                filtered = [q for q in queries if not any(bad in q.lower() for bad in ("boxer", "punching bag", "gym", "workout"))] if is_military else queries
+                if filtered:
+                    matched_queries.extend(filtered[:1])
+                    has_direct_kw = True
 
     # 3. Clean words for salient nouns/verbs
     stop_words = {"this", "that", "with", "from", "have", "been", "were", "what", "here", "there", "they", "your", "will", "would", "could", "should", "about", "thing", "some", "more", "most", "also", "then", "into", "onto", "when", "where", "which"}
@@ -458,13 +598,13 @@ def _extract_tags_rulebased(text: str, niche: str, surrounding_context: str = ""
     # If direct keyword matched, add clean words as supplementary
     if has_direct_kw and clean_words:
         keyword_phrase = " ".join(clean_words[:2])
-        matched_queries.append(f"{keyword_phrase} cinematic")
+        bias = "military" if is_military else "cinematic"
+        matched_queries.append(f"{keyword_phrase} {bias}")
     elif not has_direct_kw:
-        # No direct keyword matched (e.g. Urdu, Roman Urdu, or abstract speech):
-        # Anchor solidly to the selected niche so we NEVER get off-topic stock footage like swimming or sports!
         matched_queries.extend(niche_flavor[:3])
         if clean_words:
-            matched_queries.append(f"{' '.join(clean_words[:2])} cinematic")
+            bias = "military" if is_military else "cinematic"
+            matched_queries.append(f"{' '.join(clean_words[:2])} {bias}")
 
     # 4. Always ensure niche flavor tags are included as strong fallbacks
     for nf in niche_flavor[:2]:
@@ -482,12 +622,13 @@ def _extract_tags_rulebased(text: str, niche: str, surrounding_context: str = ""
 
 
 def _call_gemini_api(prompt: str, gemini_keys: List[str]) -> Optional[str]:
-    """Calls Google Gemini API across candidate keys using gemini-3.6-flash and JSON response."""
+    """Calls Google Gemini API across candidate keys using active production models and JSON response."""
     for key in gemini_keys:
         k_clean = str(key).strip()
         if not k_clean:
             continue
-        for model in ["gemini-3.6-flash", "gemini-flash-latest", "gemini-3.5-flash"]:
+        k_mask = f"...{k_clean[-4:]}" if len(k_clean) >= 4 else k_clean
+        for model in ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro"]:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={k_clean}"
                 payload = {
@@ -506,12 +647,12 @@ def _call_gemini_api(prompt: str, gemini_keys: List[str]) -> Optional[str]:
                         if parts:
                             text_out = parts[0].get("text", "")
                             if text_out:
-                                print(f"[SceneAnalyzer] Google Gemini ({model}) successfully generated visual tags.")
+                                print(f"[SceneAnalyzer] Google Gemini ({model} via key {k_mask}) successfully generated visual tags.")
                                 return text_out
                 else:
-                    print(f"[SceneAnalyzer] Gemini API {model} notice: HTTP {res.status_code} - {res.text[:120]}")
+                    print(f"[SceneAnalyzer] Gemini API {model} notice (key {k_mask}): HTTP {res.status_code} - {res.text[:100]}")
             except Exception as e:
-                print(f"[SceneAnalyzer] Gemini API connection notice ({model}): {e}")
+                print(f"[SceneAnalyzer] Gemini API connection notice ({model} via {k_mask}): {e}")
                 continue
     return None
 
@@ -520,28 +661,34 @@ def _enhance_tags_with_ai(
     scenes: List[Dict[str, Any]],
     niche: str,
     gemini_keys: Optional[List[str]] = None,
-    groq_key: str = "",
+    groq_keys: Optional[List[str]] = None,
     openai_key: str = ""
 ) -> List[Dict[str, Any]]:
     """
-    Calls Gemini, Groq, or OpenAI LLM once for the script to generate:
-    1. Search tags (visual B-roll queries strictly 2-3 English words)
+    Calls Gemini, Groq (across multi-key pool), or OpenAI LLM once for the script to generate:
+    1. Search tags (visual B-roll queries strictly 2-3 English words matching script theme)
     2. Callout text (3-5 words for strong claims, statistics, or key takeaways, else null)
     3. Emphasis word (single most important/punchy word for emphasis zoom timing, else null)
     """
     prompt = f"""You are a master YouTube video editor, B-roll visual director, and motion graphic designer.
 For the niche: "{niche}", analyze each sentence from the voiceover script below.
-Even if sentences are in Urdu, Roman Urdu, Hindi, Arabic, or contain typos/phonetic spelling (e.g. "blastoc misile" -> ballistic missile), understand the exact visual context.
+Even if sentences are in Urdu, Roman Urdu, Hindi, Arabic, or contain typos/phonetic spelling (e.g. "blastoc misile" -> ballistic missile, "fauj/fauji" -> armed soldiers, "jang" -> war/battlefield), understand the exact visual context.
+
+CRITICAL VISUAL RELEVANCE RULE:
+If the voiceover discusses war, military, armed forces, defense, missiles, or conflict:
+- NEVER output boxing, gym, fitness, sports, or civilian lifestyle queries for words like 'fight', 'struggle', 'training', 'target', or 'discipline'.
+- You MUST generate visual search tags strictly showing soldiers, armed forces, combat vehicles, military aircraft, naval warships, air defense radar, or tactical operations.
+
 For EACH sentence provide:
-1. "search_tags": 3 to 4 specific, cinematic, highly searchable stock footage queries in ENGLISH (strictly 2 to 3 words each in English, e.g. "deep space galaxy", "astronaut spacewalk", "satellite orbit", "solar system earth", "mars planet"). NEVER return non-English words, full sentences, or vague words in search_tags.
-2. "callout_text": If this sentence contains a strong claim, key statistic, notable fact, or list-point worth a visual text callout badge, return a concise 3-5 word callout (e.g., "93% OF USERS AGREE", "KEY TAKEAWAY: PERSISTENCE", "RULE #1: FOCUS FIRST"). Otherwise, return null.
+1. "search_tags": 3 to 4 specific, cinematic, highly searchable stock footage queries in ENGLISH (strictly 2 to 3 words each in English, e.g. "military armed soldiers", "combat battlefield smoke", "fighter jet supersonic", "ballistic missile launch", "deep space galaxy", "planet earth orbit"). NEVER return non-English words, full sentences, or vague words in search_tags.
+2. "callout_text": If this sentence contains a strong claim, key statistic, notable fact, or list-point worth a visual text callout badge, return a concise 3-5 word callout (e.g., "DEFENSE RADAR ACTIVE", "BALLISTIC MISSILE TEST", "93% OF USERS AGREE", "RULE #1: FOCUS FIRST"). Otherwise, return null.
 3. "emphasis_word": The single most emphatic, high-impact word in that sentence (numbers, superlatives like "best", "never", "biggest", "critical", or key nouns) for emphasis timing, or null.
 
 Respond ONLY with a STRICT JSON array of objects, one object per sentence in exact order. No markdown code blocks, no commentary.
 Example:
 [
-  {{"search_tags": ["deep space galaxy", "planet earth orbit", "stars nebula cosmic"], "callout_text": "DEEP SPACE DISCOVERY", "emphasis_word": "universe"}},
-  {{"search_tags": ["astronaut spacewalk", "satellite earth", "space shuttle"], "callout_text": null, "emphasis_word": "astronaut"}}
+  {{"search_tags": ["military armed soldiers", "combat battlefield smoke", "fighter jet flight"], "callout_text": "DEFENSE SYSTEM READY", "emphasis_word": "missile"}},
+  {{"search_tags": ["tactical patrol troops", "military armored tank", "warzone soldiers armed"], "callout_text": null, "emphasis_word": "soldiers"}}
 ]
 
 Sentences:
@@ -554,25 +701,38 @@ Sentences:
     if gemini_keys:
         content = _call_gemini_api(prompt, gemini_keys)
 
-    # Priority 2: Groq high-speed inference (using active Groq models)
-    if not content and groq_key:
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
-        for model_id in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"]:
-            try:
-                payload = {
-                    "model": model_id,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.3
-                }
-                res = requests.post(url, headers=headers, json=payload, timeout=20)
-                if res.status_code == 200:
-                    content = res.json()["choices"][0]["message"]["content"]
-                    print(f"[SceneAnalyzer] Groq ({model_id}) successfully generated visual tags.")
-                    break
-            except Exception as e:
-                print(f"[SceneAnalyzer] Groq notice ({model_id}): {e}")
-                continue
+    # Priority 2: Groq high-speed inference (multi-key pool with automatic failover)
+    if not content and groq_keys:
+        clean_groq = [str(k).strip() for k in groq_keys if k and str(k).strip()]
+        for gr_key in clean_groq:
+            k_mask = f"...{gr_key[-4:]}" if len(gr_key) >= 4 else gr_key
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {gr_key}", "Content-Type": "application/json"}
+            for model_id in ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]:
+                try:
+                    payload = {
+                        "model": model_id,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.3
+                    }
+                    res = requests.post(url, headers=headers, json=payload, timeout=20)
+                    if res.status_code == 200:
+                        content = res.json()["choices"][0]["message"]["content"]
+                        print(f"[SceneAnalyzer] Groq ({model_id} via key {k_mask}) successfully generated visual tags.")
+                        break
+                    elif res.status_code in (401, 403):
+                        print(f"[SceneAnalyzer] Groq key {k_mask} invalid/unauthorized (HTTP {res.status_code}). Failing over to next Groq key...")
+                        break
+                    elif res.status_code == 429:
+                        print(f"[SceneAnalyzer] Groq key {k_mask} rate-limited (HTTP 429). Failing over to next Groq key...")
+                        break
+                    else:
+                        print(f"[SceneAnalyzer] Groq notice ({model_id} via {k_mask}): HTTP {res.status_code}")
+                except Exception as e:
+                    print(f"[SceneAnalyzer] Groq notice ({model_id} via {k_mask}): {e}")
+                    continue
+            if content:
+                break
 
     # Priority 3: OpenAI
     if not content and openai_key:
@@ -769,20 +929,13 @@ def analyze_script_editorial_direction(
     full_transcript_text: str,
     niche: str = "General",
     groq_key: str = "",
-    openai_key: str = ""
+    openai_key: str = "",
+    groq_keys: Optional[List[str]] = None,
+    gemini_keys: Optional[List[str]] = None
 ) -> Dict[str, Any]:
     """
     Analyzes the full voiceover transcript with a single LLM call to establish
     overall editorial direction: energy level, pacing multiplier, climax scene, and tone.
-
-    Returns:
-        {
-            "energy": "high" | "medium" | "calm",
-            "pacing_multiplier": float (0.8 to 1.3),
-            "climax_scene_index": int (0-based) or None,
-            "tone": str
-        }
-    Falls back safely to neutral defaults on any failure or invalid response.
     """
     default_editorial = {
         "energy": "medium",
@@ -795,20 +948,21 @@ def analyze_script_editorial_direction(
         return default_editorial
 
     # Automatically load API keys from config if not explicitly provided
-    if not groq_key and not openai_key:
+    if not groq_keys and not groq_key and not openai_key and not gemini_keys:
         try:
             settings = load_settings()
             g_key = settings.get("gemini_api_key", "").strip()
             gemini_keys = settings.get("gemini_api_keys") or ([g_key] if g_key else [])
             groq_keys = settings.get("groq_api_keys") or ([settings.get("groq_api_key")] if settings.get("groq_api_key") else [])
-            groq_key = groq_keys[0] if groq_keys else ""
             openai_key = settings.get("openai_api_key", "").strip()
         except Exception:
             gemini_keys = []
-            groq_key = ""
+            groq_keys = []
             openai_key = ""
+    elif groq_key and not groq_keys:
+        groq_keys = [groq_key]
 
-    if not gemini_keys and not groq_key and not openai_key:
+    if not gemini_keys and not groq_keys and not openai_key:
         return default_editorial
 
     # Number sentences for 0-based climax sentence identification
@@ -838,22 +992,30 @@ Respond ONLY with a STRICT JSON object in this exact format. No markdown code bl
         if gemini_keys:
             content = _call_gemini_api(prompt, gemini_keys)
 
-        if not content and groq_key:
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
-            for model_id in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-3.1-70b-versatile"]:
-                try:
-                    payload = {
-                        "model": model_id,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": 0.3
-                    }
-                    res = requests.post(url, headers=headers, json=payload, timeout=20)
-                    if res.status_code == 200:
-                        content = res.json()["choices"][0]["message"]["content"]
-                        break
-                except Exception:
+        if not content and groq_keys:
+            for gr_k in groq_keys:
+                clean_k = str(gr_k).strip()
+                if not clean_k:
                     continue
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                headers = {"Authorization": f"Bearer {clean_k}", "Content-Type": "application/json"}
+                for model_id in ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]:
+                    try:
+                        payload = {
+                            "model": model_id,
+                            "messages": [{"role": "user", "content": prompt}],
+                            "temperature": 0.3
+                        }
+                        res = requests.post(url, headers=headers, json=payload, timeout=20)
+                        if res.status_code == 200:
+                            content = res.json()["choices"][0]["message"]["content"]
+                            break
+                        elif res.status_code in (401, 429):
+                            break  # Failover to next key in pool
+                    except Exception:
+                        continue
+                if content:
+                    break
         elif not content and openai_key:
             url = "https://api.openai.com/v1/chat/completions"
             headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
