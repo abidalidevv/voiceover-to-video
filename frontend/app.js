@@ -135,24 +135,24 @@ function collapseAllSettingsCards() {
 
 // ==================== VIDEO PREVIEW RIGHT PANEL PREFERENCES ====================
 const DEFAULT_PREVIEW_PANEL_PREFS = {
-  show_template: true,
+  show_template: false,
   show_captions: true,
-  show_bgm: true,
-  show_sfx: true,
-  show_overlay: true,
-  show_transitions: true,
-  show_polish: true
+  show_bgm: false,
+  show_sfx: false,
+  show_overlay: false,
+  show_transitions: false,
+  show_polish: false
 };
 
 function getPreviewPanelPreferences() {
   return {
-    show_template: document.getElementById('pref-show-template') ? document.getElementById('pref-show-template').checked : true,
+    show_template: document.getElementById('pref-show-template') ? document.getElementById('pref-show-template').checked : false,
     show_captions: document.getElementById('pref-show-captions') ? document.getElementById('pref-show-captions').checked : true,
-    show_bgm: document.getElementById('pref-show-bgm') ? document.getElementById('pref-show-bgm').checked : true,
-    show_sfx: document.getElementById('pref-show-sfx') ? document.getElementById('pref-show-sfx').checked : true,
-    show_overlay: document.getElementById('pref-show-overlay') ? document.getElementById('pref-show-overlay').checked : true,
-    show_transitions: document.getElementById('pref-show-transitions') ? document.getElementById('pref-show-transitions').checked : true,
-    show_polish: document.getElementById('pref-show-polish') ? document.getElementById('pref-show-polish').checked : true
+    show_bgm: document.getElementById('pref-show-bgm') ? document.getElementById('pref-show-bgm').checked : false,
+    show_sfx: document.getElementById('pref-show-sfx') ? document.getElementById('pref-show-sfx').checked : false,
+    show_overlay: document.getElementById('pref-show-overlay') ? document.getElementById('pref-show-overlay').checked : false,
+    show_transitions: document.getElementById('pref-show-transitions') ? document.getElementById('pref-show-transitions').checked : false,
+    show_polish: document.getElementById('pref-show-polish') ? document.getElementById('pref-show-polish').checked : false
   };
 }
 

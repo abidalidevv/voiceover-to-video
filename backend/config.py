@@ -77,13 +77,13 @@ DEFAULT_SETTINGS = {
     "default_caption_preset": "capcut_yellow",
     "gpu_acceleration": True,
     "preview_panel_settings": {
-        "show_template": True,
+        "show_template": False,
         "show_captions": True,
-        "show_bgm": True,
-        "show_sfx": True,
-        "show_overlay": True,
-        "show_transitions": True,
-        "show_polish": True
+        "show_bgm": False,
+        "show_sfx": False,
+        "show_overlay": False,
+        "show_transitions": False,
+        "show_polish": False
     }
 }
 

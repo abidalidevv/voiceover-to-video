@@ -1047,7 +1047,7 @@
           </div>
 
           <!-- 1. Master Editing Template Quick Selector -->
-          <div class="inspector-section" id="panel-master-template" style="background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.22); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 12px;">
+          <div class="inspector-section" id="panel-master-template" style="display:none; background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.22); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 12px;">
             <label class="section-title" style="color: var(--accent-cyan); display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <span>⚡ Master Editing Template</span>
               <span style="font-size: 10px; font-weight: 600; text-transform: none; color: #94a3b8;">1-Click Pacing & FX</span>
@@ -1249,7 +1249,7 @@
         </div> <!-- End panel-kinetic-captions -->
 
         <!-- 3. Background Music & Audio Mixing -->
-        <div class="inspector-section" id="panel-bgm">
+        <div class="inspector-section" id="panel-bgm" style="display:none;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <label class="section-title" style="margin-bottom:0;" for="enable-bgm-toggle">🎵 Background Music (BGM)</label>
             <div style="display:flex; align-items:center; gap:8px;">
@@ -1257,7 +1257,7 @@
                 ➕ Upload BGM
               </button>
               <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;" title="Toggle background music ON or OFF">
-                <input type="checkbox" id="enable-bgm-toggle" checked onchange="onToggleBgm(this.checked)">
+                <input type="checkbox" id="enable-bgm-toggle" onchange="onToggleBgm(this.checked)">
                 <span class="toggle-slider"></span>
               </label>
             </div>
@@ -1286,7 +1286,7 @@
         </div>
 
         <!-- 4. Video Overlay (Logo, Watermark, Facecam) -->
-        <div class="inspector-section" id="panel-overlay">
+        <div class="inspector-section" id="panel-overlay" style="display:none;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <label class="section-title" style="margin-bottom:0;">🎭 Video Overlay</label>
             <button class="btn btn-secondary btn-xs" id="upload-overlay-btn" onclick="document.getElementById('overlay-file-input').click()" title="Upload a video or image overlay (logo, watermark, facecam)">
@@ -1330,11 +1330,11 @@
         </div>
 
         <!-- 5. Scene Transition Sound Effects (SFX) -->
-        <div class="inspector-section" id="panel-sfx">
+        <div class="inspector-section" id="panel-sfx" style="display:none;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <label class="section-title" style="margin-bottom:0;" for="enable-sfx-toggle">🔊 Scene Transition SFX (Whooshes & Pops)</label>
             <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;" title="Toggle scene transition sound effects ON or OFF">
-              <input type="checkbox" id="enable-sfx-toggle" checked onchange="onToggleSfx(this.checked)">
+              <input type="checkbox" id="enable-sfx-toggle" onchange="onToggleSfx(this.checked)">
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1359,11 +1359,11 @@
         </div>
 
         <!-- 6. Video Polish & Cinematic Motion FX -->
-        <div class="inspector-section" id="panel-video-polish">
+        <div class="inspector-section" id="panel-video-polish" style="display:none;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <label class="section-title" style="margin-bottom:0;" for="enable-polish-toggle">🎬 Video Polish & Cinematic FX</label>
             <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;" title="Toggle all cinematic color grades & camera polish ON or OFF">
-              <input type="checkbox" id="enable-polish-toggle" checked onchange="onTogglePolish(this.checked)">
+              <input type="checkbox" id="enable-polish-toggle" onchange="onTogglePolish(this.checked)">
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -1399,7 +1399,7 @@
         </div>
 
         <!-- 7. Scene Transitions -->
-        <div class="inspector-section" id="panel-scene-transitions">
+        <div class="inspector-section" id="panel-scene-transitions" style="display:none;">
           <label class="section-title" style="margin-bottom:8px;">🔀 Modern Scene Transitions</label>
           <div class="form-group">
             <label class="sub-label">Transition Style</label>
@@ -1709,7 +1709,7 @@
               </div>
             </div>
             <div class="settings-card-header-right">
-              <span class="badge badge-success" id="badge-preview-panels-count">7 of 7 Visible</span>
+              <span class="badge badge-info" id="badge-preview-panels-count">1 of 7 Visible</span>
               <span class="collapse-btn-pill">Expand ▾</span>
             </div>
           </div>
@@ -1728,7 +1728,7 @@
                   <span class="preview-panel-toggle-desc">1-Click pacing, transitions & preset styling</span>
                 </div>
                 <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
-                  <input type="checkbox" id="pref-show-template" checked onchange="onPreviewPanelPrefChange()">
+                  <input type="checkbox" id="pref-show-template" onchange="onPreviewPanelPrefChange()">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
@@ -1752,7 +1752,7 @@
                   <span class="preview-panel-toggle-desc">BGM tracks, volume slider & custom music upload</span>
                 </div>
                 <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
-                  <input type="checkbox" id="pref-show-bgm" checked onchange="onPreviewPanelPrefChange()">
+                  <input type="checkbox" id="pref-show-bgm" onchange="onPreviewPanelPrefChange()">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
@@ -1764,7 +1764,7 @@
                   <span class="preview-panel-toggle-desc">Whooshes, punchy pops & transition sound stings</span>
                 </div>
                 <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
-                  <input type="checkbox" id="pref-show-sfx" checked onchange="onPreviewPanelPrefChange()">
+                  <input type="checkbox" id="pref-show-sfx" onchange="onPreviewPanelPrefChange()">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
@@ -1776,7 +1776,7 @@
                   <span class="preview-panel-toggle-desc">Watermarks, logo badges & facecam layers</span>
                 </div>
                 <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
-                  <input type="checkbox" id="pref-show-overlay" checked onchange="onPreviewPanelPrefChange()">
+                  <input type="checkbox" id="pref-show-overlay" onchange="onPreviewPanelPrefChange()">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
@@ -1788,7 +1788,7 @@
                   <span class="preview-panel-toggle-desc">Whip pans, crossfades, zoom punch & speed</span>
                 </div>
                 <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
-                  <input type="checkbox" id="pref-show-transitions" checked onchange="onPreviewPanelPrefChange()">
+                  <input type="checkbox" id="pref-show-transitions" onchange="onPreviewPanelPrefChange()">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
@@ -1800,7 +1800,7 @@
                   <span class="preview-panel-toggle-desc">Ken Burns motion, cinematic vignette & color tone</span>
                 </div>
                 <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
-                  <input type="checkbox" id="pref-show-polish" checked onchange="onPreviewPanelPrefChange()">
+                  <input type="checkbox" id="pref-show-polish" onchange="onPreviewPanelPrefChange()">
                   <span class="toggle-slider"></span>
                 </label>
               </div>

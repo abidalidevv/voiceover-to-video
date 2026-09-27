@@ -78,6 +78,8 @@ datas = [
 ]
 if (BASE_DIR / "bin").exists():
     datas.append((str(BASE_DIR / "bin"), "bin"))
+if (BASE_DIR / "data" / "fonts").exists():
+    datas.append((str(BASE_DIR / "data" / "fonts"), "data/fonts"))
 if (BASE_DIR / "data" / "sfx").exists():
     datas.append((str(BASE_DIR / "data" / "sfx"), "data/sfx"))
 if (BASE_DIR / "data" / "assets").exists():

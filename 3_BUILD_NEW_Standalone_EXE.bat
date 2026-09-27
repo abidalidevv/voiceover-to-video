@@ -37,6 +37,7 @@ if not exist "dist\VideoGenStudio\data" mkdir "dist\VideoGenStudio\data"
 if not exist "dist\VideoGenStudio\data\thumbnails" mkdir "dist\VideoGenStudio\data\thumbnails"
 if not exist "dist\VideoGenStudio\data\seo" mkdir "dist\VideoGenStudio\data\seo"
 if exist "data\settings.json" copy /y "data\settings.json" "dist\VideoGenStudio\data\settings.json" >nul
+if exist "data\fonts" xcopy /e /i /y "data\fonts" "dist\VideoGenStudio\data\fonts" >nul
 if exist "data\sfx" xcopy /e /i /y "data\sfx" "dist\VideoGenStudio\data\sfx" >nul
 if exist "data\assets" xcopy /e /i /y "data\assets" "dist\VideoGenStudio\data\assets" >nul
 if exist "frontend" xcopy /e /i /y "frontend" "dist\VideoGenStudio\frontend" >nul
