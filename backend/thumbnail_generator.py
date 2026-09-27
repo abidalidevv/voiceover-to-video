@@ -707,16 +707,6 @@ def generate_youtube_thumbnails(
     except Exception:
         pass
 
-    # 4. ALSO copy all 3 directly into the video output directory!
-    try:
-        conf_out = str(settings.get("output_dir", "")).strip()
-        dest_dir = Path(conf_out) if conf_out else OUTPUT_DIR
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(t1_path, dest_dir / t1_filename)
-        shutil.copy2(t2_path, dest_dir / t2_filename)
-        shutil.copy2(t3_path, dest_dir / t3_filename)
-    except Exception as e:
-        print(f"[ThumbnailGenerator] Notice copying thumbnails to video output dir: {e}")
 
     # Web URLs
     url1 = f"/media/thumbnails/{t1_filename}"

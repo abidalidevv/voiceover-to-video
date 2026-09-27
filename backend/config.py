@@ -76,6 +76,7 @@ DEFAULT_SETTINGS = {
     "thumbnail_output_dir": str(DATA_DIR / "thumbnails"),
     "default_caption_preset": "capcut_yellow",
     "gpu_acceleration": True,
+    "enable_thumbnails": False,
     "preview_panel_settings": {
         "show_template": False,
         "show_captions": True,

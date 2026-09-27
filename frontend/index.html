@@ -379,7 +379,7 @@
       <button class="nav-btn" id="tab-preview-btn" onclick="switchTab('preview')">
         <span class="icon">🎬</span> Preview
       </button>
-      <button class="nav-btn" id="tab-thumbnails-btn" onclick="switchTab('thumbnails')">
+      <button class="nav-btn" id="tab-thumbnails-btn" onclick="switchTab('thumbnails')" style="display:none;">
         <span class="icon">🖼️</span> Thumbnail
       </button>
       <button class="nav-btn" id="tab-library-btn" onclick="switchTab('library')">
@@ -1455,6 +1455,9 @@
                 ✂️ CapCut Timeline
               </button>
             </div>
+            <div style="margin-top:8px;font-size:11px;color:#94a3b8;display:flex;align-items:center;justify-content:center;gap:5px;">
+              <span>📁 Output Location:</span> <strong style="color:var(--accent-cyan);font-family:monospace;">data\output\</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -1918,6 +1921,22 @@
                 </div>
                 <p style="font-size:11px;color:var(--text-muted);margin-top:6px;">Viral and cinematic YouTube thumbnails will be saved into this folder.</p>
               </div>
+            </div>
+
+            <!-- Thumbnail Studio & Generation Master Toggle -->
+            <div class="mt-16" style="background:var(--bg-card-sub);padding:14px;border-radius:8px;border:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <label style="font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;" for="input-enable-thumbnails">
+                  🖼️ YouTube Thumbnail Studio & Generation
+                </label>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+                  When turned OFF, Thumbnail Studio is completely hidden from the top navigation menu, and thumbnail generation is disabled to keep your output clean.
+                </div>
+              </div>
+              <label class="switch-toggle" style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer;">
+                <input type="checkbox" id="input-enable-thumbnails" onchange="onThumbnailSettingChange(this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
             </div>
           </div>
         </div>

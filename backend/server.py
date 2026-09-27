@@ -849,16 +849,17 @@ def render_video(req: RenderRequest):
     }
     project["status"] = "completed"
 
-    # Auto-generate 3 YouTube Thumbnails with matching bundle_prefix
-    try:
-        from backend.thumbnail_generator import generate_youtube_thumbnails
-        conf_thumb = str(load_settings().get("thumbnail_output_dir", "")).strip()
-        thumb_dir = Path(conf_thumb) if conf_thumb else (DATA_DIR / "thumbnails")
-        thumb_dir.mkdir(parents=True, exist_ok=True)
-        thumb_res = generate_youtube_thumbnails(project, target_dir=thumb_dir, bundle_prefix=bundle_prefix)
-        project["thumbnails"] = thumb_res
-    except Exception as th_err:
-        print(f"[ThumbnailGenerator] Auto-generation notice: {th_err}")
+    # Auto-generate 3 YouTube Thumbnails with matching bundle_prefix (only if enabled in settings)
+    if bool(load_settings().get("enable_thumbnails", False)):
+        try:
+            from backend.thumbnail_generator import generate_youtube_thumbnails
+            conf_thumb = str(load_settings().get("thumbnail_output_dir", "")).strip()
+            thumb_dir = Path(conf_thumb) if conf_thumb else (DATA_DIR / "thumbnails")
+            thumb_dir.mkdir(parents=True, exist_ok=True)
+            thumb_res = generate_youtube_thumbnails(project, target_dir=thumb_dir, bundle_prefix=bundle_prefix)
+            project["thumbnails"] = thumb_res
+        except Exception as th_err:
+            print(f"[ThumbnailGenerator] Auto-generation notice: {th_err}")
 
     save_project_to_history(project)
 
@@ -995,17 +996,18 @@ def start_render_job(req: RenderRequest):
             }
             project["status"] = "completed"
 
-            # Auto-generate 2 YouTube Thumbnails (Viral & Cinematic)
-            try:
-                from backend.thumbnail_generator import generate_youtube_thumbnails
-                conf_thumb = str(load_settings().get("thumbnail_output_dir", "")).strip()
-                thumb_dir = Path(conf_thumb) if conf_thumb else (DATA_DIR / "thumbnails")
-                thumb_dir.mkdir(parents=True, exist_ok=True)
-                thumb_res = generate_youtube_thumbnails(project, target_dir=thumb_dir, bundle_prefix=bundle_prefix)
-                project["thumbnails"] = thumb_res
-                job["thumbnails"] = thumb_res
-            except Exception as th_err:
-                print(f"[ThumbnailGenerator] Auto-generation notice: {th_err}")
+            # Auto-generate 2 YouTube Thumbnails (Viral & Cinematic) (only if enabled in settings)
+            if bool(load_settings().get("enable_thumbnails", False)):
+                try:
+                    from backend.thumbnail_generator import generate_youtube_thumbnails
+                    conf_thumb = str(load_settings().get("thumbnail_output_dir", "")).strip()
+                    thumb_dir = Path(conf_thumb) if conf_thumb else (DATA_DIR / "thumbnails")
+                    thumb_dir.mkdir(parents=True, exist_ok=True)
+                    thumb_res = generate_youtube_thumbnails(project, target_dir=thumb_dir, bundle_prefix=bundle_prefix)
+                    project["thumbnails"] = thumb_res
+                    job["thumbnails"] = thumb_res
+                except Exception as th_err:
+                    print(f"[ThumbnailGenerator] Auto-generation notice: {th_err}")
 
             # Auto-generate YouTube SEO Suite metadata in background
             try:

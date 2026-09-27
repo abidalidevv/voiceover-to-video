@@ -228,6 +228,18 @@ function onPreviewPanelPrefChange() {
   }
 }
 
+function onThumbnailSettingChange(enabled) {
+  const tabThumbBtn = document.getElementById('tab-thumbnails-btn');
+  if (tabThumbBtn) tabThumbBtn.style.display = enabled ? '' : 'none';
+  if (!enabled && activeTab === 'thumbnails') {
+    switchTab('studio');
+  }
+  showToast(enabled ? '🖼️ Thumbnail Studio enabled in menu' : '🖼️ Thumbnail Studio disabled & hidden from menu');
+  if (typeof saveAppSettings === 'function') {
+    saveAppSettings(true);
+  }
+}
+
 // ==================== SETTINGS & API STATUS ====================
 function handleWorkerSliderChange(val) {
   const num = parseInt(val, 10);
@@ -318,6 +330,13 @@ async function loadSettings() {
     if (document.getElementById('input-thumbnail-output-dir')) {
       document.getElementById('input-thumbnail-output-dir').value = data.thumbnail_output_dir || '';
     }
+
+    // Thumbnail Studio Master On/Off Toggle
+    const enableThumbnails = Boolean(data.enable_thumbnails);
+    const thumbToggle = document.getElementById('input-enable-thumbnails');
+    if (thumbToggle) thumbToggle.checked = enableThumbnails;
+    const tabThumbBtn = document.getElementById('tab-thumbnails-btn');
+    if (tabThumbBtn) tabThumbBtn.style.display = enableThumbnails ? '' : 'none';
 
     const workers = data.workers || 8;
     if (document.getElementById('input-workers-slider')) {
@@ -420,9 +439,10 @@ async function saveAppSettings(silent = false) {
     openai_api_key: document.getElementById('input-openai-key')?.value.trim() || '',
     elevenlabs_api_key: document.getElementById('input-elevenlabs-key')?.value.trim() || '',
 
-    // Output Directories
+    // Output Directories & Features
     output_dir: document.getElementById('input-output-dir')?.value.trim() || '',
     thumbnail_output_dir: document.getElementById('input-thumbnail-output-dir')?.value.trim() || '',
+    enable_thumbnails: document.getElementById('input-enable-thumbnails')?.checked ?? false,
 
     // Performance & Hardware
     hardware_encoder: document.getElementById('input-hardware-encoder')?.value || 'auto',
