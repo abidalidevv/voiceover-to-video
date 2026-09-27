@@ -10,14 +10,9 @@ test_*.py
 *_test.py
 *.test.*
 scratch/
-extra/test_scripts/
-extra/scratch_dev/
-extra/*.mp4
-extra/*.spec
-extra/*.bat
-extra/_unused_*
+extra/
 
-# Temporary, Caches & Generated Media (Stock & Rendered)
+# Raw Data, Temporary, Caches & Generated Media (Stock & Rendered)
 data/cache/
 data/temp/
 data/output/
@@ -26,6 +21,9 @@ data/projects/
 data/thumbnails/
 data/seo/
 data/sfx/tts_samples/
+data/uploads/
+data/models/
+data/voice_samples/
 data/projects_history.json
 data/settings.json
 data/batch_jobs.json
@@ -33,6 +31,7 @@ data/batch_jobs.json
 *.db-wal
 *.db-shm
 *.mp4
+**/*.mp4
 
 # Secrets & Local Credentials
 api.txt

@@ -295,18 +295,47 @@ class CaptionEngine {
     // Find active chunk
     let chunkIdx = this.wordChunks.findIndex(c => currentTime >= c.start && currentTime <= c.end);
     if (chunkIdx === -1) {
-      // When paused or seeking between words, find closest chunk so preview is NEVER empty
-      let minDiff = Infinity;
-      let closestIdx = 0;
-      for (let i = 0; i < this.wordChunks.length; i++) {
-        const c = this.wordChunks[i];
-        const diff = Math.min(Math.abs(currentTime - c.start), Math.abs(currentTime - c.end));
-        if (diff < minDiff) {
-          minDiff = diff;
-          closestIdx = i;
+      if (typeof isPlaying !== 'undefined' && isPlaying) {
+        // During active video playback: check if we are in the brief lingering window after the previous chunk
+        let lastEndedIdx = -1;
+        for (let i = 0; i < this.wordChunks.length; i++) {
+          if (this.wordChunks[i].end <= currentTime) {
+            lastEndedIdx = i;
+          }
         }
+        if (lastEndedIdx !== -1) {
+          const prevChunk = this.wordChunks[lastEndedIdx];
+          // Allow natural lingering for up to 0.35s after chunk speech ends
+          if (currentTime - prevChunk.end <= 0.35) {
+            chunkIdx = lastEndedIdx;
+          } else {
+            // True speech pause/silence: clear caption so future words are never displayed early!
+            this.captionEl.innerHTML = '';
+            this.lastRenderedChunkIdx = -1;
+            this.lastRenderedWordIdx = -1;
+            return;
+          }
+        } else {
+          // Before the very first spoken word starts: keep overlay clear
+          this.captionEl.innerHTML = '';
+          this.lastRenderedChunkIdx = -1;
+          this.lastRenderedWordIdx = -1;
+          return;
+        }
+      } else {
+        // When paused or seeking in the editor, find closest chunk so designer preview is never blank
+        let minDiff = Infinity;
+        let closestIdx = 0;
+        for (let i = 0; i < this.wordChunks.length; i++) {
+          const c = this.wordChunks[i];
+          const diff = Math.min(Math.abs(currentTime - c.start), Math.abs(currentTime - c.end));
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestIdx = i;
+          }
+        }
+        chunkIdx = closestIdx;
       }
-      chunkIdx = closestIdx;
     }
 
     const chunk = this.wordChunks[chunkIdx];

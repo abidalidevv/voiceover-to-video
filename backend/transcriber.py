@@ -51,23 +51,56 @@ def transcribe_audio(audio_path: str, niche: str = "General") -> Dict[str, Any]:
             print(f"[Transcriber] OpenAI failed: {e}, falling back to heuristic")
 
     # 3. Intelligent Heuristic Generator (Offline / Demo mode)
-    return _generate_fallback_transcription(audio_path, duration, niche)
+    print(f"[Transcriber] WARNING: Both Groq and OpenAI failed or were unconfigured. Using demo fallback transcription. Captions will be generic placeholders!")
+    res = _generate_fallback_transcription(audio_path, duration, niche)
+    res["is_fallback"] = True
+    return res
 
 
 def _transcribe_groq(audio_path: str, api_key: str, total_duration: float) -> Dict[str, Any]:
     url = "https://api.groq.com/openai/v1/audio/transcriptions"
     headers = {"Authorization": f"Bearer {api_key}"}
-    with open(audio_path, "rb") as f:
-        files = {"file": (os.path.basename(audio_path), f, "audio/mpeg")}
-        data = {
-            "model": "whisper-large-v3",
-            "response_format": "verbose_json",
-            "timestamp_granularities[]": ["word", "segment"]
-        }
-        resp = requests.post(url, headers=headers, files=files, data=data, timeout=60)
-        resp.raise_for_status()
-        raw = resp.json()
-        return _format_whisper_response(raw, total_duration)
+    
+    # Infer proper audio MIME type from extension
+    fname = os.path.basename(audio_path)
+    ext = os.path.splitext(fname)[1].lower()
+    mime_map = {
+        ".wav": "audio/wav",
+        ".mp3": "audio/mpeg",
+        ".m4a": "audio/mp4",
+        ".mp4": "audio/mp4",
+        ".ogg": "audio/ogg",
+        ".flac": "audio/flac",
+        ".webm": "audio/webm"
+    }
+    content_type = mime_map.get(ext, "audio/mpeg")
+
+    # Try whisper-large-v3 first, then whisper-large-v3-turbo
+    models_to_try = ["whisper-large-v3", "whisper-large-v3-turbo"]
+    last_err = None
+
+    for model_name in models_to_try:
+        try:
+            with open(audio_path, "rb") as f:
+                files = {"file": (fname, f, content_type)}
+                data = {
+                    "model": model_name,
+                    "response_format": "verbose_json",
+                    "timestamp_granularities[]": ["word", "segment"]
+                }
+                resp = requests.post(url, headers=headers, files=files, data=data, timeout=60)
+                if resp.status_code == 200:
+                    raw = resp.json()
+                    print(f"[Transcriber] Groq speech transcription success using {model_name}!")
+                    return _format_whisper_response(raw, total_duration)
+                else:
+                    print(f"[Transcriber] Groq {model_name} HTTP {resp.status_code}: {resp.text}")
+                    last_err = Exception(f"HTTP {resp.status_code}: {resp.text}")
+        except Exception as e:
+            print(f"[Transcriber] Groq {model_name} request failed: {e}")
+            last_err = e
+
+    raise last_err or Exception("All Groq transcription models failed.")
 
 
 def _transcribe_openai(audio_path: str, api_key: str, total_duration: float) -> Dict[str, Any]:

@@ -545,13 +545,19 @@ def render_final_video(
 
     # 1. Video Filter: ASS subtitles if present
     if ass_subtitle_path and os.path.exists(ass_subtitle_path):
-        escaped_ass = str(Path(ass_subtitle_path).resolve()).replace("\\", "/").replace(":", r"\:")
-        fonts_dir_path = Path(__file__).resolve().parent.parent / "data" / "fonts"
-        if fonts_dir_path.exists():
-            escaped_fonts_dir = str(fonts_dir_path.resolve()).replace("\\", "/").replace(":", r"\:")
-            filter_complex_parts.append(f"{current_video_label}ass=f='{escaped_ass}':fontsdir='{escaped_fonts_dir}'[vout]")
+        ass_posix = Path(ass_subtitle_path).resolve().as_posix().replace(":", r"\:")
+        # Check potential font paths (source tree, DATA_DIR, or bundled executable directory)
+        candidate_font_dirs = [
+            DATA_DIR / "fonts",
+            Path(__file__).resolve().parent.parent / "data" / "fonts",
+            Path("data/fonts").resolve()
+        ]
+        fonts_dir_path = next((d for d in candidate_font_dirs if d.exists()), None)
+        if fonts_dir_path:
+            fonts_posix = fonts_dir_path.resolve().as_posix().replace(":", r"\:")
+            filter_complex_parts.append(f"{current_video_label}ass=filename='{ass_posix}':fontsdir='{fonts_posix}'[vout]")
         else:
-            filter_complex_parts.append(f"{current_video_label}ass='{escaped_ass}'[vout]")
+            filter_complex_parts.append(f"{current_video_label}ass=filename='{ass_posix}'[vout]")
         video_map_label = "[vout]"
     else:
         # If we had overlay filter, use its output label; otherwise raw stream

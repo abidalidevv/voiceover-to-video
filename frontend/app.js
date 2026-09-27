@@ -27,6 +27,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   captionEngine = new CaptionEngine('subtitle-overlay', 'subtitle-text');
   captionEngine.applyContainerStyles();
 
+  // Instant apply cached video preview panel preferences
+  try {
+    const cached = localStorage.getItem('vg_preview_panel_prefs');
+    if (cached) applyPreviewPanelPreferences(JSON.parse(cached));
+  } catch (e) {}
+
   // Connect interactive drag-to-position on video player to bottom margin controls
   captionEngine.enableDrag((newBottom) => {
     const slider = document.getElementById('margin-v-slider');
@@ -100,6 +106,128 @@ function selectPipeline(pipe) {
   if (btn) btn.classList.add('active');
 }
 
+// ==================== SETTINGS COLLAPSIBLE CARDS ====================
+function toggleSettingsCard(headerEl) {
+  const card = headerEl.closest('.settings-card.collapsible');
+  if (!card) return;
+  const isCollapsed = card.classList.toggle('collapsed');
+  const pill = card.querySelector('.collapse-btn-pill');
+  if (pill) {
+    pill.textContent = isCollapsed ? 'Expand ▾' : 'Minimize ▴';
+  }
+}
+
+function expandAllSettingsCards() {
+  document.querySelectorAll('#tab-settings .settings-card.collapsible').forEach(card => {
+    card.classList.remove('collapsed');
+    const pill = card.querySelector('.collapse-btn-pill');
+    if (pill) pill.textContent = 'Minimize ▴';
+  });
+}
+
+function collapseAllSettingsCards() {
+  document.querySelectorAll('#tab-settings .settings-card.collapsible').forEach(card => {
+    card.classList.add('collapsed');
+    const pill = card.querySelector('.collapse-btn-pill');
+    if (pill) pill.textContent = 'Expand ▾';
+  });
+}
+
+// ==================== VIDEO PREVIEW RIGHT PANEL PREFERENCES ====================
+const DEFAULT_PREVIEW_PANEL_PREFS = {
+  show_template: true,
+  show_captions: true,
+  show_bgm: true,
+  show_sfx: true,
+  show_overlay: true,
+  show_transitions: true,
+  show_polish: true
+};
+
+function getPreviewPanelPreferences() {
+  return {
+    show_template: document.getElementById('pref-show-template') ? document.getElementById('pref-show-template').checked : true,
+    show_captions: document.getElementById('pref-show-captions') ? document.getElementById('pref-show-captions').checked : true,
+    show_bgm: document.getElementById('pref-show-bgm') ? document.getElementById('pref-show-bgm').checked : true,
+    show_sfx: document.getElementById('pref-show-sfx') ? document.getElementById('pref-show-sfx').checked : true,
+    show_overlay: document.getElementById('pref-show-overlay') ? document.getElementById('pref-show-overlay').checked : true,
+    show_transitions: document.getElementById('pref-show-transitions') ? document.getElementById('pref-show-transitions').checked : true,
+    show_polish: document.getElementById('pref-show-polish') ? document.getElementById('pref-show-polish').checked : true
+  };
+}
+
+function applyPreviewPanelPreferences(prefs) {
+  if (!prefs) prefs = DEFAULT_PREVIEW_PANEL_PREFS;
+  const p = { ...DEFAULT_PREVIEW_PANEL_PREFS, ...prefs };
+
+  const map = [
+    { key: 'show_template', inputId: 'pref-show-template', panelId: 'panel-master-template', toggleId: null },
+    { key: 'show_captions', inputId: 'pref-show-captions', panelId: 'panel-kinetic-captions', toggleId: 'enable-captions-toggle', onToggle: (typeof onToggleCaptions === 'function' ? onToggleCaptions : null) },
+    { key: 'show_bgm', inputId: 'pref-show-bgm', panelId: 'panel-bgm', toggleId: 'enable-bgm-toggle', onToggle: (typeof onToggleBgm === 'function' ? onToggleBgm : null) },
+    { key: 'show_sfx', inputId: 'pref-show-sfx', panelId: 'panel-sfx', toggleId: 'enable-sfx-toggle', onToggle: (typeof onToggleSfx === 'function' ? onToggleSfx : null) },
+    { key: 'show_overlay', inputId: 'pref-show-overlay', panelId: 'panel-overlay', toggleId: null },
+    { key: 'show_transitions', inputId: 'pref-show-transitions', panelId: 'panel-scene-transitions', toggleId: null },
+    { key: 'show_polish', inputId: 'pref-show-polish', panelId: 'panel-video-polish', toggleId: 'enable-polish-toggle', onToggle: (typeof onTogglePolish === 'function' ? onTogglePolish : null) }
+  ];
+
+  let visibleCount = 0;
+  map.forEach(item => {
+    const isVisible = Boolean(p[item.key]);
+    if (isVisible) visibleCount++;
+
+    const inputEl = document.getElementById(item.inputId);
+    if (inputEl) inputEl.checked = isVisible;
+
+    const panelEl = document.getElementById(item.panelId);
+    if (panelEl) {
+      panelEl.style.display = isVisible ? '' : 'none';
+    }
+
+    if (!isVisible) {
+      if (item.toggleId) {
+        const toggleEl = document.getElementById(item.toggleId);
+        if (toggleEl && toggleEl.checked) {
+          toggleEl.checked = false;
+          if (typeof item.onToggle === 'function') {
+            try { item.onToggle(false); } catch (e) {}
+          }
+        }
+      }
+      if (item.key === 'show_overlay') {
+        const ovrVideo = document.getElementById('preview-overlay-video');
+        const ovrImg = document.getElementById('preview-overlay-img');
+        if (ovrVideo) ovrVideo.style.display = 'none';
+        if (ovrImg) ovrImg.style.display = 'none';
+      }
+    }
+  });
+
+  const badge = document.getElementById('badge-preview-panels-count');
+  if (badge) {
+    badge.textContent = `${visibleCount} of ${map.length} Visible`;
+    if (visibleCount === map.length) {
+      badge.className = 'badge badge-success';
+    } else if (visibleCount === 0) {
+      badge.className = 'badge badge-danger';
+    } else {
+      badge.className = 'badge badge-info';
+    }
+  }
+
+  try {
+    localStorage.setItem('vg_preview_panel_prefs', JSON.stringify(p));
+  } catch (e) {}
+}
+
+function onPreviewPanelPrefChange() {
+  const prefs = getPreviewPanelPreferences();
+  applyPreviewPanelPreferences(prefs);
+  showToast('🎛️ Video preview panel updated');
+  if (typeof saveAppSettings === 'function') {
+    saveAppSettings(true);
+  }
+}
+
 // ==================== SETTINGS & API STATUS ====================
 function handleWorkerSliderChange(val) {
   const num = parseInt(val, 10);
@@ -126,6 +254,16 @@ async function loadSettings() {
   try {
     const res = await fetch('/api/settings');
     const data = await res.json();
+
+    // Video Preview Right Panel Preferences
+    let previewPrefs = data.preview_panel_settings;
+    if (!previewPrefs) {
+      try {
+        const cached = localStorage.getItem('vg_preview_panel_prefs');
+        if (cached) previewPrefs = JSON.parse(cached);
+      } catch (e) {}
+    }
+    applyPreviewPanelPreferences(previewPrefs);
 
     // 10+ Stock Video APIs - Multi-Account Pools
     const pKeys = data.pexels_api_keys || (data.pexels_api_key ? [data.pexels_api_key] : []);
@@ -193,7 +331,7 @@ async function loadSettings() {
   }
 }
 
-async function saveAppSettings() {
+async function saveAppSettings(silent = false) {
   // Gather all non-empty Pexels keys
   const rawPexels = [
     document.getElementById('input-pexels-key')?.value || '',
@@ -255,6 +393,9 @@ async function saveAppSettings() {
   });
 
   const payload = {
+    // Video Preview Right Panel Preferences
+    preview_panel_settings: getPreviewPanelPreferences(),
+
     // 10+ Stock Video APIs - Multi-Account Pool
     pexels_api_key: pexelsKeys[0] || '',
     pexels_api_keys: pexelsKeys,
@@ -297,12 +438,14 @@ async function saveAppSettings() {
       body: JSON.stringify(payload)
     });
     const data = await res.json();
-    const poolInfo = `Pexels: ${pexelsKeys.length} keys, Pixabay: ${pixabayKeys.length} keys`;
-    showToast(`💾 Settings and API keys saved! (${poolInfo}, ${payload.workers} Workers Active)`);
+    if (!silent) {
+      const poolInfo = `Pexels: ${pexelsKeys.length} keys, Pixabay: ${pixabayKeys.length} keys`;
+      showToast(`💾 Settings and API keys saved! (${poolInfo}, ${payload.workers} Workers Active)`);
+    }
     const badge = document.getElementById('worker-count-badge');
     if (badge) badge.textContent = `${payload.workers} Workers`;
   } catch (err) {
-    alert('Error saving settings: ' + err.message);
+    if (!silent) alert('Error saving settings: ' + err.message);
   }
 }
 
@@ -1629,6 +1772,8 @@ function updateOverlayMute(isMuted) {
 }
 
 function getOverlaySettings() {
+  const prefs = (typeof getPreviewPanelPreferences === 'function') ? getPreviewPanelPreferences() : { show_overlay: true };
+  if (!prefs.show_overlay) return {};
   if (!currentOverlayPath) return {};
   return {
     overlay_video: currentOverlayPath,
@@ -2002,11 +2147,14 @@ async function startExportRender() {
   const activePresetBtn = document.querySelector('.preset-btn.active');
   const presetKey = activePresetBtn ? activePresetBtn.id.replace('preset-', '') : 'capcut_yellow';
 
-  const captionsEnabled = document.getElementById('enable-captions-toggle')?.checked ?? true;
-  const animationEnabled = document.getElementById('enable-animation-toggle')?.checked ?? true;
-  const bgmEnabled = document.getElementById('enable-bgm-toggle')?.checked ?? true;
-  const sfxEnabled = document.getElementById('enable-sfx-toggle')?.checked ?? true;
-  const polishEnabled = document.getElementById('enable-polish-toggle')?.checked ?? true;
+  const previewPrefs = (typeof getPreviewPanelPreferences === 'function') ? getPreviewPanelPreferences() : DEFAULT_PREVIEW_PANEL_PREFS;
+
+  const captionsEnabled = previewPrefs.show_captions && (document.getElementById('enable-captions-toggle')?.checked ?? true);
+  const animationEnabled = captionsEnabled && (document.getElementById('enable-animation-toggle')?.checked ?? true);
+  const bgmEnabled = previewPrefs.show_bgm && (document.getElementById('enable-bgm-toggle')?.checked ?? true);
+  const sfxEnabled = previewPrefs.show_sfx && (document.getElementById('enable-sfx-toggle')?.checked ?? true);
+  const polishEnabled = previewPrefs.show_polish && (document.getElementById('enable-polish-toggle')?.checked ?? true);
+  const transitionsEnabled = previewPrefs.show_transitions;
 
   const customOptions = {
     font_name: document.getElementById('font-family-select').value,
@@ -2033,8 +2181,8 @@ async function startExportRender() {
     enable_vignette: polishEnabled && (document.getElementById('vignette-checkbox')?.checked ?? false),
     mute_stock_audio: document.getElementById('mute-stock-checkbox')?.checked ?? true,
     color_grade: polishEnabled ? (document.getElementById('color-grade-select')?.value || 'clean') : 'clean',
-    transition: polishEnabled ? (document.getElementById('transition-select')?.value || 'none') : 'none',
-    transition_mode: document.getElementById('transition-select')?.value === 'random' ? 'random' : 'fixed',
+    transition: transitionsEnabled ? (document.getElementById('transition-select')?.value || 'none') : 'none',
+    transition_mode: (transitionsEnabled && document.getElementById('transition-select')?.value === 'random') ? 'random' : 'fixed',
     transition_duration: parseFloat(document.getElementById('transition-speed-slider')?.value || '0.30'),
     target_resolution: document.getElementById('export-resolution')?.value || '1080p',
     aspect_ratio: document.getElementById('export-aspect-ratio')?.value || '16:9',

@@ -346,36 +346,36 @@ def generate_ass_subtitles(
         play_res_x = 1080
         play_res_y = 1920
         # Mobile vertical video: large, punchy, easily readable kinetic typography
-        ass_font_size = round(font_size * 4.0)          # Slider 24 -> 96px on 1080x1920
-        ass_outline_w = round(outline_w * 2.8, 1)       # Outline 4 -> 11.2px
-        ass_shadow_d = round(shadow_d * 2.4, 1)
+        ass_font_size = round(font_size * 5.2)          # Slider 24 -> 125px on 1080x1920
+        ass_outline_w = round(outline_w * 3.2, 1)       # Outline 4 -> 12.8px
+        ass_shadow_d = round(shadow_d * 2.8, 1)
         # Margin from bottom: keep safely above TikTok/Shorts interactive UI elements
         ass_margin_v = round(margin_v * 5.0) if margin_v <= 50 else round(margin_v * 3.5)
-        c_size = round(callout_preset["font_size"] * 3.4)
-        c_outline_w = round(callout_preset["outline_width"] * 1.5, 1)
-        c_margin_v = round(callout_preset["margin_v"] * 3.8)
+        c_size = round(callout_preset["font_size"] * 4.0)
+        c_outline_w = round(callout_preset["outline_width"] * 1.8, 1)
+        c_margin_v = round(callout_preset["margin_v"] * 4.2)
     elif is_square:
         play_res_x = 1080
         play_res_y = 1080
-        ass_font_size = round(font_size * 3.4)
-        ass_outline_w = round(outline_w * 2.4, 1)
-        ass_shadow_d = round(shadow_d * 2.0, 1)
-        ass_margin_v = round(margin_v * 2.6) if margin_v <= 50 else round(margin_v * 1.8)
-        c_size = round(callout_preset["font_size"] * 2.6)
-        c_outline_w = round(callout_preset["outline_width"] * 1.2, 1)
-        c_margin_v = round(callout_preset["margin_v"] * 2.4)
+        ass_font_size = round(font_size * 4.0)          # Slider 24 -> 96px on 1080x1080
+        ass_outline_w = round(outline_w * 2.6, 1)       # Outline 4 -> 10.4px
+        ass_shadow_d = round(shadow_d * 2.2, 1)
+        ass_margin_v = round(margin_v * 2.8) if margin_v <= 50 else round(margin_v * 2.0)
+        c_size = round(callout_preset["font_size"] * 3.0)
+        c_outline_w = round(callout_preset["outline_width"] * 1.4, 1)
+        c_margin_v = round(callout_preset["margin_v"] * 2.6)
     else:
         # Standard 16:9 Landscape (1920x1080)
         play_res_x = 1920
         play_res_y = 1080
         # Proportional scaling to match web preview player visual prominence
-        ass_font_size = round(font_size * 3.4)          # Slider 24 -> 82px on 1920x1080
-        ass_outline_w = round(outline_w * 2.4, 1)       # Outline 4 -> 9.6px
-        ass_shadow_d = round(shadow_d * 2.0, 1)
-        ass_margin_v = round(margin_v * 3.2) if margin_v <= 50 else round(margin_v * 1.8)
-        c_size = round(callout_preset["font_size"] * 2.6)
-        c_outline_w = round(callout_preset["outline_width"] * 1.2, 1)
-        c_margin_v = round(callout_preset["margin_v"] * 2.2)
+        ass_font_size = round(font_size * 4.2)          # Slider 24 -> 101px on 1920x1080
+        ass_outline_w = round(outline_w * 2.8, 1)       # Outline 4 -> 11.2px
+        ass_shadow_d = round(shadow_d * 2.4, 1)
+        ass_margin_v = round(margin_v * 3.6) if margin_v <= 50 else round(margin_v * 2.0)
+        c_size = round(callout_preset["font_size"] * 3.0)
+        c_outline_w = round(callout_preset["outline_width"] * 1.4, 1)
+        c_margin_v = round(callout_preset["margin_v"] * 2.4)
 
     # Word separator based on word_spacing parameter
     if word_spacing >= 16:
@@ -445,7 +445,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 "start": sc_start,
                 "end": sc_end,
                 "text": stext,
-                "is_last_in_chunk": True
+                "is_chunk_boundary": True
             })
             continue
 
@@ -455,7 +455,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         for c_idx, chunk in enumerate(word_chunks):
             chunk_start = float(chunk[0]["start"])
             chunk_end = float(chunk[-1]["end"])
-            is_last_chunk_in_scene = (c_idx == len(word_chunks) - 1)
 
             # For each word in the chunk, create a continuous sub-interval where that word is actively highlighted
             for active_idx, active_word in enumerate(chunk):
@@ -494,7 +493,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     "start": t_start_val,
                     "end": t_end_val,
                     "text": dialogue_text,
-                    "is_last_in_chunk": is_last_word_in_chunk and is_last_chunk_in_scene
+                    "is_chunk_boundary": is_last_word_in_chunk
                 })
 
     # Sort all cues strictly by start time
@@ -503,12 +502,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     # 3. STRICT ZERO-OVERLAP RESOLVER
     # LibASS performs automatic vertical collision avoidance (pushing lines UP and stacking new lines below)
     # whenever two Dialogue events overlap in time at Alignment 2.
-    # We guarantee cue[i].end <= cue[i+1].start across all scenes and all words, completely preventing line jumping!
+    # We guarantee cue[i].end < cue[i+1].start across all chunk boundaries, completely preventing line jumping!
     total_cues = len(raw_cues)
     for i in range(total_cues):
         c_start = raw_cues[i]["start"]
         c_end = raw_cues[i]["end"]
-        is_last = raw_cues[i]["is_last_in_chunk"]
+        is_chunk_boundary = raw_cues[i]["is_chunk_boundary"]
 
         if i < total_cues - 1:
             # Ensure next cue starts after current start
@@ -517,23 +516,22 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
             next_start = raw_cues[i + 1]["start"]
 
-            if c_end > next_start:
-                # OVERLAP ELIMINATION: Strictly clamp to next cue's start
-                c_end = next_start
-            else:
+            if is_chunk_boundary:
+                # TRANSITION TO A NEW CHUNK (Different sentence / text line):
+                # Must end strictly BEFORE next_start to eliminate any possible LibASS vertical collision.
+                # Allow a short natural linger (up to 0.28s) during pauses, but clamp at least 0.04s before next_start.
                 gap = next_start - c_end
-                if gap <= 0.22:
-                    # Tiny gap (between words or quick phrase transition):
-                    # Seamlessly extend end to next_start to eliminate black flicker/blinking!
+                if gap > 0.08:
+                    c_end = min(c_end + 0.28, next_start - 0.04)
+                else:
+                    c_end = max(c_start + 0.04, next_start - 0.04)
+            else:
+                # WITHIN THE SAME CHUNK (Kinetic word highlight shifting across the same sentence):
+                # Seamlessly extend end to next_start so the line stays perfectly steady with zero black flicker!
+                if c_end > next_start or (next_start - c_end) <= 0.25:
                     c_end = next_start
                 else:
-                    # Real pause between sentences: allow natural lingering up to 0.35s,
-                    # but strictly stay at least 0.04s before next_start!
-                    if is_last:
-                        linger = min(c_end + 0.35, next_start - 0.04)
-                        c_end = max(c_end, linger)
-                    else:
-                        c_end = next_start
+                    c_end = min(c_end + 0.25, next_start - 0.02)
         else:
             # Final cue of entire video
             c_end = max(c_end, c_start + 0.6)
@@ -542,8 +540,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         if c_end <= c_start:
             c_end = round(c_start + 0.04, 3)
 
-        raw_cues[i]["start"] = c_start
-        raw_cues[i]["end"] = c_end
+        raw_cues[i]["start"] = round(c_start, 3)
+        raw_cues[i]["end"] = round(c_end, 3)
 
         w_start = format_ass_time(c_start)
         w_end = format_ass_time(c_end)
@@ -562,11 +560,24 @@ def _chunk_words(words: List[Dict[str, Any]], max_chunk_words: int = 5) -> List[
     current = []
     for w in words:
         current.append(w)
-        # Break on punctuation or max chunk size
-        text = w.get("word", "")
-        if len(current) >= max_chunk_words or text.endswith(('.', '!', '?', ',', ';')):
+        text = str(w.get("word", "")).strip()
+        # Full stops, exclamation, question mark always break
+        is_hard_punct = any(text.endswith(p) for p in ('.', '!', '?'))
+        # Commas/semicolons/colons only break if we already have >= 3 words to avoid 1-2 word fragments
+        is_soft_punct = any(text.endswith(p) for p in (',', ';', ':')) and len(current) >= 3
+
+        if len(current) >= max_chunk_words or is_hard_punct or is_soft_punct:
             chunks.append(current)
             current = []
+
     if current:
         chunks.append(current)
+
+    # Merge tiny trailing fragment (1-2 words) if previous chunk didn't end with a hard punctuation mark
+    if len(chunks) >= 2 and len(chunks[-1]) <= 2:
+        prev_last_word = str(chunks[-2][-1].get("word", "")).strip()
+        prev_has_hard_punct = any(prev_last_word.endswith(p) for p in ('.', '!', '?'))
+        if not prev_has_hard_punct and (len(chunks[-2]) + len(chunks[-1]) <= 7):
+            chunks[-2].extend(chunks.pop())
+
     return chunks

@@ -1728,6 +1728,135 @@ input[type="range"]::-webkit-slider-thumb:hover {
   font-size: 13.5px;
 }
 
+/* ==================== SETTINGS COLLAPSIBLE CARDS ==================== */
+.settings-card.collapsible {
+  padding: 0;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-card.collapsible:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.settings-card-header {
+  padding: 18px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.15s ease;
+}
+
+.settings-card-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.settings-card.collapsible:not(.collapsed) .settings-card-header {
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.settings-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-card-header-left h3 {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.settings-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-card-chevron {
+  display: inline-block;
+  font-size: 13px;
+  color: var(--accent-cyan);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 16px;
+  text-align: center;
+}
+
+.settings-card.collapsible.collapsed .settings-card-chevron {
+  transform: rotate(-90deg);
+}
+
+.settings-card.collapsible:not(.collapsed) .settings-card-chevron {
+  transform: rotate(0deg);
+}
+
+.collapse-btn-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.settings-card-header:hover .collapse-btn-pill {
+  color: #ffffff;
+  background: rgba(0, 240, 255, 0.15);
+  border-color: rgba(0, 240, 255, 0.35);
+}
+
+.settings-card-body {
+  padding: 24px;
+}
+
+.settings-card.collapsible.collapsed .settings-card-body {
+  display: none !important;
+}
+
+/* Video Preview Panel Preferences Grid Item */
+.preview-panel-toggle-item {
+  background: var(--bg-card-sub);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.preview-panel-toggle-item:hover {
+  border-color: rgba(0, 240, 255, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.preview-panel-toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.preview-panel-toggle-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.preview-panel-toggle-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
 /* ==================== MODALS ==================== */
 .modal-overlay {
   position: fixed;
