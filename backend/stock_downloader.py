@@ -1,18 +1,60 @@
 import os
 import re
+import json
+import time
+import random
 import hashlib
 import requests
 import subprocess
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Dict, Any, Optional
-from .config import CACHE_DIR, TEMP_DIR, find_ffmpeg, find_ffprobe, load_settings
+from typing import List, Dict, Any, Optional, Set
+from .config import CACHE_DIR, TEMP_DIR, DATA_DIR, find_ffmpeg, find_ffprobe, load_settings
 
 VIDEO_CACHE_DIR = CACHE_DIR / "stock_videos"
 VIDEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 import threading
+
+HISTORY_FILE = DATA_DIR / "stock_usage_history.json"
+_HISTORY_LOCK = threading.Lock()
+
+
+def _get_recently_used_video_ids(days: int = 14) -> Dict[str, float]:
+    """Returns mapping of video_id -> timestamp used within the last `days` days across all projects."""
+    with _HISTORY_LOCK:
+        if not HISTORY_FILE.exists():
+            return {}
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            cutoff = time.time() - (days * 86400)
+            return {str(k): float(v) for k, v in data.items() if isinstance(v, (int, float)) and v > cutoff}
+        except Exception:
+            return {}
+
+
+def _record_used_video_id(video_id: Any):
+    """Records that a video_id has been selected in a project to prevent cross-project repetition."""
+    if not video_id:
+        return
+    with _HISTORY_LOCK:
+        try:
+            data = {}
+            if HISTORY_FILE.exists():
+                try:
+                    with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                except Exception:
+                    data = {}
+            data[str(video_id)] = time.time()
+            cutoff = time.time() - (30 * 86400)
+            data = {str(k): float(v) for k, v in data.items() if isinstance(v, (int, float)) and v > cutoff}
+            with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+        except Exception as e:
+            print(f"[StockDownloader] Notice recording used video id: {e}")
 
 
 def trim_and_fit_clip(
@@ -229,8 +271,9 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
     completed_scenes = [None] * len(scenes)
     completed_count = 0
     lock = threading.Lock()
-    # Visual diversity: track recently used video IDs to prevent adjacent repetition
-    used_video_ids = set()
+    # Visual diversity: track video IDs used in the current video to guarantee zero repetition
+    used_video_ids: Set[str] = set()
+    global_past_used = _get_recently_used_video_ids(days=14)
 
     def process_scene(scene_item):
         nonlocal completed_count
@@ -254,17 +297,17 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
                 pexels_pool=pexels_pool,
                 pixabay_pool=pixabay_pool,
                 niche=scene_niche,
-                pipeline=pipeline
+                pipeline=pipeline,
+                active_batch_ids=used_video_ids,
+                past_used_ids=global_past_used
             )
             if clip_data:
                 vid_id = clip_data.get("video_id")
-                # Visual diversity check: if this video was already used recently,
-                # try the next tag to force a different visual
                 with lock:
-                    if vid_id and vid_id in used_video_ids and len(search_candidates) > 1:
+                    if vid_id and str(vid_id) in used_video_ids and len(search_candidates) > 1:
                         continue  # Try next tag for visual variety
                     if vid_id:
-                        used_video_ids.add(vid_id)
+                        used_video_ids.add(str(vid_id))
                 break
 
         # If external APIs returned nothing (e.g. no key or rate limited), generate offline fallback
@@ -337,10 +380,21 @@ def _score_candidate(
     metadata_text: str, 
     target_resolution: str = "1080p",
     niche: str = "",
-    pipeline: str = ""
+    pipeline: str = "",
+    video_id: Any = None,
+    active_batch_ids: Optional[Set[str]] = None,
+    past_used_ids: Optional[Dict[str, float]] = None
 ) -> float:
     """Ranks candidate video clips based on resolution, duration headroom, keyword match, and niche relevance."""
     score = 0.0
+
+    # 0. Anti-Repetition Diversity Penalty (Intra-video & Cross-project)
+    if video_id is not None:
+        vid_str = str(video_id)
+        if active_batch_ids and vid_str in active_batch_ids:
+            score -= 1000.0  # Absolute veto: already used in current video!
+        elif past_used_ids and vid_str in past_used_ids:
+            score -= 75.0   # Soft penalty: prioritize never-before-seen footage across projects
     res_str = str(target_resolution or "1080p").lower().strip()
 
     # 1. Orientation & Resolution (40-45 pts)
@@ -399,28 +453,103 @@ def _score_candidate(
         if any(w in meta_lower for w in mil_positives):
             score += 40.0
         mil_clashes = {
-            "boxing", "boxer", "punching bag", "gym", "workout", "fitness", "bodybuilding",
-            "crossfit", "barbell", "dumbbell", "biceps", "swimming", "swimmer", "beach",
-            "pool", "resort", "cocktail", "snail", "mollusk", "flower", "garden",
-            "kitten", "puppy", "butterfly", "makeup", "fashion", "dress", "party",
-            "baking", "cooking", "kitchen", "dance", "dancing", "soccer", "football", "baseball"
+            "boxing", "boxer", "punching bag", "punching", "punch", "mma", "ufc", "karate", "taekwondo",
+            "martial art", "sparring", "ring", "gloves", "kickboxing", "jiu jitsu", "wrestling",
+            "gym", "workout", "fitness", "bodybuilding", "crossfit", "barbell", "dumbbell", "biceps",
+            "swimming", "swimmer", "beach", "pool", "resort", "cocktail", "yoga", "pilates",
+            "snail", "mollusk", "flower", "garden", "kitten", "puppy", "butterfly",
+            "makeup", "fashion", "dress", "party", "wedding", "bride", "groom",
+            "baking", "cooking", "kitchen", "dance", "dancing", "ballet",
+            "soccer", "football", "baseball", "tennis", "basketball", "volleyball",
+            "motivation", "motivational", "self help", "lifestyle"
         }
         if any(c in meta_lower for c in mil_clashes):
             score -= 200.0
+
+    elif any(k in niche_clean for k in ("wildlife", "animal", "predator", "ocean")):
+        wild_positives = {"lion", "tiger", "eagle", "shark", "whale", "elephant", "wolf", "bear",
+                          "leopard", "cheetah", "crocodile", "snake", "gorilla", "panther", "jaguar",
+                          "predator", "prey", "wildlife", "safari", "savannah", "ocean", "coral",
+                          "dolphin", "orca", "hawk", "falcon", "penguin", "underwater"}
+        if any(w in meta_lower for w in wild_positives):
+            score += 45.0
+        wild_clashes = {
+            "boxing", "boxer", "gym", "workout", "fitness", "office", "boardroom", "computer",
+            "keyboard", "desk", "meeting", "stocks", "trading", "makeup", "fashion",
+            "cooking", "kitchen", "party", "wedding", "ballet", "dance"
+        }
+        if any(c in meta_lower for c in wild_clashes):
+            score -= 200.0
+
+    elif any(k in niche_clean for k in ("history", "empire", "ancient")) or any(k in all_query_text for k in ("ancient", "rome", "egypt", "pyramid", "castle", "medieval", "knight", "colosseum", "pharaoh", "empire", "ruins", "viking", "ottoman")):
+        hist_positives = {"ancient", "ruins", "roman", "egypt", "pyramid", "castle", "medieval", "knight", "colosseum", "temple", "pharaoh", "emperor", "empire", "archaeology", "artifact", "warrior", "gladiator", "viking", "dynasty", "samurai", "fortress", "tomb"}
+        if any(w in meta_lower for w in hist_positives):
+            score += 40.0
+        hist_clashes = {
+            "laptop", "computer", "keyboard", "smartphone", "cell phone", "modern car", "highway traffic",
+            "skyscraper", "gym workout", "fitness", "modern fashion", "sneakers", "office cubicle", "boardroom",
+            "airplane cockpit", "neon city", "cyber", "hacker"
+        }
+        if any(c in meta_lower for c in hist_clashes):
+            score -= 200.0
+
+    elif any(k in niche_clean for k in ("crime", "mystery", "noir")) or any(k in all_query_text for k in ("detective", "crime", "police", "siren", "handcuffs", "prison", "jail", "courtroom", "judge", "heist", "robbery", "forensic", "murder")):
+        crime_positives = {"police", "detective", "crime", "siren", "handcuffs", "prison", "jail", "court", "courtroom", "judge", "forensic", "investigation", "alley", "surveillance", "robbery", "murder", "noir", "inmate", "gavel", "heist"}
+        if any(w in meta_lower for w in crime_positives):
+            score += 40.0
+        crime_clashes = {
+            "beach party", "pool", "swim", "wedding", "bride", "groom", "birthday", "party",
+            "happy kids", "children playing", "picnic", "cooking", "recipe", "cartoon", "dancing", "cheerleader"
+        }
+        if any(c in meta_lower for c in crime_clashes):
+            score -= 180.0
+
+    elif any(k in niche_clean for k in ("horror", "paranormal")) or any(k in all_query_text for k in ("horror", "haunted", "ghost", "creepy", "graveyard", "cemetery", "witch", "vampire", "monster", "nightmare", "eerie", "fog")):
+        horror_positives = {"horror", "haunted", "ghost", "creepy", "eerie", "graveyard", "cemetery", "full moon", "shadows", "abandoned", "witch", "monster", "mist", "gothic", "darkness", "tombstone", "nightmare"}
+        if any(w in meta_lower for w in horror_positives):
+            score += 40.0
+        horror_clashes = {
+            "sunny beach", "smiling", "birthday", "wedding", "workout", "gym", "cooking food", "recipe",
+            "cute puppy", "kitten", "playground", "bright sunlight", "swimming pool", "dance party"
+        }
+        if any(c in meta_lower for c in horror_clashes):
+            score -= 200.0
+
+    elif any(k in niche_clean for k in ("science", "engineering", "brain", "medical")) or any(k in all_query_text for k in ("dna", "genetics", "microscope", "bacteria", "cells", "surgery", "surgeon", "laboratory", "virus", "brain", "medical")):
+        sci_positives = {"science", "medical", "doctor", "hospital", "surgery", "dna", "laboratory", "cells", "microscope", "virus", "research", "patient", "biology", "chemist", "quantum", "neural", "neurons", "brain", "anatomy"}
+        if any(w in meta_lower for w in sci_positives):
+            score += 40.0
+        sci_clashes = {
+            "beach party", "nightclub", "fashion runway", "soccer match", "football game", "barbecue",
+            "grill", "cartoon toys", "wedding dance", "cocktail bar"
+        }
+        if any(c in meta_lower for c in sci_clashes):
+            score -= 160.0
+
+    elif any(k in niche_clean for k in ("automotive", "supercar", "car", "racing")) or any(k in all_query_text for k in ("supercar", "ferrari", "lamborghini", "formula 1", "racing", "drift", "engine", "sports car", "speedometer")):
+        auto_positives = {"supercar", "sports car", "racing", "drift", "track", "formula 1", "speed", "engine", "cockpit", "ferrari", "lamborghini", "highway", "acceleration", "hypercar", "speedometer", "motorcycle"}
+        if any(w in meta_lower for w in auto_positives):
+            score += 40.0
+        auto_clashes = {
+            "kitchen", "cooking", "bedroom", "sleeping", "makeup", "farm animals", "cows", "gardening",
+            "baby nursery", "ballet dance", "swimming pool"
+        }
+        if any(c in meta_lower for c in auto_clashes):
+            score -= 180.0
 
     elif any(k in niche_clean for k in ("finance", "wealth", "business", "money")):
         fin_positives = {"money", "finance", "stock", "market", "trading", "crypto", "business", "office", "charts", "economy"}
         if any(w in meta_lower for w in fin_positives):
             score += 35.0
-        fin_clashes = {"beach party", "pool", "swim", "gaming", "esports", "cartoon", "toys"}
+        fin_clashes = {"beach party", "pool", "swim", "gaming", "esports", "cartoon", "toys", "farm animals", "mud"}
         if any(c in meta_lower for c in fin_clashes):
-            score -= 100.0
+            score -= 120.0
 
     elif any(k in niche_clean for k in ("fitness", "health", "workout")):
         fit_positives = {"gym", "fitness", "workout", "athlete", "training", "exercise", "muscle", "running"}
         if any(w in meta_lower for w in fit_positives):
             score += 35.0
-        fit_clashes = {"junk food", "burger", "couch", "sleeping", "smoking"}
+        fit_clashes = {"junk food", "burger", "couch", "sleeping", "smoking", "office desk"}
         if any(c in meta_lower for c in fit_clashes):
             score -= 100.0
 
@@ -455,7 +584,9 @@ def find_and_download_stock_video(
     pixabay_pool: Optional[ApiKeyPool] = None,
     allow_simplify: bool = True,
     niche: str = "",
-    pipeline: str = "Main"
+    pipeline: str = "Main",
+    active_batch_ids: Optional[Set[str]] = None,
+    past_used_ids: Optional[Dict[str, float]] = None
 ) -> Optional[Dict[str, Any]]:
     """
     Cascading Fallback Provider Architecture with Multi-Account Pools:
@@ -496,13 +627,13 @@ def find_and_download_stock_video(
 
     # Priority 1: Pexels (best quality)
     if (provider_pref in ("all", "pexels")) and pexels_pool.has_active_keys():
-        clip = _search_pexels(effective_query, pexels_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline)
+        clip = _search_pexels(effective_query, pexels_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline, active_batch_ids=active_batch_ids, past_used_ids=past_used_ids)
         if clip:
             return clip
 
     # Priority 2: Pixabay (fast secondary fallback)
     if (provider_pref in ("all", "pixabay")) and pixabay_pool.has_active_keys():
-        clip = _search_pixabay(effective_query, pixabay_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline)
+        clip = _search_pixabay(effective_query, pixabay_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline, active_batch_ids=active_batch_ids, past_used_ids=past_used_ids)
         if clip:
             return clip
 
@@ -557,16 +688,29 @@ def find_and_download_stock_video(
     return None
 
 
-def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p", niche: str = "", pipeline: str = "") -> Optional[Dict[str, Any]]:
+def _search_pexels(
+    query: str,
+    pool: ApiKeyPool,
+    min_duration: float,
+    sentence_context: str = "",
+    target_resolution: str = "1080p",
+    niche: str = "",
+    pipeline: str = "",
+    active_batch_ids: Optional[Set[str]] = None,
+    past_used_ids: Optional[Dict[str, float]] = None
+) -> Optional[Dict[str, Any]]:
     clean_query = re.sub(r'#', '', query).strip()
     candidate_keys = pool.get_candidate_keys()
     if not candidate_keys:
         return None
 
+    if past_used_ids is None:
+        past_used_ids = _get_recently_used_video_ids(days=14)
+
     query_tokens = re.findall(r'\b[a-zA-Z]{3,}\b', (clean_query + " " + sentence_context).lower())
 
     for api_key in candidate_keys:
-        url = f"https://api.pexels.com/videos/search?query={requests.utils.quote(clean_query)}&orientation=landscape&size=large&per_page=15"
+        url = f"https://api.pexels.com/videos/search?query={requests.utils.quote(clean_query)}&orientation=landscape&size=large&per_page=20"
         headers = {"Authorization": api_key, "User-Agent": "VideoGen/1.0"}
         try:
             r = SESSION.get(url, headers=headers, timeout=7)
@@ -580,7 +724,7 @@ def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_c
             if not videos:
                 return None  # Legitimate 0 results, no need to burn other keys
 
-            # Candidate Scoring & Ranking across all 15 results
+            # Candidate Scoring & Ranking across results
             scored = []
             for vid in videos:
                 vfiles = vid.get("video_files", [])
@@ -616,27 +760,50 @@ def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_c
                         metadata_text=meta_text,
                         target_resolution=target_resolution,
                         niche=niche,
-                        pipeline=pipeline
+                        pipeline=pipeline,
+                        video_id=vid.get("id"),
+                        active_batch_ids=active_batch_ids,
+                        past_used_ids=past_used_ids
                     )
                     scored.append((score, vid, best_file))
 
+            if not scored:
+                continue
+
             scored.sort(key=lambda x: x[0], reverse=True)
 
-            for score, vid, best_file in scored:
-                download_url = best_file["link"]
-                local_path = _download_file_cached(download_url, f"pexels_{vid['id']}.mp4")
-                if local_path and os.path.exists(local_path):
-                    return {
-                        "provider": "pexels",
-                        "video_id": vid["id"],
-                        "query": clean_query,
-                        "file_path": str(local_path),
-                        "thumbnail_url": vid.get("image", ""),
-                        "duration": float(vid.get("duration", min_duration)),
-                        "width": best_file.get("width", 1920),
-                        "height": best_file.get("height", 1080),
-                        "is_fallback": False
-                    }
+            # Smart Dynamic Candidate Selection (Anti-Monopoly):
+            # Prefer top candidates with positive score that haven't been used in active batch
+            valid_candidates = [c for c in scored if c[0] > 0 and (not active_batch_ids or str(c[1]['id']) not in active_batch_ids)]
+            if not valid_candidates:
+                valid_candidates = [c for c in scored if c[0] > -500]
+            if not valid_candidates:
+                valid_candidates = scored
+
+            # Pool top tier within 15 points of best score (up to top 4)
+            best_score = valid_candidates[0][0]
+            top_tier = [c for c in valid_candidates if (best_score - c[0]) <= 15.0][:4]
+            selected_choice = random.choice(top_tier) if top_tier else valid_candidates[0]
+
+            score, vid, best_file = selected_choice
+            download_url = best_file["link"]
+            local_path = _download_file_cached(download_url, f"pexels_{vid['id']}.mp4")
+            if local_path and os.path.exists(local_path):
+                vid_str = str(vid["id"])
+                _record_used_video_id(vid_str)
+                if active_batch_ids is not None:
+                    active_batch_ids.add(vid_str)
+                return {
+                    "provider": "pexels",
+                    "video_id": vid["id"],
+                    "query": clean_query,
+                    "file_path": str(local_path),
+                    "thumbnail_url": vid.get("image", ""),
+                    "duration": float(vid.get("duration", min_duration)),
+                    "width": best_file.get("width", 1920),
+                    "height": best_file.get("height", 1080),
+                    "is_fallback": False
+                }
         except Exception as e:
             print(f"[StockDownloader] Pexels error for '{clean_query}': {e}")
             continue
@@ -644,16 +811,29 @@ def _search_pexels(query: str, pool: ApiKeyPool, min_duration: float, sentence_c
     return None
 
 
-def _search_pixabay(query: str, pool: ApiKeyPool, min_duration: float, sentence_context: str = "", target_resolution: str = "1080p", niche: str = "", pipeline: str = "") -> Optional[Dict[str, Any]]:
+def _search_pixabay(
+    query: str,
+    pool: ApiKeyPool,
+    min_duration: float,
+    sentence_context: str = "",
+    target_resolution: str = "1080p",
+    niche: str = "",
+    pipeline: str = "",
+    active_batch_ids: Optional[Set[str]] = None,
+    past_used_ids: Optional[Dict[str, float]] = None
+) -> Optional[Dict[str, Any]]:
     clean_query = re.sub(r'#', '', query).strip()
     candidate_keys = pool.get_candidate_keys()
     if not candidate_keys:
         return None
 
+    if past_used_ids is None:
+        past_used_ids = _get_recently_used_video_ids(days=14)
+
     query_tokens = re.findall(r'\b[a-zA-Z]{3,}\b', (clean_query + " " + sentence_context).lower())
 
     for api_key in candidate_keys:
-        url = f"https://pixabay.com/api/videos/?key={api_key}&q={requests.utils.quote(clean_query)}&video_type=film&orientation=horizontal&per_page=15"
+        url = f"https://pixabay.com/api/videos/?key={api_key}&q={requests.utils.quote(clean_query)}&video_type=film&orientation=horizontal&per_page=20"
         headers = {"User-Agent": "VideoGen/1.0"}
         try:
             r = SESSION.get(url, headers=headers, timeout=7)
@@ -691,27 +871,47 @@ def _search_pixabay(query: str, pool: ApiKeyPool, min_duration: float, sentence_
                     metadata_text=tags_text,
                     target_resolution=target_resolution,
                     niche=niche,
-                    pipeline=pipeline
+                    pipeline=pipeline,
+                    video_id=h.get("id"),
+                    active_batch_ids=active_batch_ids,
+                    past_used_ids=past_used_ids
                 )
                 scored.append((score, h, selected))
 
+            if not scored:
+                continue
+
             scored.sort(key=lambda x: x[0], reverse=True)
 
-            for score, h, selected in scored:
-                dl_url = selected["url"]
-                local_path = _download_file_cached(dl_url, f"pixabay_{h['id']}.mp4")
-                if local_path and os.path.exists(local_path):
-                    return {
-                        "provider": "pixabay",
-                        "video_id": h["id"],
-                        "query": clean_query,
-                        "file_path": str(local_path),
-                        "thumbnail_url": h.get("picture_id", ""),
-                        "duration": float(h.get("duration", min_duration)),
-                        "width": selected.get("width", 1920),
-                        "height": selected.get("height", 1080),
-                        "is_fallback": False
-                    }
+            valid_candidates = [c for c in scored if c[0] > 0 and (not active_batch_ids or str(c[1]['id']) not in active_batch_ids)]
+            if not valid_candidates:
+                valid_candidates = [c for c in scored if c[0] > -500]
+            if not valid_candidates:
+                valid_candidates = scored
+
+            best_score = valid_candidates[0][0]
+            top_tier = [c for c in valid_candidates if (best_score - c[0]) <= 15.0][:4]
+            selected_choice = random.choice(top_tier) if top_tier else valid_candidates[0]
+
+            score, h, selected = selected_choice
+            dl_url = selected["url"]
+            local_path = _download_file_cached(dl_url, f"pixabay_{h['id']}.mp4")
+            if local_path and os.path.exists(local_path):
+                vid_str = str(h["id"])
+                _record_used_video_id(vid_str)
+                if active_batch_ids is not None:
+                    active_batch_ids.add(vid_str)
+                return {
+                    "provider": "pixabay",
+                    "video_id": h["id"],
+                    "query": clean_query,
+                    "file_path": str(local_path),
+                    "thumbnail_url": h.get("picture_id", ""),
+                    "duration": float(h.get("duration", min_duration)),
+                    "width": selected.get("width", 1920),
+                    "height": selected.get("height", 1080),
+                    "is_fallback": False
+                }
         except Exception as e:
             print(f"[StockDownloader] Pixabay error for '{clean_query}': {e}")
             continue

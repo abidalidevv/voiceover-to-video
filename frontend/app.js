@@ -876,7 +876,7 @@ async function startGeneration() {
           if (dock) dock.classList.add('hidden');
           activeMinimizedModal = null;
 
-          const autoExport = document.getElementById('auto-render-export-checkbox')?.checked ?? true;
+          const autoExport = document.getElementById('auto-render-export-checkbox')?.checked ?? false;
 
           if (autoExport) {
             document.getElementById('modal-status-title').textContent = 'Scenes Ready! Auto-Rendering Final Video...';
@@ -895,7 +895,7 @@ async function startGeneration() {
               modal.classList.add('hidden');
               loadProjectIntoPreview(currentProject);
               switchTab('preview');
-              showToast('🎬 Project scenes ready! Click "🚀 Export Video" in Studio to render final MP4 into Output folder.', 5500);
+              showToast('🎬 Project scenes ready! Review in Preview and click "🚀 Export Video" to render final MP4.', 5500);
             }, 600);
           }
         } else if (job.status === 'error') {
@@ -2185,10 +2185,26 @@ function onTogglePolish(enabled) {
 }
 
 // ==================== FINAL EXPORT & RENDER ====================
+let isExportRenderRunning = false;
+
 async function startExportRender() {
+  if (isExportRenderRunning) {
+    showToast('⏳ Video render is already in progress! Please wait.', 3500);
+    return;
+  }
   if (!currentProject) {
     alert('No active project to export!');
     return;
+  }
+
+  isExportRenderRunning = true;
+  const exportBtn = document.getElementById('export-render-btn');
+  const origBtnContent = exportBtn ? exportBtn.innerHTML : null;
+  if (exportBtn) {
+    exportBtn.disabled = true;
+    exportBtn.style.opacity = '0.6';
+    exportBtn.style.pointerEvents = 'none';
+    exportBtn.innerHTML = '⏳ Rendering...';
   }
 
   pausePlayback();
@@ -2383,43 +2399,6 @@ async function startExportRender() {
       }, { once: true });
     }
 
-    // Populate Thumbnail Preview Cards in Export Modal
-    const mThumb1 = document.getElementById('export-modal-thumb-1');
-    const mThumb2 = document.getElementById('export-modal-thumb-2');
-    const mThumb3 = document.getElementById('export-modal-thumb-3');
-    const mDl1 = document.getElementById('export-modal-dl-1');
-    const mDl2 = document.getElementById('export-modal-dl-2');
-    const mDl3 = document.getElementById('export-modal-dl-3');
-    const baseCleanName = outputFileName.replace(/\.mp4$/i, '');
-
-    if (mThumb1 && t1Url) {
-      mThumb1.src = `${t1Url}?v=${Date.now()}`;
-      mThumb1.style.display = 'block';
-      if (mDl1) {
-        mDl1.href = t1Url;
-        mDl1.setAttribute('download', `${baseCleanName}_Thumb_Viral_Style1.jpg`);
-        mDl1.classList.remove('disabled');
-      }
-    }
-    if (mThumb2 && t2Url) {
-      mThumb2.src = `${t2Url}?v=${Date.now()}`;
-      mThumb2.style.display = 'block';
-      if (mDl2) {
-        mDl2.href = t2Url;
-        mDl2.setAttribute('download', `${baseCleanName}_Thumb_Cinematic_Style2.jpg`);
-        mDl2.classList.remove('disabled');
-      }
-    }
-    if (mThumb3 && t3Url) {
-      mThumb3.src = `${t3Url}?v=${Date.now()}`;
-      mThumb3.style.display = 'block';
-      if (mDl3) {
-        mDl3.href = t3Url;
-        mDl3.setAttribute('download', `${baseCleanName}_Thumb_ModernTech_Style3.jpg`);
-        mDl3.classList.remove('disabled');
-      }
-    }
-
     const dlLink = document.getElementById('export-download-link');
     if (dlLink) {
       dlLink.href = webUrl;
@@ -2444,6 +2423,16 @@ async function startExportRender() {
   } catch (err) {
     if (renderModal) renderModal.classList.add('hidden');
     alert('Rendering error: ' + err.message);
+  } finally {
+    isExportRenderRunning = false;
+    if (exportBtn) {
+      exportBtn.disabled = false;
+      exportBtn.style.opacity = '1';
+      exportBtn.style.pointerEvents = 'auto';
+      if (origBtnContent !== null) {
+        exportBtn.innerHTML = origBtnContent;
+      }
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 
@@ -14,19 +15,31 @@ extra/
 
 # Raw Data, Temporary, Caches & Generated Media (Stock & Rendered)
 data/cache/
+**/data/cache/
 data/temp/
+**/data/temp/
 data/output/
+**/data/output/
 data/exports/
+**/data/exports/
 data/projects/
+**/data/projects/
 data/thumbnails/
+**/data/thumbnails/
 data/seo/
+**/data/seo/
 data/sfx/tts_samples/
+**/data/sfx/tts_samples/
 data/uploads/
+**/data/uploads/
 data/models/
+**/data/models/
 data/voice_samples/
-data/projects_history.json
-data/settings.json
-data/batch_jobs.json
+**/data/voice_samples/
+**/projects_history.json
+**/settings.json
+**/batch_jobs.json
+**/stock_usage_history.json
 *.db
 *.db-wal
 *.db-shm
@@ -38,13 +51,18 @@ api.txt
 extra/api.txt
 api.md
 extra/api.md
+CLAUDE_TODAY.md
 .env
+**/.env
 
 # Dependencies & Build
 node_modules/
 dist/
 build/
 bin/*.exe
+**/bin/*.exe
+*.exe
+**/*.exe
 .venv/
 *.zip
 

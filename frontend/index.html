@@ -717,11 +717,11 @@
             <!-- Auto-Render Direct to Output Folder Toggle -->
             <div class="form-group mt-16" style="background:var(--bg-card-sub);padding:12px 14px;border-radius:8px;border:1px solid rgba(0,240,255,0.25);">
               <label class="checkbox-label" style="cursor:pointer;margin:0;display:flex;align-items:center;gap:10px;">
-                <input type="checkbox" id="auto-render-export-checkbox" checked style="width:18px;height:18px;cursor:pointer;">
-                <span style="font-weight:600;font-size:13px;color:#f8fafc;">🚀 Auto-Render & Save Master MP4 Directly to Output Folder</span>
+                <input type="checkbox" id="auto-render-export-checkbox" style="width:18px;height:18px;cursor:pointer;">
+                <span style="font-weight:600;font-size:13px;color:#f8fafc;">🚀 Auto-Render Directly to Output Folder (Skip Studio Preview)</span>
               </label>
               <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0 28px;">
-                Automatically renders the final video with kinetic subtitles and saves the finished <code>.mp4</code> straight into <code>data/output/</code>.
+                Default (Unchecked): Preview scenes, polish & subtitles first in Studio before exporting. Check only if you want instant automatic render.
               </p>
             </div>
 
@@ -2429,55 +2429,10 @@
     <div class="modal-card modal-md" style="max-width:680px;">
       <div class="success-check">🎉</div>
       <h3 id="export-modal-headline">Ultra HD Video Exported Successfully!</h3>
-      <p id="export-success-filename">Your video and clickbait YouTube thumbnails are ready in your output folder.</p>
+      <p id="export-success-filename">Your video is ready in your output folder.</p>
       
       <div class="exported-preview-box">
-        <video id="exported-video-player" controls style="width:100%; border-radius:8px; background:#000; max-height:280px;"></video>
-      </div>
-
-      <!-- Generated YouTube Thumbnails Direct Previews -->
-      <div class="exported-thumbnails-section mt-12" id="export-modal-thumbs-container">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <strong style="font-size:13px;color:#f8fafc;display:flex;align-items:center;gap:6px;">
-            🖼️ Generated YouTube Thumbnails <span class="badge badge-success" style="font-size:10px;">1280x720</span>
-          </strong>
-          <span style="font-size:11px;color:#94a3b8;">High-CTR Viral Hooks</span>
-        </div>
-        <div class="exported-thumbnails-row" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:10px;">
-          <!-- Style 1 -->
-          <div class="export-thumb-box" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px;text-align:center;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span class="badge badge-danger" style="font-size:10px;">Style 1: Viral</span>
-              <span style="font-size:10px;color:#94a3b8;">Hormozi Pop</span>
-            </div>
-            <img id="export-modal-thumb-1" src="" alt="Thumbnail Style 1" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;display:block;background:#1e293b;">
-            <a id="export-modal-dl-1" href="#" download="Thumbnail_Viral.jpg" class="btn btn-xs btn-outline mt-8 disabled" style="font-size:11px;padding:4px 8px;margin-top:8px;width:100%;display:inline-block;text-decoration:none;box-sizing:border-box;">
-              💾 Download
-            </a>
-          </div>
-          <!-- Style 2 -->
-          <div class="export-thumb-box" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px;text-align:center;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span class="badge badge-warning" style="font-size:10px;">Style 2: Cinematic</span>
-              <span style="font-size:10px;color:#94a3b8;">Vox Mystery</span>
-            </div>
-            <img id="export-modal-thumb-2" src="" alt="Thumbnail Style 2" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;display:block;background:#1e293b;">
-            <a id="export-modal-dl-2" href="#" download="Thumbnail_Cinematic.jpg" class="btn btn-xs btn-outline mt-8 disabled" style="font-size:11px;padding:4px 8px;margin-top:8px;width:100%;display:inline-block;text-decoration:none;box-sizing:border-box;">
-              💾 Download
-            </a>
-          </div>
-          <!-- Style 3 -->
-          <div class="export-thumb-box" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px;text-align:center;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span class="badge badge-primary" style="font-size:10px;background:#6200ea;border-color:#00f5ff;color:#00f5ff;">Style 3: Modern Tech</span>
-              <span style="font-size:10px;color:#94a3b8;">Cyber Neon</span>
-            </div>
-            <img id="export-modal-thumb-3" src="" alt="Thumbnail Style 3" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;display:block;background:#1e293b;">
-            <a id="export-modal-dl-3" href="#" download="Thumbnail_ModernTech.jpg" class="btn btn-xs btn-outline mt-8 disabled" style="font-size:11px;padding:4px 8px;margin-top:8px;width:100%;display:inline-block;text-decoration:none;box-sizing:border-box;">
-              💾 Download
-            </a>
-          </div>
-        </div>
+        <video id="exported-video-player" controls style="width:100%; border-radius:8px; background:#000; max-height:340px;"></video>
       </div>
 
       <div class="modal-actions-row mt-16">
@@ -2486,9 +2441,6 @@
         </a>
         <button class="btn btn-primary" id="export-btn-show-folder" onclick="openExportedVideoFolder()">
           📂 Show in Windows Folder
-        </button>
-        <button class="btn btn-warning" onclick="switchToThumbnails()">
-          🖼️ View Thumbnails
         </button>
         <button class="btn btn-capcut" onclick="exportToCapCutTimeline()">
           ✂️ Open in CapCut

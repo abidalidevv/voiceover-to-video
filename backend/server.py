@@ -134,8 +134,33 @@ def _cleanup_old_temp_files():
     except Exception as e:
         print(f"[Server] Notice during temp cleanup: {e}")
 
-# Trigger non-blocking temp cleanup on startup
+# Trigger non-blocking temp cleanup and background storage cleaner daemon
 threading.Thread(target=_cleanup_old_temp_files, daemon=True).start()
+try:
+    from backend.storage_cleaner import start_auto_cleaner_daemon
+    start_auto_cleaner_daemon(interval_minutes=30, retention_hours=3)
+except Exception as clean_init_err:
+    print(f"[Server] Storage cleaner initialization notice: {clean_init_err}")
+
+
+@app.get("/api/storage-usage")
+def api_storage_usage():
+    from backend.storage_cleaner import get_storage_usage
+    return {"status": "success", **get_storage_usage()}
+
+
+@app.post("/api/clean-cache")
+def api_clean_cache(req: Optional[Dict[str, Any]] = None):
+    from backend.storage_cleaner import purge_all_cache, purge_old_cache, get_storage_usage
+    body = req or {}
+    purge_all = bool(body.get("all", False))
+    retention_hours = int(body.get("retention_hours", load_settings().get("cache_retention_hours", 3)))
+    if purge_all:
+        res = purge_all_cache(keep_outputs=True)
+    else:
+        res = purge_old_cache(max_age_seconds=max(1800, retention_hours * 3600))
+    res["storage_usage"] = get_storage_usage()
+    return {"status": "success", **res}
 
 
 @app.post("/api/test-apis")
@@ -863,6 +888,16 @@ def render_video(req: RenderRequest):
 
     save_project_to_history(project)
 
+    # Auto-cleanup raw stock cache & intermediate scene clips so hard drive never fills up
+    if bool(load_settings().get("clean_raw_after_render", True)):
+        try:
+            from backend.storage_cleaner import cleanup_post_render, purge_old_cache
+            cleanup_post_render(project.get("id", ""))
+            cfg_hours = int(load_settings().get("cache_retention_hours", 3))
+            purge_old_cache(max_age_seconds=max(1800, cfg_hours * 3600))
+        except Exception as clean_err:
+            print(f"[StorageCleaner] Post-render cleanup notice: {clean_err}")
+
     return {
         "status": "success",
         "output_file": out_filename,
@@ -880,6 +915,16 @@ def start_render_job(req: RenderRequest):
         project = next((p for p in history if p.get("id") == req.project_id), None)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
+
+    # Concurrency guard: check if there is already an active render running for this project
+    for existing_job_id, existing_job in ACTIVE_RENDER_JOBS.items():
+        if existing_job.get("project_id") == req.project_id and existing_job.get("status") == "processing":
+            logger.info(f"Render job {existing_job_id} already active for project {req.project_id}. Attaching caller to existing job.")
+            return {
+                "status": "processing",
+                "job_id": existing_job_id,
+                "message": "Render already active for this project"
+            }
 
     job_id = f"render_{int(time.time() * 1000)}"
     start_ts = time.time()
@@ -1023,6 +1068,16 @@ def start_render_job(req: RenderRequest):
                 print(f"[SEOGenerator] Auto-generation notice: {seo_err}")
 
             save_project_to_history(project)
+
+            # Auto-cleanup raw stock cache & intermediate scene clips so hard drive never fills up
+            if bool(load_settings().get("clean_raw_after_render", True)):
+                try:
+                    from backend.storage_cleaner import cleanup_post_render, purge_old_cache
+                    cleanup_post_render(project.get("id", ""))
+                    cfg_hours = int(load_settings().get("cache_retention_hours", 3))
+                    purge_old_cache(max_age_seconds=max(1800, cfg_hours * 3600))
+                except Exception as clean_err:
+                    print(f"[StorageCleaner] Post-render cleanup notice: {clean_err}")
 
             job["status"] = "completed"
             job["percent"] = 100

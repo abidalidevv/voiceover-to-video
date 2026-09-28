@@ -351,7 +351,7 @@ def render_final_video(
             "-t", f"{clip_target_dur:.3f}",
             "-vf", vf,
             "-r", str(fps),
-            "-vsync", "cfr",
+            "-fps_mode", "cfr",
             "-c:v", encoder,
             *encoder_args,
             "-an",  # Strip stock video audio completely to avoid noise
@@ -370,7 +370,7 @@ def render_final_video(
                     "-t", f"{clip_target_dur:.3f}",
                     "-vf", vf,
                     "-r", str(fps),
-                    "-vsync", "cfr",
+                    "-fps_mode", "cfr",
                     "-c:v", "libx264",
                     "-preset", "ultrafast",
                     "-crf", "20",
