@@ -3,13 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>ATS Video - 4K/8K UHD AI Video Engine</title>
   <meta name="description" content="ATS Video - Generate 4K/8K UHD YouTube videos from voiceover audio with stock video synchronization, kinetic captions, and clickbait thumbnails.">
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bangers&family=Bebas+Neue&family=Cinzel:wght@700;900&family=Inter:wght@300;400;500;600;700;800&family=Luckiest+Guy&family=Montserrat:wght@500;700;800;900&family=Oswald:wght@600;700&family=Outfit:wght@600;800&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260916_v5">
+  <link rel="stylesheet" href="styles.css?v=20260930_v3">
   <style id="preview-screen-fit-styles">
     /* VideoGen Studio - Responsive Pro Layout System */
     .app-header {
@@ -1242,15 +1245,15 @@
             </div>
 
             <!-- Animation Mode -->
-            <div class="inspector-section">
+            <div class="inspector-section" id="panel-kinetic-animation" style="display:none;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <label class="section-title" style="margin-bottom:0;" for="enable-animation-toggle">⚡ Kinetic Animation</label>
                 <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;" title="Toggle kinetic word bounce/glow animations ON or OFF">
-                  <input type="checkbox" id="enable-animation-toggle" checked onchange="onToggleAnimation(this.checked)">
+                  <input type="checkbox" id="enable-animation-toggle" onchange="onToggleAnimation(this.checked)">
                   <span class="toggle-slider"></span>
                 </label>
               </div>
-              <div id="animation-controls-wrapper">
+              <div id="animation-controls-wrapper" class="controls-disabled">
                 <select id="animation-style-select" class="form-select" onchange="updateCaptionStyle()">
                   <option value="word_bounce" selected>⚡ Active Word Pop & Bounce</option>
                   <option value="word_glow">✨ Glowing Highlight</option>
@@ -1726,7 +1729,7 @@
               </div>
             </div>
             <div class="settings-card-header-right">
-              <span class="badge badge-info" id="badge-preview-panels-count">1 of 7 Visible</span>
+              <span class="badge badge-info" id="badge-preview-panels-count">1 of 8 Visible</span>
               <span class="collapse-btn-pill">Expand ▾</span>
             </div>
           </div>
@@ -1750,11 +1753,11 @@
                 </label>
               </div>
 
-              <!-- 2. Kinetic Captions & Subtitles -->
+              <!-- 2. Subtitles & Captions -->
               <div class="preview-panel-toggle-item">
                 <div class="preview-panel-toggle-info">
-                  <span class="preview-panel-toggle-title">💬 Kinetic Subtitles & Captions</span>
-                  <span class="preview-panel-toggle-desc">CapCut styles, fonts, colors & kinetic bounce</span>
+                  <span class="preview-panel-toggle-title">💬 Subtitles & Captions Panel</span>
+                  <span class="preview-panel-toggle-desc">CapCut styles, fonts, stroke outline & positioning</span>
                 </div>
                 <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
                   <input type="checkbox" id="pref-show-captions" checked onchange="onPreviewPanelPrefChange()">
@@ -1762,7 +1765,19 @@
                 </label>
               </div>
 
-              <!-- 3. Background Music (BGM) -->
+              <!-- 3. Kinetic Animation (Bounce & Glow) -->
+              <div class="preview-panel-toggle-item">
+                <div class="preview-panel-toggle-info">
+                  <span class="preview-panel-toggle-title">⚡ Kinetic Animation</span>
+                  <span class="preview-panel-toggle-desc">Word pop & bounce, glowing highlights & pill box</span>
+                </div>
+                <label class="switch-toggle" style="position:relative; display:inline-block; width:44px; height:24px; cursor:pointer;">
+                  <input type="checkbox" id="pref-show-animation" onchange="onPreviewPanelPrefChange()">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <!-- 4. Background Music (BGM) -->
               <div class="preview-panel-toggle-item">
                 <div class="preview-panel-toggle-info">
                   <span class="preview-panel-toggle-title">🎵 Background Music (BGM)</span>
@@ -1774,7 +1789,7 @@
                 </label>
               </div>
 
-              <!-- 4. Sound Effects (SFX) -->
+              <!-- 5. Sound Effects (SFX) -->
               <div class="preview-panel-toggle-item">
                 <div class="preview-panel-toggle-info">
                   <span class="preview-panel-toggle-title">🔊 Scene Transition SFX</span>
@@ -1786,7 +1801,7 @@
                 </label>
               </div>
 
-              <!-- 5. Video Overlay -->
+              <!-- 6. Video Overlay -->
               <div class="preview-panel-toggle-item">
                 <div class="preview-panel-toggle-info">
                   <span class="preview-panel-toggle-title">🎭 Video Overlay</span>
@@ -1798,7 +1813,7 @@
                 </label>
               </div>
 
-              <!-- 6. Scene Transitions -->
+              <!-- 7. Scene Transitions -->
               <div class="preview-panel-toggle-item">
                 <div class="preview-panel-toggle-info">
                   <span class="preview-panel-toggle-title">🔀 Scene Transitions</span>
@@ -1810,7 +1825,7 @@
                 </label>
               </div>
 
-              <!-- 7. Video Polish & Color Grading -->
+              <!-- 8. Video Polish & Color Grading -->
               <div class="preview-panel-toggle-item">
                 <div class="preview-panel-toggle-info">
                   <span class="preview-panel-toggle-title">🎬 Video Polish & Color Grading</span>
@@ -1826,7 +1841,62 @@
           </div>
         </div>
 
-        <!-- 2. Performance & GPU Power Tuning Card -->
+        <!-- 2. Video Generation Mode Card (Niche vs Voiceover) -->
+        <div class="settings-card collapsible collapsed mt-16" id="card-generation-mode-settings">
+          <div class="settings-card-header" onclick="toggleSettingsCard(this)">
+            <div class="settings-card-header-left">
+              <span class="settings-card-chevron">▼</span>
+              <div>
+                <h3>🎯 Generate Video Based On (Visual Strategy)</h3>
+                <p class="help-text" style="margin:2px 0 0 0;">Choose how stock videos and visual b-roll are selected: strictly by channel Niche or semantic Voiceover script.</p>
+              </div>
+            </div>
+            <div class="settings-card-header-right">
+              <span class="badge badge-success" id="badge-generation-mode">Niche (Default)</span>
+              <span class="collapse-btn-pill">Expand ▾</span>
+            </div>
+          </div>
+
+          <div class="settings-card-body">
+            <p class="help-text" style="margin-bottom:16px;">
+              Select the intelligence mode for stock video retrieval. <b>Niche</b> keeps all visuals strictly anchored in your chosen theme (e.g. Space, Military, History). <b>Voiceover</b> dynamically auto-detects sentence-by-sentence spoken semantics.
+            </p>
+
+            <div class="generation-mode-options" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
+              
+              <!-- Option 1: Niche (Recommended & Default) -->
+              <label class="gen-mode-card" id="mode-card-niche" style="display:flex; align-items:flex-start; gap:12px; padding:16px; border-radius:10px; border:1px solid rgba(99, 102, 241, 0.4); background:rgba(99, 102, 241, 0.08); cursor:pointer; transition:all 0.2s ease;">
+                <input type="radio" name="generation_mode_radio" id="gen-mode-niche" value="niche" checked onchange="onGenerationModeChange('niche')" style="margin-top:3px; accent-color:var(--primary-color, #6366f1); cursor:pointer;">
+                <div style="flex:1;">
+                  <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                    <span style="font-weight:700; color:#fff; font-size:14px;">🌌 Niche (Channel Universe)</span>
+                    <span class="badge badge-primary" style="font-size:10px; padding:2px 6px;">Recommended &amp; Default</span>
+                  </div>
+                  <p class="help-text" style="font-size:12px; margin:0; line-height:1.45; color:rgba(255,255,255,0.7);">
+                    Strict visual consistency. The selected channel niche (e.g., Space, Astronomy, Military, Stoic) dominates all visual searches, eliminating off-topic civilian or everyday clips.
+                  </p>
+                </div>
+              </label>
+
+              <!-- Option 2: Voiceover (Semantic) -->
+              <label class="gen-mode-card" id="mode-card-voiceover" style="display:flex; align-items:flex-start; gap:12px; padding:16px; border-radius:10px; border:1px solid rgba(255, 255, 255, 0.1); background:rgba(255, 255, 255, 0.03); cursor:pointer; transition:all 0.2s ease;">
+                <input type="radio" name="generation_mode_radio" id="gen-mode-voiceover" value="voiceover" onchange="onGenerationModeChange('voiceover')" style="margin-top:3px; accent-color:var(--primary-color, #6366f1); cursor:pointer;">
+                <div style="flex:1;">
+                  <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                    <span style="font-weight:700; color:#fff; font-size:14px;">🎙️ Voiceover (Script Semantics)</span>
+                    <span class="badge badge-neutral" style="font-size:10px; padding:2px 6px;">Auto-Detect</span>
+                  </div>
+                  <p class="help-text" style="font-size:12px; margin:0; line-height:1.45; color:rgba(255,255,255,0.7);">
+                    Matches literal spoken words in the audio. AI extracts direct visual cues from sentences (e.g. studying at desk, running outside, empty wallet) regardless of niche.
+                  </p>
+                </div>
+              </label>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Performance & GPU Power Tuning Card -->
         <div class="settings-card collapsible collapsed mt-24">
           <div class="settings-card-header" onclick="toggleSettingsCard(this)">
             <div class="settings-card-header-left">
@@ -2494,7 +2564,7 @@
     </div>
   </div>
 
-  <script src="caption_engine.js"></script>
-  <script src="app.js"></script>
+  <script src="caption_engine.js?v=20260930_v3"></script>
+  <script src="app.js?v=20260930_v3"></script>
 </body>
 </html>

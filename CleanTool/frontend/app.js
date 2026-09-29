@@ -30,8 +30,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Instant apply cached video preview panel preferences
   try {
     const cached = localStorage.getItem('vg_preview_panel_prefs');
-    if (cached) applyPreviewPanelPreferences(JSON.parse(cached));
-  } catch (e) {}
+    if (cached) {
+      applyPreviewPanelPreferences(JSON.parse(cached));
+    } else {
+      applyPreviewPanelPreferences(DEFAULT_PREVIEW_PANEL_PREFS);
+    }
+  } catch (e) {
+    applyPreviewPanelPreferences(DEFAULT_PREVIEW_PANEL_PREFS);
+  }
 
   // Connect interactive drag-to-position on video player to bottom margin controls
   captionEngine.enableDrag((newBottom) => {
@@ -137,6 +143,7 @@ function collapseAllSettingsCards() {
 const DEFAULT_PREVIEW_PANEL_PREFS = {
   show_template: false,
   show_captions: true,
+  show_animation: false,
   show_bgm: false,
   show_sfx: false,
   show_overlay: false,
@@ -148,6 +155,7 @@ function getPreviewPanelPreferences() {
   return {
     show_template: document.getElementById('pref-show-template') ? document.getElementById('pref-show-template').checked : false,
     show_captions: document.getElementById('pref-show-captions') ? document.getElementById('pref-show-captions').checked : true,
+    show_animation: document.getElementById('pref-show-animation') ? document.getElementById('pref-show-animation').checked : false,
     show_bgm: document.getElementById('pref-show-bgm') ? document.getElementById('pref-show-bgm').checked : false,
     show_sfx: document.getElementById('pref-show-sfx') ? document.getElementById('pref-show-sfx').checked : false,
     show_overlay: document.getElementById('pref-show-overlay') ? document.getElementById('pref-show-overlay').checked : false,
@@ -163,6 +171,7 @@ function applyPreviewPanelPreferences(prefs) {
   const map = [
     { key: 'show_template', inputId: 'pref-show-template', panelId: 'panel-master-template', toggleId: null },
     { key: 'show_captions', inputId: 'pref-show-captions', panelId: 'panel-kinetic-captions', toggleId: 'enable-captions-toggle', onToggle: (typeof onToggleCaptions === 'function' ? onToggleCaptions : null) },
+    { key: 'show_animation', inputId: 'pref-show-animation', panelId: 'panel-kinetic-animation', toggleId: 'enable-animation-toggle', onToggle: (typeof onToggleAnimation === 'function' ? onToggleAnimation : null) },
     { key: 'show_bgm', inputId: 'pref-show-bgm', panelId: 'panel-bgm', toggleId: 'enable-bgm-toggle', onToggle: (typeof onToggleBgm === 'function' ? onToggleBgm : null) },
     { key: 'show_sfx', inputId: 'pref-show-sfx', panelId: 'panel-sfx', toggleId: 'enable-sfx-toggle', onToggle: (typeof onToggleSfx === 'function' ? onToggleSfx : null) },
     { key: 'show_overlay', inputId: 'pref-show-overlay', panelId: 'panel-overlay', toggleId: null },
@@ -183,22 +192,28 @@ function applyPreviewPanelPreferences(prefs) {
       panelEl.style.display = isVisible ? '' : 'none';
     }
 
-    if (!isVisible) {
-      if (item.toggleId) {
-        const toggleEl = document.getElementById(item.toggleId);
-        if (toggleEl && toggleEl.checked) {
-          toggleEl.checked = false;
-          if (typeof item.onToggle === 'function') {
-            try { item.onToggle(false); } catch (e) {}
-          }
+    if (item.toggleId) {
+      const toggleEl = document.getElementById(item.toggleId);
+      if (toggleEl) {
+        toggleEl.checked = isVisible;
+        if (typeof item.onToggle === 'function') {
+          try { item.onToggle(isVisible); } catch (e) {}
         }
       }
-      if (item.key === 'show_overlay') {
-        const ovrVideo = document.getElementById('preview-overlay-video');
-        const ovrImg = document.getElementById('preview-overlay-img');
-        if (ovrVideo) ovrVideo.style.display = 'none';
-        if (ovrImg) ovrImg.style.display = 'none';
+    }
+
+    if (item.key === 'show_animation') {
+      if (typeof captionEngine !== 'undefined' && captionEngine && typeof captionEngine.updateStyle === 'function') {
+        const animVal = isVisible ? (document.getElementById('animation-style-select')?.value || 'word_bounce') : 'none';
+        captionEngine.updateStyle({ animation: animVal });
       }
+    }
+
+    if (!isVisible && item.key === 'show_overlay') {
+      const ovrVideo = document.getElementById('preview-overlay-video');
+      const ovrImg = document.getElementById('preview-overlay-img');
+      if (ovrVideo) ovrVideo.style.display = 'none';
+      if (ovrImg) ovrImg.style.display = 'none';
     }
   });
 
@@ -240,6 +255,44 @@ function onThumbnailSettingChange(enabled) {
   }
 }
 
+function setGenerationModeUI(mode) {
+  const isVoiceover = (String(mode || 'niche').toLowerCase() === 'voiceover');
+  const nicheRadio = document.getElementById('gen-mode-niche');
+  const voRadio = document.getElementById('gen-mode-voiceover');
+  const cardNiche = document.getElementById('mode-card-niche');
+  const cardVo = document.getElementById('mode-card-voiceover');
+  const badge = document.getElementById('badge-generation-mode');
+
+  if (nicheRadio) nicheRadio.checked = !isVoiceover;
+  if (voRadio) voRadio.checked = isVoiceover;
+
+  if (cardNiche) {
+    cardNiche.style.borderColor = !isVoiceover ? 'rgba(99, 102, 241, 0.5)' : 'rgba(255, 255, 255, 0.1)';
+    cardNiche.style.background = !isVoiceover ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.03)';
+  }
+  if (cardVo) {
+    cardVo.style.borderColor = isVoiceover ? 'rgba(99, 102, 241, 0.5)' : 'rgba(255, 255, 255, 0.1)';
+    cardVo.style.background = isVoiceover ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255, 255, 255, 0.03)';
+  }
+  if (badge) {
+    if (isVoiceover) {
+      badge.textContent = 'Voiceover (Semantic)';
+      badge.className = 'badge badge-info';
+    } else {
+      badge.textContent = 'Niche (Default)';
+      badge.className = 'badge badge-success';
+    }
+  }
+}
+
+function onGenerationModeChange(mode) {
+  setGenerationModeUI(mode);
+  showToast(mode === 'voiceover' ? '🎙️ Generation mode set to Voiceover (Spoken Semantics)' : '🌌 Generation mode set to Niche (Channel Theme)');
+  if (typeof saveAppSettings === 'function') {
+    saveAppSettings(true);
+  }
+}
+
 // ==================== SETTINGS & API STATUS ====================
 function handleWorkerSliderChange(val) {
   const num = parseInt(val, 10);
@@ -269,13 +322,21 @@ async function loadSettings() {
 
     // Video Preview Right Panel Preferences
     let previewPrefs = data.preview_panel_settings;
-    if (!previewPrefs) {
+    if (previewPrefs) {
+      try {
+        localStorage.setItem('vg_preview_panel_prefs', JSON.stringify(previewPrefs));
+      } catch (e) {}
+    } else {
       try {
         const cached = localStorage.getItem('vg_preview_panel_prefs');
         if (cached) previewPrefs = JSON.parse(cached);
       } catch (e) {}
     }
     applyPreviewPanelPreferences(previewPrefs);
+
+    // Generation Mode: Niche vs Voiceover
+    const genMode = data.generation_mode || 'niche';
+    setGenerationModeUI(genMode);
 
     // 10+ Stock Video APIs - Multi-Account Pools
     const pKeys = data.pexels_api_keys || (data.pexels_api_key ? [data.pexels_api_key] : []);
@@ -443,6 +504,9 @@ async function saveAppSettings(silent = false) {
     output_dir: document.getElementById('input-output-dir')?.value.trim() || '',
     thumbnail_output_dir: document.getElementById('input-thumbnail-output-dir')?.value.trim() || '',
     enable_thumbnails: document.getElementById('input-enable-thumbnails')?.checked ?? false,
+
+    // Strategy & Mode
+    generation_mode: document.getElementById('gen-mode-voiceover')?.checked ? 'voiceover' : 'niche',
 
     // Performance & Hardware
     hardware_encoder: document.getElementById('input-hardware-encoder')?.value || 'auto',
@@ -809,7 +873,8 @@ async function startGeneration() {
         audio_filename: uploadedAudioData.filename,
         niche: niche,
         pipeline: activePipeline,
-        target_resolution: document.getElementById('target-resolution-select')?.value || '1080p'
+        target_resolution: document.getElementById('target-resolution-select')?.value || '1080p',
+        generation_mode: document.getElementById('gen-mode-voiceover')?.checked ? 'voiceover' : 'niche'
       })
     });
 
@@ -1501,7 +1566,9 @@ function applyPreset(presetKey) {
     document.getElementById('uppercase-checkbox').checked = p.uppercase;
     document.getElementById('animation-style-select').value = p.animation;
 
-    captionEngine.updateStyle({ preset: presetKey, ...p });
+    const animToggle = document.getElementById('enable-animation-toggle');
+    const animEnabled = animToggle ? animToggle.checked : false;
+    captionEngine.updateStyle({ preset: presetKey, ...p, animation: animEnabled ? p.animation : 'none' });
     captionEngine.renderAtTime(currentPlaybackTime);
   }
 }
@@ -1532,6 +1599,9 @@ function updateMarginV(val) {
 }
 
 function updateCaptionStyle() {
+  const animToggle = document.getElementById('enable-animation-toggle');
+  const animEnabled = animToggle ? animToggle.checked : false;
+
   const newStyle = {
     fontFamily: document.getElementById('font-family-select').value,
     fontSize: parseInt(document.getElementById('font-size-slider').value, 10),
@@ -1543,7 +1613,7 @@ function updateCaptionStyle() {
     strokeWidth: parseFloat(document.getElementById('stroke-width-slider').value),
     marginV: parseInt(document.getElementById('margin-v-slider').value, 10),
     uppercase: document.getElementById('uppercase-checkbox').checked,
-    animation: document.getElementById('animation-style-select').value
+    animation: animEnabled ? (document.getElementById('animation-style-select')?.value || 'word_bounce') : 'none'
   };
 
   captionEngine.updateStyle(newStyle);
@@ -2216,7 +2286,7 @@ async function startExportRender() {
   const previewPrefs = (typeof getPreviewPanelPreferences === 'function') ? getPreviewPanelPreferences() : DEFAULT_PREVIEW_PANEL_PREFS;
 
   const captionsEnabled = previewPrefs.show_captions && (document.getElementById('enable-captions-toggle')?.checked ?? true);
-  const animationEnabled = captionsEnabled && (document.getElementById('enable-animation-toggle')?.checked ?? true);
+  const animationEnabled = captionsEnabled && previewPrefs.show_animation && (document.getElementById('enable-animation-toggle')?.checked ?? false);
   const bgmEnabled = previewPrefs.show_bgm && (document.getElementById('enable-bgm-toggle')?.checked ?? true);
   const sfxEnabled = previewPrefs.show_sfx && (document.getElementById('enable-sfx-toggle')?.checked ?? true);
   const polishEnabled = previewPrefs.show_polish && (document.getElementById('enable-polish-toggle')?.checked ?? true);

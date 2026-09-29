@@ -474,9 +474,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                         raw_word = raw_word.upper()
 
                     if idx == active_idx:
-                        # Active word highlighted with accent color & kinetic animation
-                        anim_style = str((custom_options or {}).get("animation", "word_bounce")).lower().strip()
-                        if anim_style == "none":
+                        # Active word highlighted with accent color & kinetic animation (Default OFF unless explicitly enabled)
+                        enable_anim = bool((custom_options or {}).get("enable_animation", False))
+                        anim_style = str((custom_options or {}).get("animation", "none")).lower().strip()
+                        if not enable_anim or anim_style == "none":
                             line_parts.append(f"{{\\c{highlight_c}&}}{raw_word}{{\\c{primary_c}&}}")
                         elif anim_style == "word_box":
                             line_parts.append(f"{{\\c&H00000000&\\3c{highlight_c}&\\bord{ass_outline_w + 3:.1f}}}{raw_word}{{\\c{primary_c}&\\3c{outline_c}&\\bord{ass_outline_w:.1f}}}")

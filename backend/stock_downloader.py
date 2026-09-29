@@ -19,6 +19,7 @@ import threading
 
 HISTORY_FILE = DATA_DIR / "stock_usage_history.json"
 _HISTORY_LOCK = threading.Lock()
+_TRIM_SEMAPHORE = threading.Semaphore(2)  # Caps concurrent FFmpeg trimming to 2 to protect CPU/GPU
 
 
 def _get_recently_used_video_ids(days: int = 14) -> Dict[str, float]:
@@ -121,12 +122,17 @@ def trim_and_fit_clip(
         candidate_offset = round(headroom * 0.40, 2)
         start_offset = max(1.5, min(candidate_offset, round(headroom - 0.4, 2)))
 
-    # Detect fastest encoder
+    # Detect fastest encoder with safe thread count for background tasks
     encoder = "libx264"
-    encoder_args = ["-preset", "ultrafast", "-crf", "18", "-pix_fmt", "yuv420p", "-threads", "0"]
+    encoder_args = ["-preset", "ultrafast", "-crf", "18", "-pix_fmt", "yuv420p", "-threads", "2"]
     try:
         from .video_renderer import get_best_video_encoder
         encoder, encoder_args = get_best_video_encoder(ffmpeg_exe, use_gpu=True)
+        # If CPU encoder, cap threads to 2 so parallel tasks don't starve OS
+        if encoder == "libx264" and "-threads" in encoder_args:
+            idx = encoder_args.index("-threads")
+            if idx + 1 < len(encoder_args):
+                encoder_args[idx + 1] = "2"
     except Exception:
         pass
 
@@ -149,30 +155,33 @@ def trim_and_fit_clip(
         "-an",
         str(out_path)
     ])
-    try:
-        subprocess.run(cmd, capture_output=True, check=True)
-        return str(out_path)
-    except Exception:
-        # Fallback to multi-threaded CPU libx264
+    
+    # Throttle concurrent FFmpeg trimming to max 2 processes to protect CPU and NVENC limits
+    with _TRIM_SEMAPHORE:
         try:
-            cpu_cmd = [
-                ffmpeg_exe, "-y",
-                "-i", str(raw_path),
-                "-t", f"{trim_dur:.2f}",
-                "-vf", scale_filter,
-                "-c:v", "libx264",
-                "-preset", "ultrafast",
-                "-crf", "18",
-                "-pix_fmt", "yuv420p",
-                "-threads", "0",
-                "-an",
-                str(out_path)
-            ]
-            subprocess.run(cpu_cmd, capture_output=True, check=True)
+            subprocess.run(cmd, capture_output=True, check=True)
             return str(out_path)
-        except Exception as e2:
-            print(f"[StockDownloader] Notice: trimming raw clip failed: {e2}, falling back to raw path")
-            return raw_path
+        except Exception:
+            # Fallback to 2-threaded CPU libx264
+            try:
+                cpu_cmd = [
+                    ffmpeg_exe, "-y",
+                    "-i", str(raw_path),
+                    "-t", f"{trim_dur:.2f}",
+                    "-vf", scale_filter,
+                    "-c:v", "libx264",
+                    "-preset", "ultrafast",
+                    "-crf", "18",
+                    "-pix_fmt", "yuv420p",
+                    "-threads", "2",
+                    "-an",
+                    str(out_path)
+                ]
+                subprocess.run(cpu_cmd, capture_output=True, check=True)
+                return str(out_path)
+            except Exception as e2:
+                print(f"[StockDownloader] Notice: trimming raw clip failed: {e2}, falling back to raw path")
+                return raw_path
 
 
 class ApiKeyPool:
@@ -247,7 +256,7 @@ SESSION.mount("https://", adapter)
 SESSION.mount("http://", adapter)
 
 
-def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback=None, target_resolution: str = "1080p", niche: str = "", pipeline: str = "Main", aspect_ratio: str = "16:9") -> List[Dict[str, Any]]:
+def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback=None, target_resolution: str = "1080p", niche: str = "", pipeline: str = "Main", aspect_ratio: str = "16:9", generation_mode: str = "niche") -> List[Dict[str, Any]]:
     """
     Downloads stock videos for all scenes in parallel using a ThreadPoolExecutor.
     Load-balances queries across multiple API keys (Pexels, Pixabay, etc.).
@@ -266,7 +275,7 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
     total_keys = len(p_keys) + len(pb_keys)
     num_workers = max(configured_workers, min(16, max(4, total_keys * 2)))
 
-    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers (Resolution: {target_resolution}, Aspect: {aspect_ratio}, Niche: '{niche}', Pipeline: '{pipeline}', Pexels Accounts: {len(p_keys)}, Pixabay Accounts: {len(pb_keys)})...")
+    print(f"[StockDownloader] Launching parallel download for {len(scenes)} scenes across {num_workers} workers (Resolution: {target_resolution}, Aspect: {aspect_ratio}, Niche: '{niche}', Generation Mode: '{generation_mode}', Pipeline: '{pipeline}', Pexels Accounts: {len(p_keys)}, Pixabay Accounts: {len(pb_keys)})...")
 
     completed_scenes = [None] * len(scenes)
     completed_count = 0
@@ -279,6 +288,7 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
         nonlocal completed_count
         scene_idx = scene_item["id"]
         scene_niche = scene_item.get("niche") or niche
+        scene_gen_mode = scene_item.get("generation_mode") or generation_mode or "niche"
         tags = scene_item.get("search_tags", ["cinematic inspiring"])
         selected_tag = scene_item.get("selected_tag") or tags[0]
         duration = float(scene_item.get("duration", 4.0))
@@ -299,7 +309,8 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
                 niche=scene_niche,
                 pipeline=pipeline,
                 active_batch_ids=used_video_ids,
-                past_used_ids=global_past_used
+                past_used_ids=global_past_used,
+                generation_mode=scene_gen_mode
             )
             if clip_data:
                 vid_id = clip_data.get("video_id")
@@ -309,6 +320,31 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
                     if vid_id:
                         used_video_ids.add(str(vid_id))
                 break
+
+        # If external APIs returned nothing, try niche-specific guaranteed space queries before offline canvas
+        if not clip_data:
+            scene_niche_clean = str(scene_niche or "").lower()
+            if scene_gen_mode != "voiceover" and any(k in scene_niche_clean for k in ("space", "sci-fi", "cosmos", "astronomy")):
+                for fallback_q in ["deep space galaxy nebula", "astronaut walking planet surface", "hubble telescope cosmos 4k"]:
+                    clip_data = find_and_download_stock_video(
+                        fallback_q,
+                        min_duration=duration,
+                        sentence_context=sentence_text,
+                        target_resolution=target_resolution,
+                        pexels_pool=pexels_pool,
+                        pixabay_pool=pixabay_pool,
+                        niche=scene_niche,
+                        pipeline=pipeline,
+                        active_batch_ids=used_video_ids,
+                        past_used_ids=global_past_used,
+                        generation_mode=scene_gen_mode
+                    )
+                    if clip_data:
+                        vid_id = clip_data.get("video_id")
+                        with lock:
+                            if vid_id:
+                                used_video_ids.add(str(vid_id))
+                        break
 
         # If external APIs returned nothing (e.g. no key or rate limited), generate offline fallback
         if not clip_data:
@@ -383,7 +419,8 @@ def _score_candidate(
     pipeline: str = "",
     video_id: Any = None,
     active_batch_ids: Optional[Set[str]] = None,
-    past_used_ids: Optional[Dict[str, float]] = None
+    past_used_ids: Optional[Dict[str, float]] = None,
+    generation_mode: str = "niche"
 ) -> float:
     """Ranks candidate video clips based on resolution, duration headroom, keyword match, and niche relevance."""
     score = 0.0
@@ -433,20 +470,50 @@ def _score_candidate(
     score += min(50.0, matched * 15.0)
 
     # 4. NICHE-SPECIFIC RELEVANCE BONUS & CLASH PENALTIES
-    niche_clean = str(niche or "").lower()
+    # Only enforce strict niche penalties and channel universe dominance when generation_mode is 'niche'
+    is_niche_mode = (str(generation_mode or "niche").lower() != "voiceover")
+    niche_clean = str(niche or "").lower() if is_niche_mode else ""
     all_query_text = " ".join(query_words).lower()
 
-    is_space_niche = any(k in niche_clean for k in ("space", "sci-fi", "cosmos", "astronomy")) or any(k in all_query_text for k in ("space", "galaxy", "planet", "orbit", "astronaut", "universe", "cosmos", "mars", "nebula"))
+    is_motivation_niche = any(k in niche_clean for k in ("motivation", "stoic", "discipline", "mindset", "success", "psychology", "growth"))
+    is_space_niche = any(k in niche_clean for k in ("space", "sci-fi", "cosmos", "astronomy")) or (is_niche_mode and any(k in all_query_text for k in ("outer space", "deep space", "galaxy", "astronaut", "nebula", "solar system", "cosmos")))
 
-    if is_space_niche:
+    if is_motivation_niche:
+        mot_positives = {
+            "run", "running", "runner", "gym", "workout", "fitness", "training", "athlete", "athletic",
+            "mountain", "climbing", "summit", "peak", "sunrise", "dawn", "silhouette", "focused",
+            "study", "desk", "writing", "skyscraper", "city", "skyline", "office", "businessman",
+            "victory", "celebration", "determination", "grit", "boxing", "boxer", "crossfit", "sweat"
+        }
+        if any(w in meta_lower for w in mot_positives):
+            score += 45.0
+
+        # Strict veto clashes for motivation: NEVER allow space, galaxy, astronauts, recipes, etc.
+        mot_clashes = {
+            "space", "galaxy", "planet", "astronaut", "nasa", "orbit", "satellite", "nebula",
+            "cosmos", "solar system", "alien", "spaceship", "ufo", "recipe", "cooking",
+            "baking", "wedding", "bride", "groom", "makeup", "cosmetics", "cartoon",
+            "puppy", "kitten", "cat", "dog", "baby", "infant", "toddler"
+        }
+        if any(c in meta_lower for c in mot_clashes):
+            score -= 250.0
+
+    elif is_space_niche:
         space_positives = {"space", "galaxy", "planet", "stars", "star", "astronomy", "cosmos", "astronaut", "nasa", "orbit", "satellite", "telescope", "spacecraft", "solar", "moon", "mars", "nebula", "universe", "alien", "sci-fi"}
         if any(w in meta_lower for w in space_positives):
-            score += 40.0
+            score += 50.0
 
-        # NEVER allow sports, swimming, beach, kitchen, makeup clips for space!
-        space_clashes = {"swim", "swimming", "swimmer", "olympic", "olympics", "beach", "pool", "kitchen", "cooking", "recipe", "baking", "wedding", "bride", "groom", "makeup", "cosmetics", "fashion", "dress", "dance", "dancing", "soccer", "football", "baseball", "tennis", "puppy", "kitten", "cat", "dog", "barbecue", "party", "lake", "ocean beach"}
+        # NEVER allow sports, swimming, beach, kitchen, makeup, or civilian lifestyle clips for space!
+        space_clashes = {
+            "swim", "swimming", "swimmer", "olympic", "olympics", "beach", "pool", "kitchen", "cooking", "recipe",
+            "baking", "wedding", "bride", "groom", "makeup", "cosmetics", "fashion", "dress", "dance", "dancing",
+            "soccer", "football", "baseball", "tennis", "puppy", "kitten", "cat", "dog", "barbecue", "party", "lake",
+            "ocean beach", "playground", "children", "child", "kids", "bedroom", "sleeping", "bed", "alarm clock",
+            "wallet", "dollar", "cash", "money", "office", "cubicle", "hospital", "patient", "classroom", "school",
+            "traffic jam", "supermarket", "grocery"
+        }
         if any(c in meta_lower for c in space_clashes):
-            score -= 200.0
+            score -= 250.0
 
     elif any(k in niche_clean for k in ("military", "war", "defense")) or any(k in all_query_text for k in ("missile", "war", "tank", "bomb", "soldier", "radar", "fighter", "battlefield", "airforce", "navy")):
         mil_positives = {"military", "soldier", "army", "tank", "missile", "war", "weapon", "fighter", "aircraft", "radar", "navy", "combat", "explosion", "battlefield", "artillery", "troops", "infantry"}
@@ -586,7 +653,8 @@ def find_and_download_stock_video(
     niche: str = "",
     pipeline: str = "Main",
     active_batch_ids: Optional[Set[str]] = None,
-    past_used_ids: Optional[Dict[str, float]] = None
+    past_used_ids: Optional[Dict[str, float]] = None,
+    generation_mode: str = "niche"
 ) -> Optional[Dict[str, Any]]:
     """
     Cascading Fallback Provider Architecture with Multi-Account Pools:
@@ -627,13 +695,13 @@ def find_and_download_stock_video(
 
     # Priority 1: Pexels (best quality)
     if (provider_pref in ("all", "pexels")) and pexels_pool.has_active_keys():
-        clip = _search_pexels(effective_query, pexels_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline, active_batch_ids=active_batch_ids, past_used_ids=past_used_ids)
+        clip = _search_pexels(effective_query, pexels_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline, active_batch_ids=active_batch_ids, past_used_ids=past_used_ids, generation_mode=generation_mode)
         if clip:
             return clip
 
     # Priority 2: Pixabay (fast secondary fallback)
     if (provider_pref in ("all", "pixabay")) and pixabay_pool.has_active_keys():
-        clip = _search_pixabay(effective_query, pixabay_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline, active_batch_ids=active_batch_ids, past_used_ids=past_used_ids)
+        clip = _search_pixabay(effective_query, pixabay_pool, min_duration, sentence_context, target_resolution=target_resolution, niche=niche, pipeline=pipeline, active_batch_ids=active_batch_ids, past_used_ids=past_used_ids, generation_mode=generation_mode)
         if clip:
             return clip
 
@@ -649,8 +717,9 @@ def find_and_download_stock_video(
         if clip:
             return clip
 
-    # Priority 5: NASA Open Video (especially good for Space niche!)
-    if (provider_pref in ("all", "nasa")) and nasa_enabled:
+    # Priority 5: NASA Open Video (ONLY for Space & Astronomy niche or query)
+    is_space_query = (any(k in str(niche).lower() for k in ("space", "sci-fi", "cosmos", "astronomy")) if generation_mode != "voiceover" else False) or any(k in effective_query.lower() for k in ("outer space", "deep space", "galaxy", "astronaut", "nebula"))
+    if (provider_pref in ("all", "nasa")) and nasa_enabled and is_space_query:
         clip = _search_nasa(effective_query, min_duration)
         if clip:
             return clip
@@ -680,7 +749,10 @@ def find_and_download_stock_video(
                 pixabay_pool=pixabay_pool,
                 allow_simplify=False,
                 niche=niche,
-                pipeline=pipeline
+                pipeline=pipeline,
+                active_batch_ids=active_batch_ids,
+                past_used_ids=past_used_ids,
+                generation_mode=generation_mode
             )
             if simplified_clip:
                 return simplified_clip
@@ -697,7 +769,8 @@ def _search_pexels(
     niche: str = "",
     pipeline: str = "",
     active_batch_ids: Optional[Set[str]] = None,
-    past_used_ids: Optional[Dict[str, float]] = None
+    past_used_ids: Optional[Dict[str, float]] = None,
+    generation_mode: str = "niche"
 ) -> Optional[Dict[str, Any]]:
     clean_query = re.sub(r'#', '', query).strip()
     candidate_keys = pool.get_candidate_keys()
@@ -763,7 +836,8 @@ def _search_pexels(
                         pipeline=pipeline,
                         video_id=vid.get("id"),
                         active_batch_ids=active_batch_ids,
-                        past_used_ids=past_used_ids
+                        past_used_ids=past_used_ids,
+                        generation_mode=generation_mode
                     )
                     scored.append((score, vid, best_file))
 
@@ -820,7 +894,8 @@ def _search_pixabay(
     niche: str = "",
     pipeline: str = "",
     active_batch_ids: Optional[Set[str]] = None,
-    past_used_ids: Optional[Dict[str, float]] = None
+    past_used_ids: Optional[Dict[str, float]] = None,
+    generation_mode: str = "niche"
 ) -> Optional[Dict[str, Any]]:
     clean_query = re.sub(r'#', '', query).strip()
     candidate_keys = pool.get_candidate_keys()
@@ -874,7 +949,8 @@ def _search_pixabay(
                     pipeline=pipeline,
                     video_id=h.get("id"),
                     active_batch_ids=active_batch_ids,
-                    past_used_ids=past_used_ids
+                    past_used_ids=past_used_ids,
+                    generation_mode=generation_mode
                 )
                 scored.append((score, h, selected))
 

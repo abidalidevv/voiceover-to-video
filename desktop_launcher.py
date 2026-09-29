@@ -53,42 +53,13 @@ def wait_for_server(timeout: float = 12.0) -> bool:
 
 
 def launch_native_window():
-    """Launches Microsoft Edge in borderless standalone desktop App Mode or opens default browser."""
+    """Opens the application in the user's default browser."""
     # Wait for server to start responding
     ready = wait_for_server()
     if not ready:
         time.sleep(1.5)
 
     print(f"\n[VideoGen Studio] Server is ready at {URL}")
-
-    # Check for Microsoft Edge to run in native App Mode
-    edge_candidates = [
-        Path(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")) / "Microsoft" / "Edge" / "Application" / "msedge.exe",
-        Path(os.environ.get("ProgramFiles", "C:\\Program Files")) / "Microsoft" / "Edge" / "Application" / "msedge.exe",
-        Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "Edge" / "Application" / "msedge.exe",
-    ]
-
-    edge_found = None
-    for cand in edge_candidates:
-        if cand.exists():
-            edge_found = cand
-            break
-
-    if edge_found:
-        try:
-            print(f"[VideoGen Studio] Opening in native desktop app mode via Edge: {edge_found}")
-            subprocess.Popen([
-                str(edge_found),
-                f"--app={URL}",
-                "--window-size=1380,880",
-                "--window-position=60,40",
-                "--title=VideoGen Studio"
-            ])
-            return
-        except Exception as e:
-            print(f"[VideoGen Studio] Could not launch Edge app mode: {e}")
-
-    # Fallback to standard system browser
     print("[VideoGen Studio] Opening in default web browser...")
     webbrowser.open(URL)
 

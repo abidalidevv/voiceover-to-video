@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 import asyncio
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -56,6 +56,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    """Guarantees browsers never serve stale HTML, JS, CSS, or JSON from disk cache."""
+    response = await call_next(request)
+    path = request.url.path.lower()
+    if path == "/" or path.endswith((".html", ".js", ".css", ".json")) or path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 # In-memory storage for active projects and rendering jobs
 ACTIVE_PROJECTS: Dict[str, Dict[str, Any]] = {}
@@ -401,6 +413,7 @@ class GenerateRequest(BaseModel):
     pipeline: str = "Main"
     target_resolution: str = "1080p"
     aspect_ratio: str = "16:9"
+    generation_mode: Optional[str] = None
 
 
 @app.post("/api/start-generate")
@@ -433,6 +446,13 @@ def start_generation_job(req: GenerateRequest):
 
             transcription = transcribe_audio(str(audio_path), niche=req.niche)
             
+            # Resolve generation_mode (Niche vs Voiceover)
+            gen_mode = req.generation_mode
+            if not gen_mode:
+                settings = load_settings()
+                gen_mode = settings.get("generation_mode", "niche")
+            gen_mode = str(gen_mode or "niche").strip().lower()
+
             # 2. Editorial Direction & Scene Analysis
             ACTIVE_JOBS[job_id]["stage"] = "analyzing"
             ACTIVE_JOBS[job_id]["stage_title"] = "Editorial Direction & Scene Analysis..."
@@ -443,9 +463,17 @@ def start_generation_job(req: GenerateRequest):
                 full_transcript_text=transcription.get("text", ""),
                 niche=req.niche
             )
-            scenes = build_scenes(transcription, niche=req.niche, editorial_direction=editorial_dir)
+            scenes = build_scenes(
+                transcription,
+                niche=req.niche,
+                editorial_direction=editorial_dir,
+                generation_mode=gen_mode
+            )
             total_scenes = len(scenes)
             ACTIVE_JOBS[job_id]["total_scenes"] = total_scenes
+
+            for sc in scenes:
+                sc["generation_mode"] = gen_mode
 
             # 3. Parallel Downloads with live progress callback and target resolution
             ACTIVE_JOBS[job_id]["stage"] = "downloading"
@@ -467,7 +495,8 @@ def start_generation_job(req: GenerateRequest):
                 target_resolution=req.target_resolution,
                 niche=req.niche,
                 pipeline=req.pipeline,
-                aspect_ratio=req.aspect_ratio
+                aspect_ratio=req.aspect_ratio,
+                generation_mode=gen_mode
             )
 
             # Web URLs
@@ -480,6 +509,7 @@ def start_generation_job(req: GenerateRequest):
                 "id": project_id,
                 "name": req.audio_filename.rsplit('.', 1)[0],
                 "niche": req.niche,
+                "generation_mode": gen_mode,
                 "pipeline": req.pipeline,
                 "target_resolution": req.target_resolution,
                 "aspect_ratio": req.aspect_ratio,
@@ -986,21 +1016,21 @@ def start_render_job(req: RenderRequest):
             render_opts = {
                 "fps": req.fps,
                 "target_resolution": target_res,
-                "bgm_track": req.custom_options.get("bgm_track", project.get("bgm_track", "cinematic_ambient")),
-                "bgm_volume": float(req.custom_options.get("bgm_volume", project.get("bgm_volume", 0.10))),
-                "enable_motion": bool(req.custom_options.get("enable_motion", project.get("enable_motion", False))),
-                "enable_vignette": bool(req.custom_options.get("enable_vignette", project.get("enable_vignette", False))),
-                "color_grade": req.custom_options.get("color_grade", project.get("color_grade", "clean")),
-                "transition": req.custom_options.get("transition", project.get("transition", "none")),
-                "transition_mode": req.custom_options.get("transition_mode", project.get("transition_mode", "fixed")),
-                "transition_sfx": req.custom_options.get("transition_sfx", project.get("transition_sfx", "whoosh_soft")),
-                "transition_sfx_volume": float(req.custom_options.get("transition_sfx_volume", project.get("transition_sfx_volume", 0.40))),
-                "enable_sfx": bool(req.custom_options.get("enable_sfx", project.get("enable_sfx", True))),
-                "hardware_encoder": req.custom_options.get("hardware_encoder", project.get("hardware_encoder", load_settings().get("hardware_encoder", "auto"))),
-                "emphasis_zoom_enabled": bool(req.custom_options.get("emphasis_zoom_enabled", project.get("emphasis_zoom_enabled", False))),
-                "emphasis_zoom_intensity": float(req.custom_options.get("emphasis_zoom_intensity", project.get("emphasis_zoom_intensity", 1.15))),
-                "mute_stock_audio": bool(req.custom_options.get("mute_stock_audio", True)),
-                **req.custom_options
+                "bgm_track": custom_opts.get("bgm_track", project.get("bgm_track", "cinematic_ambient")),
+                "bgm_volume": float(custom_opts.get("bgm_volume", project.get("bgm_volume", 0.10))),
+                "enable_motion": bool(custom_opts.get("enable_motion", project.get("enable_motion", False))),
+                "enable_vignette": bool(custom_opts.get("enable_vignette", project.get("enable_vignette", False))),
+                "color_grade": custom_opts.get("color_grade", project.get("color_grade", "clean")),
+                "transition": custom_opts.get("transition", project.get("transition", "none")),
+                "transition_mode": custom_opts.get("transition_mode", project.get("transition_mode", "fixed")),
+                "transition_sfx": custom_opts.get("transition_sfx", project.get("transition_sfx", "whoosh_soft")),
+                "transition_sfx_volume": float(custom_opts.get("transition_sfx_volume", project.get("transition_sfx_volume", 0.40))),
+                "enable_sfx": bool(custom_opts.get("enable_sfx", project.get("enable_sfx", True))),
+                "hardware_encoder": custom_opts.get("hardware_encoder", project.get("hardware_encoder", load_settings().get("hardware_encoder", "auto"))),
+                "emphasis_zoom_enabled": bool(custom_opts.get("emphasis_zoom_enabled", project.get("emphasis_zoom_enabled", False))),
+                "emphasis_zoom_intensity": float(custom_opts.get("emphasis_zoom_intensity", project.get("emphasis_zoom_intensity", 1.15))),
+                "mute_stock_audio": bool(custom_opts.get("mute_stock_audio", True)),
+                **custom_opts
             }
 
             def on_render_progress(stage, pct, desc):
@@ -1128,24 +1158,51 @@ def get_projects():
 @app.delete("/api/projects/all")
 def delete_all_projects():
     global ACTIVE_PROJECTS
+    history = load_projects_history()
+    try:
+        from backend.storage_cleaner import delete_all_projects_assets
+        cleanup_info = delete_all_projects_assets(history=history)
+    except Exception as e:
+        cleanup_info = {"status": "error", "error": str(e)}
+
     ACTIVE_PROJECTS.clear()
     with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
         json.dump([], f, indent=2)
-    return {"status": "success", "message": "All projects cleared successfully"}
+    return {
+        "status": "success",
+        "message": "All projects and associated media files deleted successfully",
+        "cleanup": cleanup_info
+    }
 
 
 @app.delete("/api/projects/{project_id}")
 def delete_single_project(project_id: str):
     global ACTIVE_PROJECTS
+    project = ACTIVE_PROJECTS.get(project_id)
+    history = load_projects_history()
+    if not project:
+        project = next((p for p in history if p.get("id") == project_id), None)
+
+    # Safely purge all physical files associated with this specific project on disk
+    cleanup_info = {}
+    try:
+        from backend.storage_cleaner import delete_project_assets
+        cleanup_info = delete_project_assets(project_id, project_data=project)
+    except Exception as e:
+        cleanup_info = {"status": "error", "error": str(e)}
+
     if project_id in ACTIVE_PROJECTS:
         del ACTIVE_PROJECTS[project_id]
 
-    history = load_projects_history()
     new_history = [p for p in history if p.get("id") != project_id]
     with open(PROJECTS_FILE, "w", encoding="utf-8") as f:
         json.dump(new_history, f, indent=2)
 
-    return {"status": "success", "message": f"Project {project_id} deleted successfully"}
+    return {
+        "status": "success",
+        "message": f"Project {project_id} and all associated files deleted successfully",
+        "cleanup": cleanup_info
+    }
 
 
 # ======================== YOUTUBE THUMBNAIL STUDIO ========================

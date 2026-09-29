@@ -1839,6 +1839,12 @@ input[type="range"]::-webkit-slider-thumb:hover {
   background: rgba(255, 255, 255, 0.03);
 }
 
+.gen-mode-card:hover {
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  background: rgba(99, 102, 241, 0.12) !important;
+  transform: translateY(-1px);
+}
+
 .preview-panel-toggle-info {
   display: flex;
   flex-direction: column;

@@ -75,14 +75,17 @@ DEFAULT_SETTINGS = {
     "output_dir": str(OUTPUT_DIR),
     "thumbnail_output_dir": str(DATA_DIR / "thumbnails"),
     "default_caption_preset": "capcut_yellow",
+    "enable_animation": False,
     "gpu_acceleration": True,
     "enable_thumbnails": False,
+    "generation_mode": "niche",       # "niche" (Selected Niche Theme) or "voiceover" (Script Content & Spoken Context)
     "auto_cleanup_cache": True,
     "cache_retention_hours": 3,
     "clean_raw_after_render": True,
     "preview_panel_settings": {
         "show_template": False,
         "show_captions": True,
+        "show_animation": False,
         "show_bgm": False,
         "show_sfx": False,
         "show_overlay": False,
@@ -172,9 +175,17 @@ def _clean_key_list(val) -> list:
 def load_settings() -> dict:
     import re
     data = {}
-    if SETTINGS_FILE.exists():
+    target_file = SETTINGS_FILE
+    if not target_file.exists():
+        fallback_file = DATA_DIR / "setting.json"
+        if fallback_file.exists():
+            try:
+                shutil.copyfile(fallback_file, target_file)
+            except Exception:
+                target_file = fallback_file
+    if target_file.exists():
         try:
-            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            with open(target_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except Exception:
             pass

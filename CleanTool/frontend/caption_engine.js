@@ -25,7 +25,7 @@ class CaptionEngine {
       letterSpacing: 1,
       wordSpacing: 6,
       uppercase: true,
-      animation: 'word_bounce'
+      animation: 'none'
     };
 
     this.lastRenderedChunkIdx = -1;

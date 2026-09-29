@@ -18,11 +18,28 @@ def get_capcut_drafts_dir() -> Path:
 
     # Standard Windows CapCut PC location
     local_appdata = os.environ.get("LOCALAPPDATA", "")
+    candidate_paths = []
     if local_appdata:
-        standard_path = Path(local_appdata) / "CapCut" / "User Data" / "Projects" / "com.lveditor.draft"
+        candidate_paths.append(Path(local_appdata) / "CapCut" / "User Data" / "Projects" / "com.lveditor.draft")
+
+    # Additional common custom install locations on D: and E: drives
+    candidate_paths.extend([
+        Path("D:/CapCut/User Data/Projects/com.lveditor.draft"),
+        Path("D:/CapCut Drafts"),
+        Path("E:/CapCut/User Data/Projects/com.lveditor.draft"),
+        Path("C:/CapCut/User Data/Projects/com.lveditor.draft"),
+    ])
+
+    for cand in candidate_paths:
+        if cand.exists():
+            return cand
+
+    # Default to standard path and create if needed
+    if local_appdata:
+        std = Path(local_appdata) / "CapCut" / "User Data" / "Projects" / "com.lveditor.draft"
         try:
-            standard_path.mkdir(parents=True, exist_ok=True)
-            return standard_path
+            std.mkdir(parents=True, exist_ok=True)
+            return std
         except Exception:
             pass
 

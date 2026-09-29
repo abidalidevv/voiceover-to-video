@@ -9,7 +9,7 @@ from .config import load_settings
 NICHE_VISUAL_FLAVORS = {
     "Military & Defense": ["military armed soldiers tactical", "combat battlefield explosion smoke", "military aircraft fighter jet", "war tank armored vehicle", "tactical air defense radar", "military armed convoy patrol"],
     "War & Conflict": ["war explosion battlefield smoke", "combat soldiers tactical firing", "military airstrike fighter jet", "artillery tank combat", "military base surveillance"],
-    "Motivation Psychology": ["cinematic dramatic lighting", "focused entrepreneur", "person looking out window", "city night moody", "determined runner", "deep thought"],
+    "Motivation Psychology": ["athlete training gym sweat", "running sunrise outdoor dawn", "determined person climbing mountain summit", "focused entrepreneur modern skyscraper", "lone figure ocean cliff dramatic", "heavy barbell lifting gym focus", "person washing face cold water morning"],
     "Nature & Wildlife": ["majestic aerial landscape 4k", "dense emerald forest mist", "mountain waterfall scenic", "wild ocean waves sunset", "sunrise clouds timelapse"],
     "Tech & AI": ["futuristic server room glowing", "cyberpunk holographic data", "artificial intelligence robotic hand", "modern high tech workspace", "digital code matrix"],
     "Finance & Wealth": ["luxury skyscraper trading floor", "businessman counting money cash", "stock market chart ticker green", "private jet luxury lifestyle", "financial district wall street"],
@@ -478,6 +478,10 @@ def auto_detect_niche(text: str, current_niche: str = "") -> str:
 
     is_unselected = cleaned_niche in ("general", "default", "auto", "none", "", "select niche")
 
+    # If user explicitly selected any specific niche, ALWAYS RESPECT USER SELECTION 100%!
+    if not is_unselected:
+        return current_niche
+
     # 1. Military, Defense & War (English, Urdu, Roman Urdu, and common phonetic terms)
     mil_markers = [
         "military", "soldier", "soldiers", "army", "fauj", "fauji", "jang", "war", "missile", "missiles",
@@ -487,19 +491,13 @@ def auto_detect_niche(text: str, current_niche: str = "") -> str:
         "tabahi", "tayaray", "hathyar", "nuclear", "warhead", "pentagon", "frontline", "airforce", "warship"
     ]
     if any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in mil_markers):
-        # Always prioritize Military & Defense if military markers detected and user didn't explicitly pick War & Conflict
-        if is_unselected or cleaned_niche in ("motivation psychology", "general", "default", "auto"):
-            return "Military & Defense"
+        return "Military & Defense"
 
-    # If user explicitly selected an active specialized niche (and it didn't clash with military), keep it
-    if cleaned_niche and not is_unselected and cleaned_niche != "motivation psychology":
-        return current_niche
-
-    # 2. Sci-Fi & Space
+    # 2. Sci-Fi & Space (Requires unambiguous astronomical/cosmic terms to prevent false positives from generic words like 'space' or 'stars')
     space_markers = [
-        "space", "galaxy", "planet", "orbit", "astronaut", "nasa", "star", "stars", "cosmos", "universe",
-        "nebula", "blackhole", "black hole", "telescope", "mars", "solar system", "moon", "satellite",
-        "asteroid", "meteor", "comet", "supernova", "exoplanet", "khala", "sitara", "sayyara", "chaand", "sooraj"
+        "outer space", "deep space", "galaxy", "galaxies", "astronaut", "nasa", "cosmos", "universe",
+        "nebula", "blackhole", "black hole", "telescope", "mars", "solar system", "satellite",
+        "asteroid", "meteor", "comet", "supernova", "exoplanet", "khala", "sayyara", "milky way"
     ]
     if any(re.search(r'\b' + re.escape(w) + r'\b', text_lower) for w in space_markers):
         return "Sci-Fi & Space"
@@ -641,7 +639,8 @@ def build_scenes(
     transcription: Dict[str, Any],
     niche: str = "General",
     editorial_direction: Optional[Dict[str, Any]] = None,
-    max_scene_duration: Optional[float] = None
+    max_scene_duration: Optional[float] = None,
+    generation_mode: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Takes transcription data and builds structured sentence-level scene objects.
@@ -650,18 +649,24 @@ def build_scenes(
     Applies editorial direction (pacing multiplier and climax scene tagging).
     """
     settings = load_settings()
+    if not generation_mode:
+        generation_mode = settings.get("generation_mode", "niche")
+    gen_mode = str(generation_mode or "niche").strip().lower()
+
     editorial = editorial_direction or {}
     pacing_mult = float(editorial.get("pacing_multiplier", 1.0))
     climax_idx = editorial.get("climax_scene_index")
 
-    # Auto-detect niche from transcript if user didn't choose or left as General/Default
+    # Auto-detect niche from transcript ONLY if user didn't choose or left as General/Default/Auto
     full_transcript = transcription.get("text", "")
     if not full_transcript and transcription.get("words"):
         full_transcript = " ".join(w.get("word", "") for w in transcription["words"])
-    detected_niche = auto_detect_niche(full_transcript, niche)
-    if detected_niche != niche:
-        print(f"[SceneAnalyzer] Auto-detected niche '{detected_niche}' from voiceover script (was '{niche}')")
-        niche = detected_niche
+    cleaned_niche = str(niche or "").strip().lower()
+    if cleaned_niche in ("general", "default", "auto", "none", "", "select niche"):
+        detected_niche = auto_detect_niche(full_transcript, niche)
+        if detected_niche and detected_niche != niche:
+            print(f"[SceneAnalyzer] Auto-detected niche '{detected_niche}' from voiceover script (was '{niche}')")
+            niche = detected_niche
 
     total_dur = float(transcription.get("duration", 30.0))
     segments = transcription.get("segments", [])
@@ -838,19 +843,55 @@ def build_scenes(
     openai_key = settings.get("openai_api_key", "").strip()
     if (gemini_keys or groq_keys or openai_key) and scenes:
         try:
-            enhanced_data = _enhance_tags_with_ai(scenes, niche, gemini_keys, groq_keys, openai_key)
-            for sc, item in zip(scenes, enhanced_data):
+            enhanced_data = _enhance_tags_with_ai(scenes, niche, gemini_keys, groq_keys, openai_key, generation_mode=gen_mode)
+            niche_clean_check = str(niche or "").lower()
+            is_niche_mode = (gen_mode != "voiceover")
+            is_space_target = is_niche_mode and any(k in niche_clean_check for k in ("space", "sci-fi", "cosmos", "astronomy"))
+            is_mil_target = is_niche_mode and any(k in niche_clean_check for k in ("military", "war", "defense", "conflict"))
+            is_mot_target = is_niche_mode and any(k in niche_clean_check for k in ("motivation", "stoic", "discipline", "mindset", "success"))
+
+            space_bad_tokens = {"playground", "children", "child", "bedroom", "sleeping", "bed", "alarm clock", "wallet", "dollar", "cash", "money", "cooking", "kitchen", "makeup", "beach party", "gym", "workout", "hospital", "patient"}
+            mil_bad_tokens = {"boxer", "boxing", "gym", "workout", "fitness", "swimming", "beach", "wedding", "makeup", "playground", "bedroom"}
+            mot_bad_tokens = {"space", "galaxy", "astronaut", "nebula", "planet", "alien", "ufo", "recipe", "cooking", "makeup"}
+
+            default_space_flavors = ["deep space galaxy nebula", "astronaut walking planet surface", "hubble telescope cosmos 4k", "spacewalk earth orbit satellite", "futuristic sci-fi spacecraft"]
+
+            for sc_idx, (sc, item) in enumerate(zip(scenes, enhanced_data)):
+                tags = []
+                callout = None
+                emp_word = None
                 if isinstance(item, list):
-                    sc["search_tags"] = item
-                    if item:
-                        sc["selected_tag"] = item[0]
+                    tags = [str(t).strip() for t in item if t]
                 elif isinstance(item, dict):
-                    tags = item.get("search_tags", [])
-                    if tags:
-                        sc["search_tags"] = tags
-                        sc["selected_tag"] = tags[0]
-                    sc["raw_callout_text"] = item.get("callout_text")
-                    sc["emphasis_word"] = item.get("emphasis_word")
+                    raw_tags = item.get("search_tags", [])
+                    tags = [str(t).strip() for t in raw_tags if t]
+                    callout = item.get("callout_text")
+                    emp_word = item.get("emphasis_word")
+
+                if is_space_target:
+                    clean_tags = [t for t in tags if not any(bad in t.lower() for bad in space_bad_tokens)]
+                    has_space_kw = any(any(sk in t.lower() for sk in ("space", "galaxy", "nebula", "astronaut", "planet", "cosmos", "star", "orbit", "telescope", "sci-fi", "alien", "rocket")) for t in clean_tags)
+                    if not has_space_kw or len(clean_tags) < 2:
+                        flavor = default_space_flavors[sc_idx % len(default_space_flavors)]
+                        if flavor not in clean_tags:
+                            clean_tags.insert(0, flavor)
+                    tags = clean_tags if clean_tags else [default_space_flavors[sc_idx % len(default_space_flavors)]]
+                elif is_mil_target:
+                    clean_tags = [t for t in tags if not any(bad in t.lower() for bad in mil_bad_tokens)]
+                    if clean_tags:
+                        tags = clean_tags
+                elif is_mot_target:
+                    clean_tags = [t for t in tags if not any(bad in t.lower() for bad in mot_bad_tokens)]
+                    if clean_tags:
+                        tags = clean_tags
+
+                if tags:
+                    sc["search_tags"] = tags
+                    sc["selected_tag"] = tags[0]
+                if callout is not None:
+                    sc["raw_callout_text"] = callout
+                if emp_word is not None:
+                    sc["emphasis_word"] = emp_word
         except Exception as e:
             print(f"[SceneAnalyzer] AI tag enhancement notice: {e}")
 
@@ -1203,8 +1244,9 @@ def _extract_tags_rulebased(text: str, niche: str, surrounding_context: str = ""
         "elephant", "elephants", "cheetah", "wolf", "wolves", "bear", "bears", "leopard", "crocodile",
         "snake", "gorilla", "predator", "prey", "hunt", "hunting", "sher", "shikar", "janwar", "saanp"
     ))
+    is_motivation = any(k in niche_lower for k in ("motivation", "stoic", "discipline", "mindset", "success", "psychology", "growth"))
     is_space = any(k in niche_lower for k in ("space", "sci-fi", "cosmos", "astronomy")) or any(k in combined_context for k in (
-        "space", "galaxy", "planet", "orbit", "astronaut", "nasa", "cosmos", "universe", "nebula", "blackhole", "black hole", "telescope", "mars"
+        "outer space", "deep space", "galaxy", "galaxies", "astronaut", "nasa", "cosmos", "nebula", "blackhole", "black hole", "telescope", "solar system"
     ))
     is_history = any(k in niche_lower for k in ("history", "empire", "ancient")) or any(k in combined_context for k in (
         "ancient rome", "ancient egypt", "pyramid", "pyramids", "pharaoh", "colosseum", "gladiator", "medieval", "knight", "castle", "ottoman", "sultan", "tareekh", "qadeem"
@@ -1225,23 +1267,27 @@ def _extract_tags_rulebased(text: str, niche: str, surrounding_context: str = ""
         "crypto", "bitcoin", "stocks", "trading", "investment", "dollar", "wealth", "billionaire", "millionaire", "paisa", "daulat", "khazana"
     ))
 
-    # Dynamic Niche Overrides if user had left niche as General or default
-    if is_military and niche not in ("War & Conflict", "Military & Defense"):
-        niche = "Military & Defense"
-    elif is_wildlife and niche not in ("Wildlife Predators & Oceans", "Nature & Wildlife"):
-        niche = "Wildlife Predators & Oceans"
-    elif is_space and niche not in ("Sci-Fi & Space",):
-        niche = "Sci-Fi & Space"
-    elif is_history and niche not in ("History & Empires",):
-        niche = "History & Empires"
-    elif is_crime and niche not in ("Crime & Mystery",):
-        niche = "Crime & Mystery"
-    elif is_horror and niche not in ("Horror & Paranormal",):
-        niche = "Horror & Paranormal"
+    # Dynamic Niche Overrides ONLY if user had left niche as General or default
+    is_unselected_niche = niche_lower in ("general", "default", "auto", "none", "", "select niche")
+    if is_unselected_niche:
+        if is_military and niche not in ("War & Conflict", "Military & Defense"):
+            niche = "Military & Defense"
+        elif is_wildlife and niche not in ("Wildlife Predators & Oceans", "Nature & Wildlife"):
+            niche = "Wildlife Predators & Oceans"
+        elif is_space and niche not in ("Sci-Fi & Space",):
+            niche = "Sci-Fi & Space"
+        elif is_history and niche not in ("History & Empires",):
+            niche = "History & Empires"
+        elif is_crime and niche not in ("Crime & Mystery",):
+            niche = "Crime & Mystery"
+        elif is_horror and niche not in ("Horror & Paranormal",):
+            niche = "Horror & Paranormal"
 
     # Domain Blacklist: words in queries that will make Pexels/Pixabay return WRONG domain clips
     domain_blacklist = set()
-    if is_military:
+    if is_motivation:
+        domain_blacklist = {"space", "outer space", "galaxy", "astronaut", "nebula", "solar system", "alien", "ufo", "recipe", "cooking", "wedding", "makeup", "puppy", "kitten"}
+    elif is_military:
         domain_blacklist = {"boxer", "boxing", "punching", "gym", "workout", "fitness", "bodybuilding",
                            "crossfit", "yoga", "swimming", "pool", "dance", "ballet", "soccer", "football", "wedding", "makeup"}
     elif is_wildlife:
@@ -1303,7 +1349,9 @@ def _extract_tags_rulebased(text: str, niche: str, surrounding_context: str = ""
     clean_words = [w for w in re.findall(r'\b[a-zA-Z]{4,}\b', text_lower) if w not in stop_words and w not in context_resolved_words]
 
     # Determine domain aesthetic bias
-    if is_military:
+    if is_motivation:
+        domain_bias = "determined motivational"
+    elif is_military:
         domain_bias = "military tactical"
     elif is_wildlife:
         domain_bias = "wildlife nature"
@@ -1355,7 +1403,7 @@ def _call_gemini_api(prompt: str, gemini_keys: List[str]) -> Optional[str]:
         if not k_clean:
             continue
         k_mask = f"...{k_clean[-4:]}" if len(k_clean) >= 4 else k_clean
-        for model in ["gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-2.0-flash"]:
+        for model in ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b", "gemini-1.5-pro"]:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={k_clean}"
                 payload = {
@@ -1389,46 +1437,180 @@ def _enhance_tags_with_ai(
     niche: str,
     gemini_keys: Optional[List[str]] = None,
     groq_keys: Optional[List[str]] = None,
-    openai_key: str = ""
+    openai_key: str = "",
+    generation_mode: str = "niche"
 ) -> List[Dict[str, Any]]:
     """
-    Calls Gemini, Groq (across multi-key pool), or OpenAI LLM once for the script to generate:
-    1. Search tags (visual B-roll queries strictly 2-3 English words matching script theme)
-    2. Callout text (3-5 words for strong claims, statistics, or key takeaways, else null)
-    3. Emphasis word (single most important/punchy word for emphasis zoom timing, else null)
+    Calls Groq (PRIMARY ENGINE across multi-key pool), Gemini (FALLBACK), or OpenAI LLM
+    to generate cinematic visual search tags, callout badges, and emphasis zoom words.
+    Chunks large scenes (>10) to prevent token truncation and JSON parse errors.
     """
-    prompt = f"""You are a master YouTube video editor, B-roll visual director, and motion graphic designer.
-For the niche: "{niche}", analyze each sentence from the voiceover script below.
-Even if sentences are in Urdu, Roman Urdu, Hindi, Arabic, or contain typos/phonetic spelling (e.g. "blastoc misile" -> ballistic missile, "sher shikar" -> tiger/lion hunting, "jang" -> war/battlefield), understand the exact visual context.
+    if not scenes:
+        return []
 
-CRITICAL UNIVERSAL VISUAL RELEVANCE RULES (Across 1,000+ Diverse YouTube Topics):
+    # Chunk into batches of max 10 scenes to avoid response truncation
+    chunk_size = 10
+    if len(scenes) > chunk_size:
+        all_enhanced = []
+        for start_idx in range(0, len(scenes), chunk_size):
+            chunk = scenes[start_idx:start_idx + chunk_size]
+            sub_results = _enhance_tags_chunk(chunk, niche, gemini_keys, groq_keys, openai_key, generation_mode=generation_mode)
+            all_enhanced.extend(sub_results)
+        return all_enhanced
+
+    return _enhance_tags_chunk(scenes, niche, gemini_keys, groq_keys, openai_key, generation_mode=generation_mode)
+
+
+def _enhance_tags_chunk(
+    scenes: List[Dict[str, Any]],
+    niche: str,
+    gemini_keys: Optional[List[str]] = None,
+    groq_keys: Optional[List[str]] = None,
+    openai_key: str = "",
+    generation_mode: str = "niche"
+) -> List[Dict[str, Any]]:
+    niche_str = str(niche or "General").strip()
+    niche_lower = niche_str.lower()
+    is_auto = niche_lower in ("auto", "general", "default", "none", "", "select niche")
+    is_voiceover_mode = (str(generation_mode or "").lower() == "voiceover")
+
+    if is_voiceover_mode:
+        niche_mandate = """VOICEOVER-BASED VISUAL GENERATION MODE:
+The user has configured visual generation to be driven directly by the spoken VOICEOVER SCRIPT CONTENT.
+Analyze each sentence's exact spoken topic, literal nouns, verbs, and physical human reality to output matching stock footage queries.
+- For example: if the speaker discusses psychology and studying, output research desk, library books, brain science; if the speaker discusses being exhausted or sleeping, output tired person, bedroom clock; if money, output cash and wallet.
+- Translate abstract concepts into tangible literal B-roll that exists on Pexels/Pixabay."""
+        example_tags = '["person studying desk", "exhausted worker tired", "alarm clock morning"]'
+        example_callout = "DISCIPLINE BUILT DAILY"
+        example_emp = "focus"
+    elif not is_auto:
+        if any(k in niche_lower for k in ("space", "sci-fi", "cosmos", "astronomy")):
+            niche_mandate = f"""MANDATORY TARGET NICHE: "{niche_str}"
+The user has explicitly designated "{niche_str}" as the visual world and aesthetic theme for this entire video.
+Regardless of whether the voiceover speaks about psychology, human struggles, motivation, energy, time, money, or philosophy, EVERY SINGLE VISUAL SEARCH TAG MUST BE FIRMLY ROOTED IN THE "Sci-Fi & Space" VISUAL DOMAIN!
+- Every search tag MUST depict deep space, galaxies, planets, nebulae, astronauts, telescopes, rockets, cosmic events, space stations, sci-fi landscapes, futuristic cosmos.
+- ABSOLUTELY NEVER output modern civilian life, bedrooms, beds, clocks, wallets, cash, children, playgrounds, offices, or parks!
+- Translate any abstract narration into a cosmic space visual:
+  * 'struggle / stopping you' -> astronaut walking alien planet, spacecraft entering asteroid field
+  * 'tired / lack of energy' -> dying red giant star, spacecraft drifting deep void
+  * 'money / wealth / resources' -> glowing golden nebula, asteroid belt mining, vast alien city
+  * 'science / testing / truth' -> futuristic space observatory, radio telescope array, quantum cosmos research
+  * 'happiness / worth living' -> luminous newborn star cluster, sunrise over earth from orbit"""
+            example_tags = '["deep space nebula", "astronaut alien surface", "spacecraft asteroid field"]'
+            example_callout = "COSMIC EXPANSION"
+            example_emp = "cosmos"
+        elif any(k in niche_lower for k in ("military", "war", "defense", "conflict")):
+            niche_mandate = f"""MANDATORY TARGET NICHE: "{niche_str}"
+The user has explicitly designated "{niche_str}" as the visual world for this video.
+Regardless of script words, EVERY SINGLE VISUAL SEARCH TAG MUST BE ROOTED IN THE "Military & Defense" DOMAIN!
+- Depict armed soldiers, combat vehicles, battle tanks, fighter jets, naval warships, air defense radar, tactical gear, artillery.
+- NEVER output boxing, gym, fitness, sports, civilian lifestyle, playgrounds, or bedrooms."""
+            example_tags = '["military armed soldiers", "combat battlefield smoke", "fighter jet flight"]'
+            example_callout = "DEFENSE SYSTEM READY"
+            example_emp = "missile"
+        elif any(k in niche_lower for k in ("motivation", "stoic", "discipline", "mindset", "success")):
+            niche_mandate = f"""MANDATORY TARGET NICHE: "{niche_str}"
+The user has explicitly designated "{niche_str}" as the visual world for this video.
+- Depict determined persons climbing mountain peaks, lone runners at dawn/sunrise, intense gym workouts, heavy barbell squats, focused study at desk, high-rise urban skyscrapers, dark moody silhouettes, ancient Roman statues, stormy ocean cliffs.
+- ABSOLUTELY NEVER output outer space, galaxies, planets, astronauts, or sci-fi!
+- ABSOLUTELY NEVER output domestic kitchens, cooking, makeup, or children toys."""
+            example_tags = '["sunrise mountain peak", "runner morning fog", "gym workout athlete"]'
+            example_callout = "DISCIPLINE BUILT DAILY"
+            example_emp = "discipline"
+        elif any(k in niche_lower for k in ("wildlife", "animal", "predator", "ocean")):
+            niche_mandate = f"""MANDATORY TARGET NICHE: "{niche_str}"
+The user has explicitly designated "{niche_str}" as the visual world for this video.
+- Depict wild animals, predators hunting (lions, tigers, eagles, wolves), savannah, deep ocean sharks and whales, lush rainforest.
+- NEVER output modern offices, laptops, gym workouts, or domestic houses."""
+            example_tags = '["lion pride savannah", "great white shark", "eagle soaring mountain"]'
+            example_callout = "APEX PREDATOR"
+            example_emp = "hunting"
+        elif any(k in niche_lower for k in ("history", "empire", "ancient")):
+            niche_mandate = f"""MANDATORY TARGET NICHE: "{niche_str}"
+The user has explicitly designated "{niche_str}" as the visual world for this video.
+- Depict ancient ruins, pyramids, castles, warriors with swords/armor, temples, pharaohs, Roman colosseums.
+- NEVER output modern laptops, smartphones, highways, modern cars, or office cubicles."""
+            example_tags = '["ancient roman colosseum", "egyptian pyramids sunset", "medieval stone castle"]'
+            example_callout = "ANCIENT EMPIRE"
+            example_emp = "history"
+        elif any(k in niche_lower for k in ("automotive", "supercar", "racing")):
+            niche_mandate = f"""MANDATORY TARGET NICHE: "{niche_str}"
+The user has explicitly designated "{niche_str}" as the visual world for this video.
+- Depict hypercars, Formula 1 racing, drifting, engine bays, racetracks, night highways.
+- NEVER output bedrooms, domestic kitchens, farm animals, or playgrounds."""
+            example_tags = '["supercar drifting track", "formula race speed", "engine pistons mechanical"]'
+            example_callout = "MAXIMUM VELOCITY"
+            example_emp = "speed"
+        elif any(k in niche_lower for k in ("finance", "wealth", "business", "luxury")):
+            niche_mandate = f"""MANDATORY TARGET NICHE: "{niche_str}"
+The user has explicitly designated "{niche_str}" as the visual world for this video.
+- Depict stock market tickers, trading floors, cash, gold bullion, modern glass skyscrapers, luxury penthouses, executive meetings.
+- NEVER output mud, farms, toys, playgrounds, or messy bedrooms."""
+            example_tags = '["stock market ticker", "gold bars vault", "luxury skyscraper office"]'
+            example_callout = "FINANCIAL GROWTH"
+            example_emp = "wealth"
+        elif any(k in niche_lower for k in ("horror", "paranormal")):
+            niche_mandate = f"""MANDATORY TARGET NICHE: "{niche_str}"
+The user has explicitly designated "{niche_str}" as the visual world for this video.
+- Depict eerie fog, haunted houses, dark corridors, full moon, spooky silhouettes, abandoned structures, tombstones.
+- NEVER output bright sunny days, cheerful children, beaches, or workout gyms."""
+            example_tags = '["eerie abandoned house", "creepy dark woods", "silhouette graveyard mist"]'
+            example_callout = "DARK PARANORMAL"
+            example_emp = "shadow"
+        elif any(k in niche_lower for k in ("crime", "mystery", "noir")):
+            niche_mandate = f"""MANDATORY TARGET NICHE: "{niche_str}"
+The user has explicitly designated "{niche_str}" as the visual world for this video.
+- Depict flashing police sirens, detectives investigating, crime scene tape, prisons, dark rainy alleys, courtroom gavels.
+- NEVER output sunny beach parties, weddings, or cheerful cartoons."""
+            example_tags = '["police siren night", "detective silhouette crime", "dark rainy alley"]'
+            example_callout = "CRIME INVESTIGATION"
+            example_emp = "mystery"
+        else:
+            niche_mandate = f"""MANDATORY TARGET NICHE: "{niche_str}"
+Every single search tag must depict the visual world of "{niche_str}". Avoid generic or irrelevant civilian footage."""
+            example_tags = '["cinematic 4k footage", "dramatic lighting cinematic", "inspiring landscape aerial"]'
+            example_callout = "VISUAL FOCUS"
+            example_emp = "focus"
+    else:
+        niche_mandate = """AUTO-DETECT MODE:
+Analyze each sentence to determine the most compelling visual domain.
+CRITICAL UNIVERSAL VISUAL RELEVANCE RULES:
 1. STRICT DOMAIN FIDELITY: Every search tag MUST physically depict the actual physical reality of the subject matter:
+   - Motivation & Stoicism: Output determined persons climbing mountain peaks, lone runners at dawn/sunrise, intense gym workouts, heavy barbell squats, focused study at desk, high-rise urban skyscrapers, dark moody silhouettes. NEVER output outer space, galaxies, planets, astronauts, or sci-fi unless script explicitly mentions astronomy.
    - Military & War: NEVER output boxing, gym, fitness, or civilian sports. Output armed soldiers, combat vehicles, fighter jets, radar, tactical gear.
    - Wildlife & Nature: NEVER output modern offices, laptops, gym workouts, or domestic houses. Output wild animals, predators hunting, savannah, ocean depths, tropical jungle.
    - Space & Astronomy: NEVER output swimming pools, beaches, or kitchens. Output deep space galaxies, planets, nebulae, telescopes, astronauts.
-   - History & Ancient Empires: NEVER output modern laptops, smartphones, highways, modern cars, or office cubicles. Output ancient ruins, pyramids, castles, warriors, temples, pharaohs.
-   - Crime & Mystery: NEVER output cheerful sunny beaches or wedding parties. Output police sirens, detectives, crime scene tape, prisons, dark alleys, courtroom.
-   - Horror & Paranormal: NEVER output bright sunny days or cheerful children. Output eerie fog, haunted houses, dark corridors, full moon, spooky shadows, cemetery.
+   - History & Ancient Empires: Output ancient ruins, pyramids, castles, warriors, temples, pharaohs.
+   - Crime & Mystery: Output police sirens, detectives, crime scene tape, prisons, dark alleys, courtroom.
+   - Horror & Paranormal: Output eerie fog, haunted houses, dark corridors, full moon, spooky shadows, cemetery.
    - Science & Medical: Output laboratory beakers, DNA double helix, microscopic cells, hospital surgery, human brain neural network.
    - Automotive & Racing: Output supercars, speed blur, drifting, engines, racetracks, aviation.
-   - Finance & Wealth: Output stock charts, trading floors, cash, gold bars, modern skyscrapers, luxury penthouses.
-   - Motivation & Stoicism: Output determined persons climbing mountains, lone figures at sunrise, ancient Roman statues, stormy ocean cliffs.
-2. PHYSICAL LITERAL B-ROLL: Translate all metaphors and abstract concepts into tangible physical actions that exist on stock video libraries (Pexels / Pixabay). Never output abstract adjectives or philosophical ideas.
-3. SEARCH TAG FORMAT: Strictly 2 to 3 English words per search tag (e.g. "bengal tiger jungle", "military armed soldiers", "deep space galaxy", "police siren night", "stock chart trading", "ancient roman colosseum").
-4. VISUAL DIVERSITY & ZERO REPETITION (MANDATORY):
+   - Finance & Wealth: Output stock charts, trading floors, cash, gold bars, modern skyscrapers, luxury penthouses."""
+        example_tags = '["sunrise mountain peak", "runner morning fog", "determined face closeup"]'
+        example_callout = "DISCIPLINE BUILT DAILY"
+        example_emp = "discipline"
+
+    prompt = f"""You are a master YouTube video editor, B-roll visual director, and motion graphic designer.
+{niche_mandate}
+
+Even if sentences are in Urdu, Roman Urdu, Hindi, Arabic, or contain typos/phonetic spelling (e.g. "blastoc misile" -> ballistic missile, "sher shikar" -> tiger/lion hunting, "jang" -> war/battlefield), understand the exact visual context.
+
+UNIVERSAL B-ROLL PRODUCTION STANDARDS:
+1. PHYSICAL LITERAL B-ROLL: Translate all metaphors and abstract concepts into tangible physical actions that exist on stock video libraries (Pexels / Pixabay). Never output abstract adjectives or philosophical ideas.
+2. SEARCH TAG FORMAT: Strictly 2 to 3 English words per search tag (e.g. "deep space nebula", "military armed soldiers", "runner morning fog").
+3. VISUAL DIVERSITY & ZERO REPETITION (MANDATORY):
    - Never repeat the exact same search tags across different scenes in this script.
    - For every sentence, provide varied perspectives and dynamic camera angles (e.g. wide aerial drone, close up tracking, dramatic slow motion, macro detail) so stock libraries deliver distinct, fresh clips.
 
 For EACH sentence provide:
 1. "search_tags": 3 to 4 specific, cinematic, highly searchable stock footage queries in ENGLISH (strictly 2 to 3 words each in English). NEVER return non-English words, full sentences, or vague words in search_tags.
-2. "callout_text": If this sentence contains a strong claim, key statistic, notable fact, or list-point worth a visual text callout badge, return a concise 3-5 word callout (e.g., "DEFENSE RADAR ACTIVE", "BALLISTIC MISSILE TEST", "93% OF USERS AGREE", "RULE #1: FOCUS FIRST"). Otherwise, return null.
+2. "callout_text": If this sentence contains a strong claim, key statistic, notable fact, or list-point worth a visual text callout badge, return a concise 3-5 word callout (e.g., "{example_callout}", "93% OF USERS AGREE", "RULE #1: FOCUS FIRST"). Otherwise, return null.
 3. "emphasis_word": The single most emphatic, high-impact word in that sentence (numbers, superlatives like "best", "never", "biggest", "critical", or key nouns) for emphasis timing, or null.
 
 Respond ONLY with a STRICT JSON array of objects, one object per sentence in exact order. No markdown code blocks, no commentary.
 Example:
 [
-  {{"search_tags": ["military armed soldiers", "combat battlefield smoke", "fighter jet flight"], "callout_text": "DEFENSE SYSTEM READY", "emphasis_word": "missile"}},
-  {{"search_tags": ["tactical patrol troops", "military armored tank", "warzone soldiers armed"], "callout_text": null, "emphasis_word": "soldiers"}}
+  {{"search_tags": {example_tags}, "callout_text": "{example_callout}", "emphasis_word": "{example_emp}"}}
 ]
 
 Sentences:
@@ -1444,13 +1626,14 @@ Sentences:
             k_mask = f"...{gr_key[-4:]}" if len(gr_key) >= 4 else gr_key
             url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {"Authorization": f"Bearer {gr_key}", "Content-Type": "application/json"}
-            for model_id in ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b", "allam-2-7b"]:
+            # Verified working Groq production models prioritized first:
+            for model_id in ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "allam-2-7b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
                 try:
                     payload = {
                         "model": model_id,
                         "messages": [{"role": "user", "content": prompt}],
                         "temperature": 0.3,
-                        "max_tokens": 1400
+                        "max_tokens": 4096
                     }
                     res = requests.post(url, headers=headers, json=payload, timeout=20)
                     if res.status_code == 200:
@@ -1483,7 +1666,8 @@ Sentences:
             payload = {
                 "model": "gpt-4o-mini",
                 "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.3
+                "temperature": 0.3,
+                "max_tokens": 4096
             }
             res = requests.post(url, headers=headers, json=payload, timeout=20)
             if res.status_code == 200:
@@ -1497,14 +1681,36 @@ Sentences:
     try:
         clean_json = re.sub(r'```(?:json)?\s*', '', content)
         clean_json = re.sub(r'```\s*', '', clean_json).strip()
-        parsed = json.loads(clean_json)
+        parsed = None
+        try:
+            parsed = json.loads(clean_json)
+        except Exception:
+            # Resilient JSON repair: try auto-closing truncated array
+            if clean_json.startswith('[') and not clean_json.endswith(']'):
+                last_brace = clean_json.rfind('}')
+                if last_brace != -1:
+                    try:
+                        parsed = json.loads(clean_json[:last_brace+1] + ']')
+                    except Exception:
+                        pass
+            if not parsed:
+                # Regex extraction of individual scene JSON objects
+                obj_matches = re.findall(r'\{\s*"search_tags"\s*:[^}]+(?:\}[^}]*\}|\})', content)
+                parsed = []
+                for m in obj_matches:
+                    try:
+                        obj = json.loads(m)
+                        if isinstance(obj, dict):
+                            parsed.append(obj)
+                    except Exception:
+                        continue
+
         if not isinstance(parsed, list):
             return []
 
         results = []
         for item in parsed:
             if isinstance(item, list):
-                # Legacy format: array of strings
                 results.append({
                     "search_tags": [str(t).strip() for t in item if t],
                     "callout_text": None,
@@ -1738,7 +1944,7 @@ Respond ONLY with a STRICT JSON object in this exact format. No markdown code bl
                     continue
                 url = "https://api.groq.com/openai/v1/chat/completions"
                 headers = {"Authorization": f"Bearer {clean_k}", "Content-Type": "application/json"}
-                for model_id in ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b", "allam-2-7b"]:
+                for model_id in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"]:
                     try:
                         payload = {
                             "model": model_id,

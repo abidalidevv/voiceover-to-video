@@ -45,7 +45,7 @@ Only return valid JSON, nothing else.
         if not gkey or not str(gkey).strip():
             continue
         clean_key = str(gkey).strip()
-        for model in ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-2.0-flash"]:
+        for model in ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-8b", "gemini-1.5-pro"]:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={clean_key}"
                 payload = {
@@ -113,7 +113,7 @@ Only return valid JSON, nothing else.
             "Authorization": f"Bearer {clean_key}",
             "Content-Type": "application/json"
         }
-        for model_id in ["openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-120b", "allam-2-7b"]:
+        for model_id in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"]:
             try:
                 payload = {
                     "model": model_id,
