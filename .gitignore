@@ -12,6 +12,7 @@ test_*.py
 *.test.*
 scratch/
 extra/
+user experience/
 
 # Raw Data, Temporary, Caches & Generated Media (Stock & Rendered)
 data/cache/

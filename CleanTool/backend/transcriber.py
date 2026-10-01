@@ -66,33 +66,166 @@ def _prepare_compact_audio_for_stt(audio_path: str) -> str:
     return audio_path
 
 
+def _transcribe_long_audio_chunked(
+    stt_audio_path: str,
+    duration: float,
+    gr_keys: List[str],
+    openai_key: str = ""
+) -> Optional[Dict[str, Any]]:
+    """
+    Slices long audio (>20 mins up to 3+ hours) into 12-15 minute compact segments,
+    transcribes each segment with time offsets, and merges them into one seamless master transcript.
+    Guarantees Groq's 25MB file limit is NEVER hit, even for a 3-hour recording!
+    """
+    import math
+    chunk_dur = 720.0  # 12 minutes per slice (approx 4.3 MB at 48kbps, well below 25MB)
+    num_chunks = int(math.ceil(duration / chunk_dur))
+    print(f"[Transcriber] Long-form audio detected ({duration:.1f}s / {duration/60:.1f} mins). Slicing into {num_chunks} chunks of {chunk_dur/60:.0f}m...")
+
+    ffmpeg_exe = find_ffmpeg()
+    from .config import TEMP_DIR
+    p = Path(stt_audio_path)
+
+    all_segments = []
+    all_words = []
+    all_texts = []
+    key_idx = 0
+
+    for i in range(num_chunks):
+        c_start = i * chunk_dur
+        c_len = min(chunk_dur, duration - c_start)
+        if c_len <= 0.5:
+            break
+
+        chunk_file = TEMP_DIR / f"chunk_{p.stem[:12]}_{i}_{int(c_start)}.mp3"
+        slice_cmd = [
+            ffmpeg_exe, "-y",
+            "-ss", str(c_start),
+            "-t", str(c_len),
+            "-i", str(stt_audio_path),
+            "-c", "copy",
+            str(chunk_file)
+        ]
+        try:
+            subprocess.run(slice_cmd, capture_output=True, check=True)
+        except Exception:
+            # Fallback with re-encode
+            slice_cmd_enc = [
+                ffmpeg_exe, "-y",
+                "-ss", str(c_start),
+                "-t", str(c_len),
+                "-i", str(stt_audio_path),
+                "-ar", "16000", "-ac", "1", "-b:a", "48k",
+                str(chunk_file)
+            ]
+            subprocess.run(slice_cmd_enc, capture_output=True)
+
+        if not chunk_file.exists() or chunk_file.stat().st_size < 500:
+            print(f"[Transcriber] Warning: Chunk {i+1}/{num_chunks} slicing failed. Continuing...")
+            continue
+
+        print(f"[Transcriber] Transcribing long-form chunk {i+1}/{num_chunks} ({c_start/60:.1f}m -> {(c_start+c_len)/60:.1f}m)...")
+        chunk_res = None
+
+        # Try Groq keys in pool with rotation
+        for attempt in range(len(gr_keys) or 1):
+            if not gr_keys:
+                break
+            active_key = gr_keys[(key_idx + attempt) % len(gr_keys)]
+            try:
+                chunk_res = _transcribe_groq(str(chunk_file), active_key, c_len)
+                key_idx = (key_idx + attempt + 1) % len(gr_keys)
+                break
+            except Exception as e:
+                print(f"[Transcriber] Chunk {i+1} Groq key failure: {e}, trying next key...")
+
+        # Fallback to OpenAI if Groq keys fail
+        if not chunk_res and openai_key:
+            try:
+                chunk_res = _transcribe_openai(str(chunk_file), openai_key, c_len)
+            except Exception as e:
+                print(f"[Transcriber] Chunk {i+1} OpenAI failure: {e}")
+
+        # Clean up chunk file
+        try:
+            if chunk_file.exists():
+                chunk_file.unlink()
+        except Exception:
+            pass
+
+        if chunk_res:
+            c_text = chunk_res.get("text", "").strip()
+            if c_text:
+                all_texts.append(c_text)
+            for seg in chunk_res.get("segments", []):
+                shifted_seg = dict(seg)
+                shifted_seg["id"] = len(all_segments)
+                shifted_seg["start"] = round(float(seg.get("start", 0)) + c_start, 3)
+                shifted_seg["end"] = round(float(seg.get("end", 0)) + c_start, 3)
+                # Shift words inside segment
+                shifted_words = []
+                for w in seg.get("words", []):
+                    sw = dict(w)
+                    sw["start"] = round(float(w.get("start", 0)) + c_start, 3)
+                    sw["end"] = round(float(w.get("end", 0)) + c_start, 3)
+                    shifted_words.append(sw)
+                shifted_seg["words"] = shifted_words
+                all_segments.append(shifted_seg)
+
+            for w in chunk_res.get("words", []):
+                sw = dict(w)
+                sw["start"] = round(float(w.get("start", 0)) + c_start, 3)
+                sw["end"] = round(float(w.get("end", 0)) + c_start, 3)
+                all_words.append(sw)
+
+    if all_segments:
+        print(f"[Transcriber] Merged long-form transcription: {len(all_segments)} segments, {len(all_words)} words across {duration/60:.1f} mins.")
+        return {
+            "text": " ".join(all_texts),
+            "duration": duration,
+            "segments": all_segments,
+            "words": all_words,
+            "is_long_form_chunked": True
+        }
+    return None
+
+
 def transcribe_audio(audio_path: str, niche: str = "General") -> Dict[str, Any]:
     """
     Transcribe audio file into word-level and segment-level timestamps.
+    Supports audio up to 3+ hours with automatic 12-minute chunking.
     Tries Groq Whisper -> OpenAI Whisper -> Intelligent Heuristic Fallback.
     """
     settings = load_settings()
     duration = get_audio_duration(audio_path)
     stt_audio_path = _prepare_compact_audio_for_stt(audio_path)
 
-    # 1. Try Groq Whisper (Ultra-fast whisper-large-v3 across key pool)
+    # 1. Gather Groq and OpenAI keys
     gr_keys = settings.get("groq_api_keys") or ([settings.get("groq_api_key")] if settings.get("groq_api_key") else [])
     gr_keys = [k.strip() for k in gr_keys if k and k.strip()]
+    openai_key = settings.get("openai_api_key", "").strip()
+
+    # 2. If audio is long-form (> 20 mins / 1200s), automatically use chunked transcription!
+    if duration > 1200:
+        chunked = _transcribe_long_audio_chunked(stt_audio_path, duration, gr_keys, openai_key)
+        if chunked:
+            return chunked
+
+    # 3. Standard single-shot Groq Whisper (for audios <= 20 mins)
     for groq_key in gr_keys:
         try:
             return _transcribe_groq(stt_audio_path, groq_key, duration)
         except Exception as e:
             print(f"[Transcriber] Groq key failed: {e}, trying next key...")
 
-    # 2. Try OpenAI Whisper
-    openai_key = settings.get("openai_api_key", "").strip()
+    # 4. Try OpenAI Whisper
     if openai_key:
         try:
             return _transcribe_openai(stt_audio_path, openai_key, duration)
         except Exception as e:
             print(f"[Transcriber] OpenAI failed: {e}, falling back to heuristic")
 
-    # 3. Intelligent Heuristic Generator (Offline / Demo mode)
+    # 5. Intelligent Heuristic Generator (Offline / Demo mode)
     print(f"[Transcriber] WARNING: Both Groq and OpenAI failed or were unconfigured. Using demo fallback transcription. Captions will be generic placeholders!")
     res = _generate_fallback_transcription(audio_path, duration, niche)
     res["is_fallback"] = True

@@ -346,9 +346,23 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
                                 used_video_ids.add(str(vid_id))
                         break
 
-        # If external APIs returned nothing (e.g. no key or rate limited), generate offline fallback
+        # If external APIs returned nothing (e.g. API rate limit hit in long-form videos),
+        # intelligently reuse one of the real downloaded clips from this project rather than showing blank/gradients!
         if not clip_data:
-            clip_data = get_fallback_stock_video(scene_idx, selected_tag, duration)
+            with lock:
+                successful_real_clips = [
+                    sc["video_clip"] for sc in completed_scenes
+                    if sc and sc.get("video_clip") and not sc.get("video_clip", {}).get("is_fallback") and sc.get("video_clip", {}).get("raw_file_path")
+                ]
+            if successful_real_clips:
+                base_clip = successful_real_clips[scene_idx % len(successful_real_clips)]
+                clip_data = dict(base_clip)
+                clip_data["video_id"] = f"{base_clip.get('video_id')}_reuse_{scene_idx}"
+                clip_data["file_path"] = base_clip["raw_file_path"]
+                clip_data["is_fallback"] = False
+                clip_data["is_reused"] = True
+            else:
+                clip_data = get_fallback_stock_video(scene_idx, selected_tag, duration)
 
         # Intelligently trim the clip to the exact sentence duration (stripping excess video)
         if clip_data and clip_data.get("file_path"):
@@ -368,6 +382,8 @@ def download_scenes_concurrently(scenes: List[Dict[str, Any]], progress_callback
         scene_item["status"] = "ready"
 
         with lock:
+            if 0 <= scene_idx < len(completed_scenes):
+                completed_scenes[scene_idx] = scene_item
             completed_count += 1
             current_done = completed_count
 

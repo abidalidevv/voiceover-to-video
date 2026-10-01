@@ -693,6 +693,30 @@ def build_scenes(
                         "end": float(w.get("end", 0))
                     })
 
+    # Duration-aware adaptive pacing:
+    # Short audio (<= 5 mins): fast cuts (3.5 - 6s)
+    # Medium audio (5 - 15 mins): balanced (7 - 12s)
+    # Long-form audio (15 - 60 mins): documentary (14 - 22s)
+    # Ultra long-form audio (> 60 mins up to 3+ hours): cinematic (20 - 32s)
+    if max_scene_duration and max_scene_duration > 0:
+        target_scene_dur = float(max_scene_duration)
+        min_scene_dur = min(2.5, target_scene_dur * 0.4)
+    else:
+        if total_dur <= 300:        # <= 5 mins (Shorts / Reels / Fast YouTube)
+            target_scene_dur = 4.8 * pacing_mult
+            min_scene_dur = 2.2
+        elif total_dur <= 900:      # 5 - 15 mins (Standard YouTube)
+            target_scene_dur = 8.5 * pacing_mult
+            min_scene_dur = 4.5
+        elif total_dur <= 3600:     # 15 - 60 mins (Documentary / Long-form e.g. 37 min script)
+            target_scene_dur = 16.0 * pacing_mult
+            min_scene_dur = 7.5
+        else:                       # > 60 mins (1 - 3 hours Epic Documentary / Podcast)
+            target_scene_dur = 24.0 * pacing_mult
+            min_scene_dur = 11.0
+
+    print(f"[SceneAnalyzer] Audio duration {total_dur:.1f}s ({total_dur/60:.1f}m) -> Adaptive Pacing: min={min_scene_dur:.1f}s, target={target_scene_dur:.1f}s")
+
     # 2. Intelligent Word & Sentence Boundary Detection
     if all_words:
         sentence_groups = []
@@ -715,21 +739,17 @@ def build_scenes(
 
             group_duration = w["end"] - current_group[0]["start"]
 
-            # Dynamic pacing: split long sentences (>= 5.2s scaled by pacing_multiplier) at natural commas or pauses
+            # Dynamic pacing split based on duration-aware thresholds
             has_comma = bool(re.search(r'[,]$', word_text))
-            split_threshold = max(3.0, 5.2 * pacing_mult)
-            is_pacing_split = (group_duration >= split_threshold and (has_comma or has_pause))
-            overlong_threshold = max(4.5, 7.0 * pacing_mult)
-            is_overlong = (group_duration >= overlong_threshold and len(current_group) >= 5)
-            # A true sentence/clause split condition: requires punctuation, at least 3 words and duration >= 2.0s
-            is_punct_split = (has_period or has_semicolon) and len(current_group) >= 3 and group_duration >= 2.0
-            # A speech pause boundary: only split if group already has at least 5 words and duration >= 2.8s
-            is_pause_split = has_pause and len(current_group) >= 5 and group_duration >= 2.8
+            is_overlong = (group_duration >= target_scene_dur * 1.35 and len(current_group) >= 5)
+            is_pacing_split = (group_duration >= target_scene_dur and (has_period or has_semicolon or has_comma or has_pause))
+            is_punct_split = (has_period or has_semicolon) and len(current_group) >= 4 and group_duration >= min_scene_dur
+            is_pause_split = has_pause and len(current_group) >= 6 and group_duration >= min_scene_dur
             is_last_word = (i == len(all_words) - 1)
 
             if is_punct_split or is_pause_split or is_pacing_split or is_overlong or is_last_word:
-                # Minimum duration filter: scenes should be at least 2.0s and >= 3 words to avoid jarring flicker
-                if (group_duration >= 2.0 and len(current_group) >= 3) or is_last_word or len(sentence_groups) == 0:
+                # Minimum duration filter: ensure scenes respect min_scene_dur
+                if (group_duration >= min_scene_dur and len(current_group) >= 3) or is_last_word or len(sentence_groups) == 0:
                     sentence_groups.append(current_group)
                     current_group = []
 
@@ -1448,13 +1468,18 @@ def _enhance_tags_with_ai(
     if not scenes:
         return []
 
-    # Chunk into batches of max 10 scenes to avoid response truncation
-    chunk_size = 10
+    # Dynamic chunk size: 20 scenes for long projects to minimize API call spam, 10 for short
+    chunk_size = 20 if len(scenes) > 100 else (15 if len(scenes) > 40 else 10)
     if len(scenes) > chunk_size:
         all_enhanced = []
-        for start_idx in range(0, len(scenes), chunk_size):
+        gr_pool = list(groq_keys or [])
+        num_batches = (len(scenes) + chunk_size - 1) // chunk_size
+        print(f"[SceneAnalyzer] Tagging {len(scenes)} scenes in {num_batches} AI batches (chunk_size={chunk_size})...")
+        for chunk_idx, start_idx in enumerate(range(0, len(scenes), chunk_size)):
             chunk = scenes[start_idx:start_idx + chunk_size]
-            sub_results = _enhance_tags_chunk(chunk, niche, gemini_keys, groq_keys, openai_key, generation_mode=generation_mode)
+            # Rotate Groq keys across chunks to distribute rate limits
+            rotated_groq = (gr_pool[chunk_idx % len(gr_pool):] + gr_pool[:chunk_idx % len(gr_pool)]) if gr_pool else None
+            sub_results = _enhance_tags_chunk(chunk, niche, gemini_keys, rotated_groq, openai_key, generation_mode=generation_mode)
             all_enhanced.extend(sub_results)
         return all_enhanced
 

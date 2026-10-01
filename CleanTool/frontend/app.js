@@ -1025,23 +1025,94 @@ function loadProjectIntoPreview(project) {
   loadSceneClip(0, false);
 }
 
+let scenePageSize = 40;
+let sceneCurrentPage = 0;
+
 function renderTimelineMarkers(scenes) {
   const container = document.getElementById('timeline-scene-markers');
+  if (!container) return;
   container.innerHTML = '';
-  scenes.forEach(sc => {
+  if (!scenes || scenes.length === 0) return;
+
+  // Adaptive sampling for long-form: do not flood DOM with 1000+ ticks
+  const maxTicks = 100;
+  const step = Math.max(1, Math.ceil(scenes.length / maxTicks));
+
+  for (let i = 0; i < scenes.length; i += step) {
+    const sc = scenes[i];
     const tick = document.createElement('div');
     tick.className = 'timeline-scene-tick';
     tick.style.left = `${(sc.start / totalDuration) * 100}%`;
     container.appendChild(tick);
-  });
+  }
+}
+
+function updateScenePaginationUI(totalScenes) {
+  const controls = document.getElementById('scenes-pagination-controls');
+  if (!controls) return;
+  if (!totalScenes || totalScenes <= scenePageSize) {
+    controls.classList.add('hidden');
+    return;
+  }
+  controls.classList.remove('hidden');
+  const totalPages = Math.ceil(totalScenes / scenePageSize);
+  const startIdx = sceneCurrentPage * scenePageSize + 1;
+  const endIdx = Math.min((sceneCurrentPage + 1) * scenePageSize, totalScenes);
+  const infoEl = document.getElementById('scene-page-info');
+  if (infoEl) {
+    infoEl.textContent = `Scenes ${startIdx}-${endIdx} of ${totalScenes}`;
+  }
+  const prevBtn = document.getElementById('btn-prev-scene-page');
+  const nextBtn = document.getElementById('btn-next-scene-page');
+  if (prevBtn) prevBtn.disabled = (sceneCurrentPage === 0);
+  if (nextBtn) nextBtn.disabled = (sceneCurrentPage >= totalPages - 1);
+}
+
+function prevScenePage() {
+  if (sceneCurrentPage > 0) {
+    sceneCurrentPage--;
+    renderSceneCards(currentProject ? currentProject.scenes : []);
+  }
+}
+
+function nextScenePage() {
+  if (!currentProject || !currentProject.scenes) return;
+  const totalPages = Math.ceil(currentProject.scenes.length / scenePageSize);
+  if (sceneCurrentPage < totalPages - 1) {
+    sceneCurrentPage++;
+    renderSceneCards(currentProject.scenes);
+  }
+}
+
+function jumpToActiveScenePage() {
+  if (!currentProject || !currentProject.scenes || currentSceneIdx < 0) return;
+  const targetPage = Math.floor(currentSceneIdx / scenePageSize);
+  if (targetPage !== sceneCurrentPage) {
+    sceneCurrentPage = targetPage;
+    renderSceneCards(currentProject.scenes);
+  }
+  const activeCard = document.getElementById(`scene-card-${currentSceneIdx}`);
+  if (activeCard) {
+    activeCard.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }
 }
 
 function renderSceneCards(scenes) {
   const strip = document.getElementById('scenes-strip');
+  if (!strip) return;
   document.getElementById('scene-count-badge').textContent = scenes.length;
-  strip.innerHTML = '';
 
-  scenes.forEach((sc, idx) => {
+  // Update pagination bar
+  updateScenePaginationUI(scenes.length);
+
+  strip.innerHTML = '';
+  if (!scenes || scenes.length === 0) return;
+
+  const startIdx = scenes.length > scenePageSize ? sceneCurrentPage * scenePageSize : 0;
+  const endIdx = scenes.length > scenePageSize ? Math.min(startIdx + scenePageSize, scenes.length) : scenes.length;
+
+  for (let idx = startIdx; idx < endIdx; idx++) {
+    const sc = scenes[idx];
     const card = document.createElement('div');
     card.className = `scene-card ${idx === currentSceneIdx ? 'active' : ''}`;
     card.id = `scene-card-${idx}`;
@@ -1052,20 +1123,20 @@ function renderSceneCards(scenes) {
     const videoUrl = clip.web_url || '';
     const provider = clip.provider || 'stock';
     const isFallback = Boolean(sc.fallback_used || clip.is_fallback || !clip.file_path);
-
     const isImage = Boolean(videoUrl && /\.(jpg|jpeg|png|webp)($|\?)/i.test(videoUrl));
-    const thumbHtml = (videoUrl && !isImage)
-      ? `<video src="${videoUrl}#t=0.5" poster="${thumbUrl}" preload="metadata" muted playsinline loop onmouseover="this.play()" onmouseout="this.pause()"></video>`
-      : ((thumbUrl || videoUrl) 
-          ? `<img src="${thumbUrl || videoUrl}" alt="Scene thumbnail" style="width:100%;height:100%;object-fit:cover;">` 
-          : `<div style="padding:30px;color:#666;">No Clip</div>`);
+
+    // Zero-lag lazy image loading: NO simultaneous video decoders in scene strip!
+    const posterSrc = thumbUrl || (isImage ? videoUrl : '');
+    const thumbHtml = posterSrc
+      ? `<img src="${posterSrc}" alt="Scene thumbnail" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.style.display='none';">`
+      : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:12px;background:rgba(255,255,255,0.03);">🎬 Scene ${idx + 1}</div>`;
 
     const fallbackBadge = isFallback
       ? `<span class="scene-fallback-badge">⚠️ AI Image Needed</span>`
       : '';
 
     card.innerHTML = `
-      <div class="scene-card-thumb">
+      <div class="scene-card-thumb" id="thumb-container-${idx}" data-video-url="${videoUrl}">
         ${thumbHtml}
         ${fallbackBadge}
         <span class="scene-time-badge">⏱ ${formatTime(sc.start)} - ${formatTime(sc.end)}</span>
@@ -1086,8 +1157,40 @@ function renderSceneCards(scenes) {
         </div>
       </div>
     `;
+
+    // Interactive lazy hover: only mount temporary video if user hovers on this specific card for >350ms!
+    if (videoUrl && !isImage) {
+      let hoverTimeout = null;
+      let tempVideo = null;
+      const thumbBox = card.querySelector('.scene-card-thumb');
+      if (thumbBox) {
+        thumbBox.addEventListener('mouseenter', () => {
+          hoverTimeout = setTimeout(() => {
+            if (!tempVideo) {
+              tempVideo = document.createElement('video');
+              tempVideo.src = `${videoUrl}#t=0.5`;
+              tempVideo.muted = true;
+              tempVideo.playsInline = true;
+              tempVideo.loop = true;
+              tempVideo.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:2;pointer-events:none;';
+              thumbBox.appendChild(tempVideo);
+              tempVideo.play().catch(() => {});
+            }
+          }, 350);
+        });
+        thumbBox.addEventListener('mouseleave', () => {
+          if (hoverTimeout) clearTimeout(hoverTimeout);
+          if (tempVideo) {
+            tempVideo.pause();
+            tempVideo.remove();
+            tempVideo = null;
+          }
+        });
+      }
+    }
+
     strip.appendChild(card);
-  });
+  }
 }
 
 function preloadNextSceneClip(sceneIdx) {
@@ -1106,8 +1209,18 @@ function preloadNextSceneClip(sceneIdx) {
 }
 
 function loadSceneClip(sceneIdx, autoPlay = true) {
-  if (!currentProject || !currentProject.scenes[sceneIdx]) return;
+  if (!currentProject || !currentProject.scenes || !currentProject.scenes[sceneIdx]) return;
   currentSceneIdx = sceneIdx;
+
+  // Auto-flip scene page if active scene crosses current page boundary
+  if (currentProject.scenes.length > scenePageSize) {
+    const neededPage = Math.floor(sceneIdx / scenePageSize);
+    if (neededPage !== sceneCurrentPage) {
+      sceneCurrentPage = neededPage;
+      renderSceneCards(currentProject.scenes);
+    }
+  }
+
   const sc = currentProject.scenes[sceneIdx];
   const videoEl = document.getElementById('preview-video');
   const container = document.getElementById('video-container');

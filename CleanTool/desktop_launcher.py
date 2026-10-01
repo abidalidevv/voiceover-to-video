@@ -53,13 +53,39 @@ def wait_for_server(timeout: float = 12.0) -> bool:
 
 
 def launch_native_window():
-    """Opens the application in the user's default browser."""
+    """Opens the application in a standalone native desktop app window (Edge/Chrome app mode) or default browser."""
     # Wait for server to start responding
     ready = wait_for_server()
     if not ready:
         time.sleep(1.5)
 
     print(f"\n[VideoGen Studio] Server is ready at {URL}")
+
+    # Check for Chromium browsers supporting --app mode (Edge, Chrome, Brave)
+    browser_candidates = [
+        Path(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")) / "Microsoft" / "Edge" / "Application" / "msedge.exe",
+        Path(os.environ.get("ProgramFiles", "C:\\Program Files")) / "Microsoft" / "Edge" / "Application" / "msedge.exe",
+        Path(os.environ.get("ProgramFiles", "C:\\Program Files")) / "Google" / "Chrome" / "Application" / "chrome.exe",
+        Path(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")) / "Google" / "Chrome" / "Application" / "chrome.exe",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Google" / "Chrome" / "Application" / "chrome.exe",
+    ]
+
+    for exe in browser_candidates:
+        if exe.exists():
+            try:
+                print(f"[VideoGen Studio] Launching in Native Desktop App Window mode via: {exe.name}...")
+                cmd = [
+                    str(exe),
+                    f"--app={URL}",
+                    "--window-size=1440,900",
+                    "--window-position=50,50"
+                ]
+                subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return
+            except Exception as e:
+                print(f"[VideoGen Studio] App window launch notice: {e}, falling back...")
+
+    # Fallback to standard browser open if app mode fails
     print("[VideoGen Studio] Opening in default web browser...")
     webbrowser.open(URL)
 
