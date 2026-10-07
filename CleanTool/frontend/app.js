@@ -805,14 +805,15 @@ function openExportedVideoFolder() {
 }
 
 // ==================== OPERATIONAL MANUAL & DOCS VIEWER ====================
-async function openDocsManual() {
+function openDocsManual() {
   const modal = document.getElementById('docs-modal');
   if (modal) {
     modal.classList.remove('hidden');
+    const iframe = document.getElementById('docs-iframe');
+    if (iframe && (!iframe.src || iframe.src === 'about:blank')) {
+      iframe.src = 'docs.html';
+    }
   }
-  try {
-    fetch('/api/open-docs');
-  } catch (e) {}
 }
 
 function closeDocsModal() {
@@ -822,14 +823,8 @@ function closeDocsModal() {
   }
 }
 
-async function openDocsInBrowser() {
-  try {
-    const res = await fetch('/api/open-docs');
-    if (res.ok) {
-      showToast('📖 User manual opened in your default Windows browser', 3500);
-      return;
-    }
-  } catch (e) {}
+function openDocsInBrowser() {
+  // Clean client-side tab opening: works universally on localhost, LAN, or remote sharing
   window.open('docs.html', '_blank');
 }
 

@@ -1451,14 +1451,8 @@ def browse_directory(req: Optional[BrowseDirectoryRequest] = None):
 @app.get("/api/open-docs")
 @app.post("/api/open-docs")
 def open_docs_endpoint():
-    """Opens docs.html in the user's default Windows web browser."""
-    url = "http://127.0.0.1:8765/docs.html"
-    try:
-        import webbrowser
-        webbrowser.open_new_tab(url)
-        return {"status": "success", "url": url}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    """Returns documentation URL; docs are rendered in-window or in client browser tab."""
+    return {"status": "success", "url": "/docs.html"}
 
 
 def _bring_explorer_to_foreground(abs_path: str):
