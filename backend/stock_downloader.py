@@ -19,7 +19,8 @@ import threading
 
 HISTORY_FILE = DATA_DIR / "stock_usage_history.json"
 _HISTORY_LOCK = threading.Lock()
-_TRIM_SEMAPHORE = threading.Semaphore(2)  # Caps concurrent FFmpeg trimming to 2 to protect CPU/GPU
+_trim_slots = min(6, max(2, (os.cpu_count() or 4) // 2))
+_TRIM_SEMAPHORE = threading.Semaphore(_trim_slots)  # Auto-scales trimming threads based on CPU cores (2 to 6)
 
 
 def _get_recently_used_video_ids(days: int = 14) -> Dict[str, float]:
@@ -153,10 +154,11 @@ def trim_and_fit_clip(
         "-c:v", encoder,
         *encoder_args,
         "-an",
+        "-dn",
         str(out_path)
     ])
     
-    # Throttle concurrent FFmpeg trimming to max 2 processes to protect CPU and NVENC limits
+    # Throttle concurrent FFmpeg trimming based on dynamic semaphore
     with _TRIM_SEMAPHORE:
         try:
             subprocess.run(cmd, capture_output=True, check=True)
@@ -175,6 +177,7 @@ def trim_and_fit_clip(
                     "-pix_fmt", "yuv420p",
                     "-threads", "2",
                     "-an",
+                    "-dn",
                     str(out_path)
                 ]
                 subprocess.run(cpu_cmd, capture_output=True, check=True)

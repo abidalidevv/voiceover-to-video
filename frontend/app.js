@@ -53,7 +53,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadEditingTemplates();
   await loadTTSVoices();
   await loadSettings();
-  await checkApiStatus();
+  await checkApiStatus(true);
+  await checkStartupStorage();
   await loadProjectsLibrary();
   initWaveformVisualizer();
 
@@ -568,7 +569,7 @@ async function openOutputFolderCustom(type = 'videos') {
   }
 }
 
-async function checkApiStatus() {
+async function checkApiStatus(isStartup = false) {
   try {
     const res = await fetch('/api/test-apis', { method: 'POST' });
     const data = await res.json();
@@ -578,10 +579,87 @@ async function checkApiStatus() {
     updateBadge('badge-groq', data.groq);
     updateBadge('badge-gemini', data.gemini);
 
+    // On startup, proactively alert the user about Groq Whisper status
+    if (isStartup && data.groq) {
+      if (data.groq.status === 'unconfigured') {
+        showToast('⚠️ <strong>Groq Whisper Unconfigured:</strong><br>Voiceover transcription requires Groq keys. Please add your Groq key in Settings.', 6000);
+      } else if (data.groq.status === 'error' || (data.groq.active_keys !== undefined && data.groq.active_keys === 0)) {
+        showToast(`🚨 <strong>Groq Whisper Offline / Keys Expired!</strong><br>0/${data.groq.total_keys || 0} keys active (${data.groq.error || 'Connection Failed'}). Please update your Groq API key in Settings!`, 8000);
+      } else if (data.groq.status === 'ok') {
+        showToast(`✅ <strong>Groq Whisper Active:</strong> ${data.groq.active_keys}/${data.groq.total_keys} keys online ✓`, 3000);
+      }
+    }
+
     return data;
   } catch (e) {
     console.warn('API check notice:', e);
     return null;
+  }
+}
+
+async function refreshStorageUsageUI() {
+  try {
+    const res = await fetch('/api/storage-usage');
+    const data = await res.json();
+    if (!data) return null;
+
+    const stockEl = document.getElementById('storage-stock-mb');
+    const scenesEl = document.getElementById('storage-scenes-mb');
+    const totalEl = document.getElementById('storage-total-cache-mb');
+    const outputsEl = document.getElementById('storage-outputs-mb');
+    const badgeEl = document.getElementById('badge-storage-cache');
+
+    if (stockEl) stockEl.textContent = `${data.stock_videos_mb || 0} MB`;
+    if (scenesEl) scenesEl.textContent = `${data.scene_clips_mb || 0} MB`;
+    if (totalEl) totalEl.textContent = `${data.total_cache_mb || 0} MB`;
+    if (outputsEl) outputsEl.textContent = `${data.output_mb || 0} MB`;
+    if (badgeEl) badgeEl.textContent = `Cache: ${data.total_cache_mb || 0} MB`;
+
+    return data;
+  } catch (e) {
+    console.warn('Storage check notice:', e);
+    return null;
+  }
+}
+
+async function checkStartupStorage() {
+  const data = await refreshStorageUsageUI();
+  if (!data) return;
+
+  const totalCache = parseFloat(data.total_cache_mb || 0);
+  // If cache exceeds 50 MB, ask the user on startup
+  if (totalCache >= 50) {
+    const amtEl = document.getElementById('startup-cache-amount');
+    if (amtEl) amtEl.textContent = `${totalCache.toFixed(1)} MB`;
+    const modal = document.getElementById('startup-cache-modal');
+    if (modal) modal.classList.remove('hidden');
+  }
+}
+
+function dismissStartupCacheModal() {
+  const modal = document.getElementById('startup-cache-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function confirmStartupCacheClear() {
+  dismissStartupCacheModal();
+  await executeStorageClean(true);
+}
+
+async function executeStorageClean(purgeAll = false) {
+  showToast(purgeAll ? '🧹 Purging all temporary cache...' : '🧹 Cleaning cache older than 3 hours...', 2000);
+  try {
+    const res = await fetch('/api/clean-cache', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: purgeAll, retention_hours: 3 })
+    });
+    const data = await res.json();
+    await refreshStorageUsageUI();
+    const freed = data.mb_freed !== undefined ? data.mb_freed : (data.deleted_count || 0);
+    showToast(`✨ <strong>Cleaned ${freed} MB</strong> of temporary cache! (Output videos & projects preserved)`, 4000);
+  } catch (e) {
+    showToast(`⚠️ Could not clean cache: ${e.message}`);
   }
 }
 

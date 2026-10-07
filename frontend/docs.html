@@ -914,10 +914,20 @@
             <br>• Synced voiceover audio in interactive preview.
           </p>
         </div>
+
+        <div class="feature-box">
+          <h4>🔒 Microsecond Audio-Video Lipsync Lock (async=1000)</h4>
+          <p>Long-form video compositions (15–30+ minutes) with dozens of different stock frame rates (24fps, 30fps, 60fps) typically suffer from timestamp drift. Our compositor enforces <code>aresample=async=1000</code> across all voiceover, BGM, and SFX mixing chains, locking audio and video frames with microsecond precision right up to the final second.</p>
+        </div>
+
+        <div class="feature-box">
+          <h4>🛡️ Buffer Safety & Clean Containers (-dn)</h4>
+          <p>Drone and camera clips frequently embed proprietary telemetry and GPS data streams. Our pipeline strips both audio (<code>-an</code>) and data tracks (<code>-dn</code>) during normalization, and enforces <code>-max_muxing_queue_size 1024</code> to prevent FFmpeg buffer bloat during complex multi-stream rendering.</p>
+        </div>
       </div>
 
       <div class="urdu-callout">
-        <strong>🇵🇰 Intelligent Pacing & Trimming:</strong> Voiceover ka har jumla apnay alag stock video clip k sath sync hota hy. Baray stock clips ko automatically trim kar dia jata hy ta k voiceover captions k sath video clips bilkul accurate match hon.
+        <strong>🇵🇰 Intelligent Pacing & Trimming:</strong> Voiceover ka har jumla apnay alag stock video clip k sath sync hota hy. Baray stock clips ko automatically trim kar dia jata hy ta k voiceover captions k sath video clips bilkul accurate match hon. Lambi videos me <code>async=1000</code> lipsync lock audio aur video ko microsecond level par frame-locked rakhta hai.
       </div>
     </section>
 
@@ -932,7 +942,18 @@
           <h4>⚡ What Do Multi-Worker Threads Actually Do?</h4>
           <p>In standard video tools, downloads and edits happen <strong>sequentially (1 by 1)</strong>: clip 1 takes 5s, clip 2 takes 5s, clip 10 takes 5s = 50 seconds wasted waiting.
           <br><br>
-          ATS Video uses a <strong>Concurrent Multi-Worker Thread Pool (6-8 threads)</strong>. When a voiceover is transcribed into 10 scenes, all 10 stock video clips are queried and downloaded <strong>simultaneously</strong> across the network, reducing download time from 50s down to <strong>under 8 seconds (500%+ speedup)</strong>.</p>
+          ATS Video uses a <strong>Concurrent Multi-Worker Thread Pool (8-14 threads)</strong>. When a voiceover is transcribed into 10 scenes, all 10 stock video clips are queried and downloaded <strong>simultaneously</strong> across the network, reducing download time from 50s down to <strong>under 8 seconds (500%+ speedup)</strong>.</p>
+        </div>
+
+        <div class="feature-box">
+          <h4>🚀 Dynamic Multi-Core Trimming Concurrency</h4>
+          <p>Clip trimming after download no longer stalls behind a rigid 2-process limit. The trimming semaphore automatically scales with your CPU hardware: <code>min(6, max(2, cpu_count // 2))</code>, unlocking 4 to 6 parallel FFmpeg trimming workers on modern multi-core workstations.</p>
+        </div>
+
+        <div class="feature-box">
+          <h4>🔄 Groq Rate-Limit Resilience & Hot-Reload</h4>
+          <p>If Groq Cloud returns HTTP 429 rate limits, the transcription engine automatically initiates exponential backoff (1s, 2s, 4s, 8s) and dynamically hot-reloads freshly saved API keys directly from <code>settings.json</code> without restarting the server. Dummy fallback placeholder quotes are completely eliminated.</p>
+        </div>
         </div>
 
         <div class="feature-box">

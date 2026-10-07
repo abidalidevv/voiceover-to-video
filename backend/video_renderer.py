@@ -297,6 +297,7 @@ def render_final_video(
                 "-t", f"{clip_target_dur:.2f}",
                 "-c", "copy",
                 "-an",
+                "-dn",
                 str(seg_out)
             ]
             try:
@@ -355,6 +356,7 @@ def render_final_video(
             "-c:v", encoder,
             *encoder_args,
             "-an",  # Strip stock video audio completely to avoid noise
+            "-dn",  # Strip telemetry data streams (drone/GoPro) to prevent container errors
             str(seg_out)
         ]
         try:
@@ -377,6 +379,7 @@ def render_final_video(
                     "-pix_fmt", "yuv420p",
                     "-threads", "2",
                     "-an",
+                    "-dn",
                     str(seg_out)
                 ]
                 subprocess.run(cpu_cmd, capture_output=True, check=True)
@@ -394,6 +397,7 @@ def render_final_video(
                 "-pix_fmt", "yuv420p",
                 "-threads", "0",
                 "-an",
+                "-dn",
                 str(seg_out)
             ]
             subprocess.run(fb_cmd, capture_output=True, check=True)
@@ -594,7 +598,7 @@ def render_final_video(
         audio_filter = (
             f"[1:a]volume=1.0[vo];"
             f"[{bgm_in_idx}:a]aloop=loop=-1:size=2e+09,volume={bgm_volume:.2f}[bgm];"
-            f"[vo][bgm][sfx_all]amix=inputs=3:duration=first:dropout_transition=2,aresample=async=1[aout]"
+            f"[vo][bgm][sfx_all]amix=inputs=3:duration=first:dropout_transition=2,aresample=async=1000[aout]"
         )
         filter_complex_parts.append(audio_filter)
         audio_map_label = "[aout]"
@@ -602,14 +606,14 @@ def render_final_video(
         audio_filter = (
             f"[1:a]volume=1.0[vo];"
             f"[{bgm_in_idx}:a]aloop=loop=-1:size=2e+09,volume={bgm_volume:.2f}[bgm];"
-            f"[vo][bgm]amix=inputs=2:duration=first:dropout_transition=2,aresample=async=1[aout]"
+            f"[vo][bgm]amix=inputs=2:duration=first:dropout_transition=2,aresample=async=1000[aout]"
         )
         filter_complex_parts.append(audio_filter)
         audio_map_label = "[aout]"
     elif not has_bgm and has_sfx:
         audio_filter = (
             f"[1:a]volume=1.0[vo];"
-            f"[vo][sfx_all]amix=inputs=2:duration=first:dropout_transition=2,aresample=async=1[aout]"
+            f"[vo][sfx_all]amix=inputs=2:duration=first:dropout_transition=2,aresample=async=1000[aout]"
         )
         filter_complex_parts.append(audio_filter)
         audio_map_label = "[aout]"
@@ -627,7 +631,7 @@ def render_final_video(
         final_cmd.extend(["-filter_complex", ";".join(filter_complex_parts)])
         final_cmd.extend(["-map", video_map_label, "-map", audio_map_label])
     else:
-        final_cmd.extend(["-map", "0:v:0", "-map", "1:a:0", "-af", "aresample=async=1"])
+        final_cmd.extend(["-map", "0:v:0", "-map", "1:a:0", "-af", "aresample=async=1000"])
 
     final_cmd.extend(["-t", f"{audio_dur:.3f}"])
 
@@ -637,6 +641,7 @@ def render_final_video(
             "-c:v", "copy",
             "-c:a", "aac",
             "-b:a", "192k",
+            "-max_muxing_queue_size", "1024",
             str(final_output_path)
         ])
     else:
@@ -645,6 +650,7 @@ def render_final_video(
             *encoder_args,
             "-c:a", "aac",
             "-b:a", "192k",
+            "-max_muxing_queue_size", "1024",
             str(final_output_path)
         ])
 
@@ -669,7 +675,7 @@ def render_final_video(
             cpu_cmd.extend(["-filter_complex", ";".join(filter_complex_parts)])
             cpu_cmd.extend(["-map", video_map_label, "-map", audio_map_label])
         else:
-            cpu_cmd.extend(["-map", "0:v:0", "-map", "1:a:0", "-af", "aresample=async=1"])
+            cpu_cmd.extend(["-map", "0:v:0", "-map", "1:a:0", "-af", "aresample=async=1000"])
 
         cpu_cmd.extend(["-t", f"{audio_dur:.3f}"])
 
@@ -678,6 +684,7 @@ def render_final_video(
                 "-c:v", "copy",
                 "-c:a", "aac",
                 "-b:a", "192k",
+                "-max_muxing_queue_size", "1024",
                 str(final_output_path)
             ])
         else:
@@ -689,6 +696,7 @@ def render_final_video(
                 "-threads", "0",
                 "-c:a", "aac",
                 "-b:a", "192k",
+                "-max_muxing_queue_size", "1024",
                 str(final_output_path)
             ])
         subprocess.run(cpu_cmd, capture_output=True, text=True, check=True)
@@ -820,6 +828,7 @@ def _render_xfade_single(ffmpeg_exe, seg_files, valid_clips, transition, trans_d
         "-c:v", encoder,
         *encoder_args,
         "-an",
+        "-dn",
         str(output_path)
     ])
     try:
@@ -841,6 +850,7 @@ def _render_xfade_single(ffmpeg_exe, seg_files, valid_clips, transition, trans_d
                 "-pix_fmt", "yuv420p",
                 "-threads", "0",
                 "-an",
+                "-dn",
                 str(output_path)
             ])
             subprocess.run(fallback_cmd, capture_output=True, check=True)
@@ -910,6 +920,7 @@ def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_
             "-c:v", encoder,
             *encoder_args,
             "-an",
+            "-dn",
             str(batch_out)
         ])
 
@@ -932,6 +943,7 @@ def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_
                     "-pix_fmt", "yuv420p",
                     "-threads", "0",
                     "-an",
+                    "-dn",
                     str(batch_out)
                 ])
                 try:

@@ -2370,6 +2370,61 @@
           </div>
         </div>
 
+        <!-- Storage & Cache Cleaner Card -->
+        <div class="settings-card collapsible collapsed mt-24" id="card-storage-cleaner-settings">
+          <div class="settings-card-header" onclick="toggleSettingsCard(this)">
+            <div class="settings-card-header-left">
+              <span class="settings-card-chevron">▼</span>
+              <div>
+                <h3>🧹 Storage & Cache Cleaner</h3>
+                <p class="help-text" style="margin:2px 0 0 0;">Manage disk usage, clear temporary downloaded stock clips and cached assets.</p>
+              </div>
+            </div>
+            <div class="settings-card-header-right">
+              <span class="badge badge-neutral" id="badge-storage-cache">Cache: Calculating...</span>
+              <span class="collapse-btn-pill">Expand ▾</span>
+            </div>
+          </div>
+
+          <div class="settings-card-body">
+            <p class="help-text" style="margin-bottom:14px;">
+              Temporary files and stock video clips accumulate over time and increase program load. You can safely purge cache here to free disk space.
+              <br><strong style="color:var(--accent-green, #4ade80);">🔒 Exported final videos and saved projects are always protected from deletion.</strong>
+            </p>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:16px;">
+              <div style="background:var(--bg-card-sub); padding:12px; border-radius:8px; border:1px solid var(--border-color);">
+                <div style="font-size:11px; color:var(--text-muted);">Stock Videos Cache</div>
+                <div style="font-size:16px; font-weight:700; color:#fff;" id="storage-stock-mb">0 MB</div>
+              </div>
+              <div style="background:var(--bg-card-sub); padding:12px; border-radius:8px; border:1px solid var(--border-color);">
+                <div style="font-size:11px; color:var(--text-muted);">Scene Clips Cache</div>
+                <div style="font-size:16px; font-weight:700; color:#fff;" id="storage-scenes-mb">0 MB</div>
+              </div>
+              <div style="background:var(--bg-card-sub); padding:12px; border-radius:8px; border:1px solid var(--border-color);">
+                <div style="font-size:11px; color:var(--text-muted);">Total Purgeable Cache</div>
+                <div style="font-size:16px; font-weight:700; color:#38bdf8;" id="storage-total-cache-mb">0 MB</div>
+              </div>
+              <div style="background:var(--bg-card-sub); padding:12px; border-radius:8px; border:1px solid rgba(34,197,94,0.3);">
+                <div style="font-size:11px; color:#4ade80;">Exported Videos (Protected)</div>
+                <div style="font-size:16px; font-weight:700; color:#4ade80;" id="storage-outputs-mb">0 MB</div>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary" onclick="executeStorageClean(false)" style="display:flex; align-items:center; gap:6px;">
+                🧹 Clear Old Cache (&gt;3 hrs)
+              </button>
+              <button type="button" class="btn btn-primary" onclick="executeStorageClean(true)" style="background:linear-gradient(135deg, #ef4444, #dc2626); display:flex; align-items:center; gap:6px;">
+                🔥 Purge All Cache Now
+              </button>
+              <button type="button" class="btn btn-xs btn-outline" onclick="refreshStorageUsageUI()" style="margin-left:auto;">
+                🔄 Refresh Usage
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div class="settings-actions mt-24">
           <button class="btn btn-secondary" onclick="testApiConnections()">
             🔄 Test All API Connections
@@ -2571,9 +2626,25 @@
         </button>
       </div>
     </div>
+  <!-- ==================== STARTUP CACHE CLEANUP PROMPT MODAL ==================== -->
+  <div class="modal-overlay hidden" id="startup-cache-modal" style="z-index:9999;">
+    <div class="modal-card modal-sm" style="text-align:center; max-width:450px; padding:24px; border:1px solid rgba(255,255,255,0.12); box-shadow:0 25px 50px -12px rgba(0,0,0,0.8); border-radius:16px;">
+      <div style="font-size:38px; margin-bottom:8px;">🧹</div>
+      <h3 style="font-size:18px; margin-bottom:6px; color:#f8fafc; font-weight:700;">Clear Old Data Cache?</h3>
+      <p style="color:#94a3b8; font-size:13px; line-height:1.55; margin-bottom:16px;">
+        Found <strong id="startup-cache-amount" style="color:#38bdf8; font-size:14px;">0 MB</strong> of old temporary stock clips from previous runs that may increase program load.<br><br>
+        <span style="display:inline-block; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); color:#4ade80; padding:6px 12px; border-radius:8px; font-size:12px;">
+          🔒 <strong>100% Safe:</strong> Exported output videos & project library will NOT be deleted.
+        </span>
+      </p>
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button type="button" class="btn btn-secondary" onclick="dismissStartupCacheModal()" style="padding:8px 16px;">Keep / Later</button>
+        <button type="button" class="btn btn-primary" onclick="confirmStartupCacheClear()" style="padding:8px 18px; background:linear-gradient(135deg, #ef4444, #dc2626); box-shadow:0 4px 12px rgba(239,68,68,0.35);">Clear Cache Now</button>
+      </div>
+    </div>
   </div>
 
-  <script src="caption_engine.js?v=20261002_v1"></script>
-  <script src="app.js?v=20261002_v1"></script>
+  <script src="caption_engine.js?v=20261008_v1"></script>
+  <script src="app.js?v=20261008_v1"></script>
 </body>
 </html>

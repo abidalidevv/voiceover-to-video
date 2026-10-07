@@ -1,10 +1,18 @@
 import os
+import time
 import subprocess
 import json
 import requests
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from .config import find_ffmpeg, find_ffprobe, load_settings
+
+
+def _get_active_groq_keys() -> List[str]:
+    """Dynamically loads and normalizes Groq API keys from settings without requiring server restart."""
+    settings = load_settings()
+    gr_keys = settings.get("groq_api_keys") or ([settings.get("groq_api_key")] if settings.get("groq_api_key") else [])
+    return [k.strip() for k in gr_keys if k and k.strip()]
 
 
 def get_audio_duration(audio_path: str) -> float:
@@ -78,9 +86,18 @@ def _transcribe_long_audio_chunked(
     Guarantees Groq's 25MB file limit is NEVER hit, even for a 3-hour recording!
     """
     import math
+    try:
+        fsize = os.path.getsize(stt_audio_path)
+    except Exception:
+        fsize = 0
+
     chunk_dur = 720.0  # 12 minutes per slice (approx 4.3 MB at 48kbps, well below 25MB)
-    num_chunks = int(math.ceil(duration / chunk_dur))
-    print(f"[Transcriber] Long-form audio detected ({duration:.1f}s / {duration/60:.1f} mins). Slicing into {num_chunks} chunks of {chunk_dur/60:.0f}m...")
+    if fsize > 20 * 1024 * 1024 and duration < 1200:
+        estimated_chunks = max(2, math.ceil(fsize / (15 * 1024 * 1024)))
+        chunk_dur = max(30.0, duration / estimated_chunks)
+
+    num_chunks = max(1, int(math.ceil(duration / chunk_dur)))
+    print(f"[Transcriber] Large/Long audio detected ({duration:.1f}s / {duration/60:.1f}m, {fsize/(1024*1024):.1f}MB). Slicing into {num_chunks} sequential chunks (each ~{chunk_dur/60:.1f}m)...")
 
     ffmpeg_exe = find_ffmpeg()
     from .config import TEMP_DIR
@@ -127,8 +144,12 @@ def _transcribe_long_audio_chunked(
         print(f"[Transcriber] Transcribing long-form chunk {i+1}/{num_chunks} ({c_start/60:.1f}m -> {(c_start+c_len)/60:.1f}m)...")
         chunk_res = None
 
-        # Try Groq keys in pool with rotation
-        for attempt in range(len(gr_keys) or 1):
+        # Try Groq keys in pool with rotation, dynamic key reload, and 429 exponential backoff
+        gr_keys = _get_active_groq_keys()
+        chunk_retries = max(len(gr_keys) * 3, 5) if gr_keys else 0
+
+        for attempt in range(chunk_retries):
+            gr_keys = _get_active_groq_keys()
             if not gr_keys:
                 break
             active_key = gr_keys[(key_idx + attempt) % len(gr_keys)]
@@ -137,12 +158,20 @@ def _transcribe_long_audio_chunked(
                 key_idx = (key_idx + attempt + 1) % len(gr_keys)
                 break
             except Exception as e:
-                print(f"[Transcriber] Chunk {i+1} Groq key failure: {e}, trying next key...")
+                err_str = str(e).lower()
+                if "429" in err_str or "rate" in err_str or "limit" in err_str:
+                    wait = min(2 ** (attempt % 4), 8)
+                    print(f"[Transcriber] Chunk {i+1} Groq 429 rate-limit on key ...{active_key[-4:] if len(active_key) > 4 else ''}. Waiting {wait}s (attempt {attempt+1}/{chunk_retries})...")
+                    time.sleep(wait)
+                else:
+                    print(f"[Transcriber] Chunk {i+1} Groq key failure: {e}, trying next key...")
+                    time.sleep(0.5)
 
         # Fallback to OpenAI if Groq keys fail
-        if not chunk_res and openai_key:
+        fresh_openai_key = load_settings().get("openai_api_key", "").strip() or openai_key
+        if not chunk_res and fresh_openai_key:
             try:
-                chunk_res = _transcribe_openai(str(chunk_file), openai_key, c_len)
+                chunk_res = _transcribe_openai(str(chunk_file), fresh_openai_key, c_len)
             except Exception as e:
                 print(f"[Transcriber] Chunk {i+1} OpenAI failure: {e}")
 
@@ -194,39 +223,74 @@ def transcribe_audio(audio_path: str, niche: str = "General") -> Dict[str, Any]:
     """
     Transcribe audio file into word-level and segment-level timestamps.
     Supports audio up to 3+ hours with automatic 12-minute chunking.
-    Tries Groq Whisper -> OpenAI Whisper -> Intelligent Heuristic Fallback.
+    Tries Groq Whisper (with auto-retry, dynamic reload, and 429 backoff) -> OpenAI Whisper.
+    Guarantees no fake quotes are injected if user has API keys configured.
     """
-    settings = load_settings()
     duration = get_audio_duration(audio_path)
     stt_audio_path = _prepare_compact_audio_for_stt(audio_path)
 
-    # 1. Gather Groq and OpenAI keys
-    gr_keys = settings.get("groq_api_keys") or ([settings.get("groq_api_key")] if settings.get("groq_api_key") else [])
-    gr_keys = [k.strip() for k in gr_keys if k and k.strip()]
+    # 1. Gather initial Groq and OpenAI keys
+    gr_keys = _get_active_groq_keys()
+    settings = load_settings()
     openai_key = settings.get("openai_api_key", "").strip()
+    had_configured_keys = bool(gr_keys or openai_key)
 
-    # 2. If audio is long-form (> 20 mins / 1200s), automatically use chunked transcription!
-    if duration > 1200:
+    # 2. If audio is long-form (> 20 mins / 1200s) OR file size > 20MB, automatically use chunked transcription!
+    try:
+        fsize = os.path.getsize(stt_audio_path)
+    except Exception:
+        fsize = 0
+
+    if duration > 1200 or fsize > 20 * 1024 * 1024:
         chunked = _transcribe_long_audio_chunked(stt_audio_path, duration, gr_keys, openai_key)
         if chunked:
             return chunked
+        if had_configured_keys:
+            raise RuntimeError("Long-form audio transcription failed. Groq API rate-limit or key error. Please check your Groq API key in Settings.")
 
-    # 3. Standard single-shot Groq Whisper (for audios <= 20 mins)
-    for groq_key in gr_keys:
+    # 3. Standard single-shot Groq Whisper (audios <= 20 mins) with exponential backoff & dynamic key reload
+    max_retries = max(len(gr_keys) * 3, 5) if gr_keys else 0
+    last_groq_err = None
+
+    for attempt in range(max_retries):
+        # Dynamically reload settings on each retry so newly saved keys are immediately picked up
+        gr_keys = _get_active_groq_keys()
+        if not gr_keys:
+            break
+        groq_key = gr_keys[attempt % len(gr_keys)]
         try:
             return _transcribe_groq(stt_audio_path, groq_key, duration)
         except Exception as e:
-            print(f"[Transcriber] Groq key failed: {e}, trying next key...")
+            last_groq_err = e
+            err_str = str(e).lower()
+            if "429" in err_str or "rate" in err_str or "limit" in err_str:
+                wait = min(2 ** (attempt % 4), 8)  # 1s, 2s, 4s, max 8s
+                print(f"[Transcriber] Groq 429 rate-limit on key ...{groq_key[-4:] if len(groq_key) > 4 else ''}. Waiting {wait}s (retry {attempt+1}/{max_retries})...")
+                time.sleep(wait)
+            else:
+                print(f"[Transcriber] Groq key failure: {e}, trying next key/attempt...")
+                time.sleep(0.5)
 
-    # 4. Try OpenAI Whisper
-    if openai_key:
+    # 4. Try OpenAI Whisper fallback
+    fresh_settings = load_settings()
+    fresh_openai_key = fresh_settings.get("openai_api_key", "").strip() or openai_key
+    if fresh_openai_key:
         try:
-            return _transcribe_openai(stt_audio_path, openai_key, duration)
+            return _transcribe_openai(stt_audio_path, fresh_openai_key, duration)
         except Exception as e:
-            print(f"[Transcriber] OpenAI failed: {e}, falling back to heuristic")
+            print(f"[Transcriber] OpenAI failed: {e}")
 
-    # 5. Intelligent Heuristic Generator (Offline / Demo mode)
-    print(f"[Transcriber] WARNING: Both Groq and OpenAI failed or were unconfigured. Using demo fallback transcription. Captions will be generic placeholders!")
+    # 5. Handle failure: never generate fake dummy quotes if user had configured API keys!
+    if had_configured_keys:
+        err_msg = (
+            f"Groq speech transcription failed due to API rate limits or invalid keys (Last error: {last_groq_err}). "
+            "Please check or update your Groq API Key in Settings."
+        )
+        print(f"[Transcriber] ERROR: {err_msg}")
+        raise RuntimeError(err_msg)
+
+    # Only reached if user ran offline in pure demo mode without configuring any keys
+    print(f"[Transcriber] No API keys configured in settings. Using offline demo placeholder transcription.")
     res = _generate_fallback_transcription(audio_path, duration, niche)
     res["is_fallback"] = True
     return res

@@ -80,6 +80,12 @@
 - **21 Voice Presets**: American English and British English male/female voices.
 - **Auto-Download & Fallback**: Model auto-downloads on first use; automatically falls back to Edge-TTS if absent.
 
+### 13. ⚡ High-Stability Audio/Video Engine & Dynamic Multi-Core Scaling
+- **🔒 Audio-Video Lipsync Lock (`aresample=async=1000`)**: Frame-locks voiceover, BGM, and SFX across 15–30+ minute long-form renders with microsecond precision, preventing audio drift across hundreds of stitched clips.
+- **⚡ Dynamic Multi-Core Trimming Concurrency**: Trimming throughput auto-scales with CPU cores (`min(6, max(2, cpu_count // 2))`), upgrading from a static 2-process throttle to 4–6 parallel FFmpeg processes.
+- **🛡️ Groq 429 Resilience & Hot-Reload**: Automatically applies exponential backoff retry on Groq rate limits while dynamically reloading updated API keys directly from `settings.json` without requiring a server restart. Eliminates dummy fallback quotes.
+- **🧹 Buffer Overflow Safety & Clean Containers**: Configures `-max_muxing_queue_size 1024` on all complex audio-video interleaves and strips drone/action-cam telemetry data tracks (`-dn`) alongside audio (`-an`).
+
 ---
 
 ## 🚀 Quick Start
