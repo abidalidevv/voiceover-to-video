@@ -21,6 +21,8 @@ HISTORY_FILE = DATA_DIR / "stock_usage_history.json"
 _HISTORY_LOCK = threading.Lock()
 _trim_slots = min(6, max(2, (os.cpu_count() or 4) // 2))
 _TRIM_SEMAPHORE = threading.Semaphore(_trim_slots)  # Auto-scales trimming threads based on CPU cores (2 to 6)
+_CLIP_PROBE_CACHE: Dict[str, float] = {}
+_PROBE_LOCK = threading.Lock()
 
 
 def _get_recently_used_video_ids(days: int = 14) -> Dict[str, float]:
@@ -97,14 +99,23 @@ def trim_and_fit_clip(
         else:
             w, h = 1920, 1080
 
-    probe_dur = 0.0
-    ffprobe_exe = find_ffprobe()
-    try:
-        p_cmd = [ffprobe_exe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(raw_path)]
-        res = subprocess.run(p_cmd, capture_output=True, text=True, check=True)
-        probe_dur = float(res.stdout.strip())
-    except Exception:
+    raw_key = str(raw_path)
+    with _PROBE_LOCK:
+        cached_dur = _CLIP_PROBE_CACHE.get(raw_key)
+
+    if cached_dur is not None:
+        probe_dur = cached_dur
+    else:
         probe_dur = 0.0
+        ffprobe_exe = find_ffprobe()
+        try:
+            p_cmd = [ffprobe_exe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", raw_key]
+            res = subprocess.run(p_cmd, capture_output=True, text=True, check=True)
+            probe_dur = float(res.stdout.strip())
+        except Exception:
+            probe_dur = 0.0
+        with _PROBE_LOCK:
+            _CLIP_PROBE_CACHE[raw_key] = probe_dur
 
     scene_clip_dir = CACHE_DIR / "scene_clips"
     scene_clip_dir.mkdir(parents=True, exist_ok=True)

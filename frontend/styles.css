@@ -3204,8 +3204,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
   gap: 12px;
   padding: 10px 16px;
   background: rgba(15, 23, 42, 0.92);
-  backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border: 1px solid rgba(0, 240, 255, 0.4);
   border-radius: 40px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), 0 0 16px rgba(0, 240, 255, 0.2);
@@ -3311,6 +3311,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   right: 0;
   bottom: 0;
   background: rgba(10, 15, 29, 0.90);
+  -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
   display: flex;
   flex-direction: column;

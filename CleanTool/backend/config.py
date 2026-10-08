@@ -224,11 +224,28 @@ def load_settings() -> dict:
     merged["groq_api_keys"] = gr_keys
     merged["groq_api_key"] = gr_keys[0] if gr_keys else ""
 
-    # Ensure output directories are never empty
-    if not str(merged.get("output_dir", "")).strip():
+    # Ensure output directories are machine-portable and auto-fallback if paths do not exist on other PCs
+    raw_out = str(merged.get("output_dir", "")).strip()
+    if not raw_out:
         merged["output_dir"] = str(OUTPUT_DIR)
-    if not str(merged.get("thumbnail_output_dir", "")).strip():
+    else:
+        try:
+            p_out = Path(raw_out)
+            if not p_out.exists():
+                p_out.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            merged["output_dir"] = str(OUTPUT_DIR)
+
+    raw_thumb = str(merged.get("thumbnail_output_dir", "")).strip()
+    if not raw_thumb:
         merged["thumbnail_output_dir"] = str(DATA_DIR / "thumbnails")
+    else:
+        try:
+            p_thumb = Path(raw_thumb)
+            if not p_thumb.exists():
+                p_thumb.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            merged["thumbnail_output_dir"] = str(DATA_DIR / "thumbnails")
 
     return merged
 

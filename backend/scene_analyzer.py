@@ -1471,16 +1471,39 @@ def _enhance_tags_with_ai(
     # Dynamic chunk size: 20 scenes for long projects to minimize API call spam, 10 for short
     chunk_size = 20 if len(scenes) > 100 else (15 if len(scenes) > 40 else 10)
     if len(scenes) > chunk_size:
-        all_enhanced = []
+        from concurrent.futures import ThreadPoolExecutor
         gr_pool = list(groq_keys or [])
         num_batches = (len(scenes) + chunk_size - 1) // chunk_size
-        print(f"[SceneAnalyzer] Tagging {len(scenes)} scenes in {num_batches} AI batches (chunk_size={chunk_size})...")
+        print(f"[SceneAnalyzer] Tagging {len(scenes)} scenes in {num_batches} concurrent AI batches (chunk_size={chunk_size})...")
+
+        chunks_with_meta = []
         for chunk_idx, start_idx in enumerate(range(0, len(scenes), chunk_size)):
             chunk = scenes[start_idx:start_idx + chunk_size]
-            # Rotate Groq keys across chunks to distribute rate limits
             rotated_groq = (gr_pool[chunk_idx % len(gr_pool):] + gr_pool[:chunk_idx % len(gr_pool)]) if gr_pool else None
-            sub_results = _enhance_tags_chunk(chunk, niche, gemini_keys, rotated_groq, openai_key, generation_mode=generation_mode)
-            all_enhanced.extend(sub_results)
+            chunks_with_meta.append((chunk_idx, chunk, rotated_groq))
+
+        results_by_idx = [None] * len(chunks_with_meta)
+        max_workers = min(len(chunks_with_meta), max(2, (len(gr_pool) or 2) * 2))
+
+        def _tag_worker(item):
+            c_idx, c_data, r_keys = item
+            try:
+                enhanced = _enhance_tags_chunk(
+                    c_data, niche, gemini_keys, r_keys, openai_key, generation_mode=generation_mode
+                )
+                return c_idx, enhanced
+            except Exception as e:
+                print(f"[SceneAnalyzer] Notice: batch {c_idx+1} tagging error: {e}, using basic tags")
+                return c_idx, c_data
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for c_idx, res in executor.map(_tag_worker, chunks_with_meta):
+                results_by_idx[c_idx] = res
+
+        all_enhanced = []
+        for batch_res in results_by_idx:
+            if batch_res:
+                all_enhanced.extend(batch_res)
         return all_enhanced
 
     return _enhance_tags_chunk(scenes, niche, gemini_keys, groq_keys, openai_key, generation_mode=generation_mode)

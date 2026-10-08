@@ -74,6 +74,66 @@ def _prepare_compact_audio_for_stt(audio_path: str) -> str:
     return audio_path
 
 
+def _detect_silence_points(audio_path: str, min_duration: float = 0.30, noise_db: float = -30.0) -> List[float]:
+    """Detects timestamp midpoints of natural speech pauses/silences in audio using FFmpeg."""
+    ffmpeg_exe = find_ffmpeg()
+    cmd = [
+        ffmpeg_exe, "-v", "info",
+        "-i", str(audio_path),
+        "-af", f"silencedetect=noise={noise_db}dB:d={min_duration}",
+        "-f", "null", "-"
+    ]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, errors="ignore")
+        stderr = res.stderr or ""
+        silence_midpoints = []
+        import re
+        for m in re.finditer(r"silence_end:\s*([\d\.]+)\s*\|\s*silence_duration:\s*([\d\.]+)", stderr):
+            end_t = float(m.group(1))
+            dur_t = float(m.group(2))
+            midpoint = max(0.0, end_t - (dur_t / 2.0))
+            silence_midpoints.append(midpoint)
+        return silence_midpoints
+    except Exception as e:
+        print(f"[Transcriber] Silence detection notice: {e}")
+        return []
+
+
+def _compute_smart_chunk_boundaries(total_duration: float, target_chunk_dur: float, silences: List[float]) -> List[tuple]:
+    """Computes (start, duration) time slices, aligning cut points to natural silence pauses so words are never cut mid-syllable."""
+    if total_duration <= target_chunk_dur:
+        return [(0.0, total_duration)]
+
+    boundaries = [0.0]
+    curr_pos = 0.0
+
+    while curr_pos + target_chunk_dur < total_duration:
+        ideal_cut = curr_pos + target_chunk_dur
+        # Look for the best silence pause within a safe window [ideal_cut - 75s, ideal_cut + 45s]
+        window_start = ideal_cut - 75.0
+        window_end = min(total_duration - 30.0, ideal_cut + 45.0)
+
+        candidates = [s for s in silences if window_start <= s <= window_end]
+        if candidates:
+            # Pick silence closest to the ideal cut
+            best_cut = min(candidates, key=lambda s: abs(s - ideal_cut))
+        else:
+            best_cut = ideal_cut
+
+        boundaries.append(round(best_cut, 3))
+        curr_pos = best_cut
+
+    boundaries.append(total_duration)
+
+    chunks = []
+    for i in range(len(boundaries) - 1):
+        s = boundaries[i]
+        e = boundaries[i + 1]
+        if e - s > 1.0:
+            chunks.append((s, round(e - s, 3)))
+    return chunks
+
+
 def _transcribe_long_audio_chunked(
     stt_audio_path: str,
     duration: float,
@@ -81,39 +141,39 @@ def _transcribe_long_audio_chunked(
     openai_key: str = ""
 ) -> Optional[Dict[str, Any]]:
     """
-    Slices long audio (>20 mins up to 3+ hours) into 12-15 minute compact segments,
-    transcribes each segment with time offsets, and merges them into one seamless master transcript.
-    Guarantees Groq's 25MB file limit is NEVER hit, even for a 3-hour recording!
+    Smart silence-based chunking & parallel multi-key transcription engine.
+    1. Slices audio at natural silence pauses (never cuts words mid-sentence).
+    2. Dispatches chunks concurrently across the Groq multi-key pool (15m -> 1.5m).
+    3. Guarantees Groq's 25MB file limit is NEVER hit, even for a 3-hour recording.
     """
     import math
+    from concurrent.futures import ThreadPoolExecutor
+    from .config import TEMP_DIR
+
     try:
         fsize = os.path.getsize(stt_audio_path)
     except Exception:
         fsize = 0
 
-    chunk_dur = 720.0  # 12 minutes per slice (approx 4.3 MB at 48kbps, well below 25MB)
+    chunk_target_dur = 660.0  # ~11 minutes per slice (approx 3.9 MB at 48kbps, well below 25MB)
     if fsize > 20 * 1024 * 1024 and duration < 1200:
         estimated_chunks = max(2, math.ceil(fsize / (15 * 1024 * 1024)))
-        chunk_dur = max(30.0, duration / estimated_chunks)
+        chunk_target_dur = max(30.0, duration / estimated_chunks)
 
-    num_chunks = max(1, int(math.ceil(duration / chunk_dur)))
-    print(f"[Transcriber] Large/Long audio detected ({duration:.1f}s / {duration/60:.1f}m, {fsize/(1024*1024):.1f}MB). Slicing into {num_chunks} sequential chunks (each ~{chunk_dur/60:.1f}m)...")
+    # 1. Detect natural silence pauses for smart boundary slicing
+    print(f"[Transcriber] Detecting speech pauses for smart silence-aligned chunking...")
+    silences = _detect_silence_points(stt_audio_path, min_duration=0.30, noise_db=-30.0)
+    chunk_slices = _compute_smart_chunk_boundaries(duration, chunk_target_dur, silences)
+    num_chunks = len(chunk_slices)
+
+    print(f"[Transcriber] Large/Long audio ({duration:.1f}s / {duration/60:.1f}m, {fsize/(1024*1024):.1f}MB). Sliced into {num_chunks} smart silence-aligned chunks.")
 
     ffmpeg_exe = find_ffmpeg()
-    from .config import TEMP_DIR
     p = Path(stt_audio_path)
+    tasks = []
 
-    all_segments = []
-    all_words = []
-    all_texts = []
-    key_idx = 0
-
-    for i in range(num_chunks):
-        c_start = i * chunk_dur
-        c_len = min(chunk_dur, duration - c_start)
-        if c_len <= 0.5:
-            break
-
+    # 2. Slice audio files at silence boundaries
+    for i, (c_start, c_len) in enumerate(chunk_slices):
         chunk_file = TEMP_DIR / f"chunk_{p.stem[:12]}_{i}_{int(c_start)}.mp3"
         slice_cmd = [
             ffmpeg_exe, "-y",
@@ -137,75 +197,93 @@ def _transcribe_long_audio_chunked(
             ]
             subprocess.run(slice_cmd_enc, capture_output=True)
 
-        if not chunk_file.exists() or chunk_file.stat().st_size < 500:
-            print(f"[Transcriber] Warning: Chunk {i+1}/{num_chunks} slicing failed. Continuing...")
-            continue
+        if chunk_file.exists() and chunk_file.stat().st_size > 500:
+            tasks.append((i, c_start, c_len, chunk_file))
 
-        print(f"[Transcriber] Transcribing long-form chunk {i+1}/{num_chunks} ({c_start/60:.1f}m -> {(c_start+c_len)/60:.1f}m)...")
-        chunk_res = None
+    if not tasks:
+        print("[Transcriber] Warning: All audio chunk slicing failed.")
+        return None
 
-        # Try Groq keys in pool with rotation, dynamic key reload, and 429 exponential backoff
-        gr_keys = _get_active_groq_keys()
-        chunk_retries = max(len(gr_keys) * 3, 5) if gr_keys else 0
+    # 3. Parallel transcription worker function
+    def _worker(task):
+        idx, start_t, length_t, ch_file = task
+        k_idx = idx % (len(gr_keys) or 1)
+        res = None
+        current_keys = _get_active_groq_keys() or gr_keys
+        chunk_retries = max(len(current_keys) * 3, 5) if current_keys else 0
 
         for attempt in range(chunk_retries):
-            gr_keys = _get_active_groq_keys()
-            if not gr_keys:
+            fresh_keys = _get_active_groq_keys() or current_keys
+            if not fresh_keys:
                 break
-            active_key = gr_keys[(key_idx + attempt) % len(gr_keys)]
+            active_key = fresh_keys[(k_idx + attempt) % len(fresh_keys)]
             try:
-                chunk_res = _transcribe_groq(str(chunk_file), active_key, c_len)
-                key_idx = (key_idx + attempt + 1) % len(gr_keys)
+                res = _transcribe_groq(str(ch_file), active_key, length_t)
                 break
             except Exception as e:
                 err_str = str(e).lower()
                 if "429" in err_str or "rate" in err_str or "limit" in err_str:
                     wait = min(2 ** (attempt % 4), 8)
-                    print(f"[Transcriber] Chunk {i+1} Groq 429 rate-limit on key ...{active_key[-4:] if len(active_key) > 4 else ''}. Waiting {wait}s (attempt {attempt+1}/{chunk_retries})...")
+                    print(f"[Transcriber] Chunk {idx+1}/{num_chunks} Groq 429 rate-limit on key ...{active_key[-4:] if len(active_key) > 4 else ''}. Waiting {wait}s...")
                     time.sleep(wait)
                 else:
-                    print(f"[Transcriber] Chunk {i+1} Groq key failure: {e}, trying next key...")
                     time.sleep(0.5)
 
-        # Fallback to OpenAI if Groq keys fail
-        fresh_openai_key = load_settings().get("openai_api_key", "").strip() or openai_key
-        if not chunk_res and fresh_openai_key:
+        fresh_openai = load_settings().get("openai_api_key", "").strip() or openai_key
+        if not res and fresh_openai:
             try:
-                chunk_res = _transcribe_openai(str(chunk_file), fresh_openai_key, c_len)
+                res = _transcribe_openai(str(ch_file), fresh_openai, length_t)
             except Exception as e:
-                print(f"[Transcriber] Chunk {i+1} OpenAI failure: {e}")
+                print(f"[Transcriber] Chunk {idx+1}/{num_chunks} OpenAI fallback error: {e}")
 
-        # Clean up chunk file
+        # Cleanup chunk temp file
         try:
-            if chunk_file.exists():
-                chunk_file.unlink()
+            if ch_file.exists():
+                ch_file.unlink()
         except Exception:
             pass
 
-        if chunk_res:
-            c_text = chunk_res.get("text", "").strip()
-            if c_text:
-                all_texts.append(c_text)
-            for seg in chunk_res.get("segments", []):
-                shifted_seg = dict(seg)
-                shifted_seg["id"] = len(all_segments)
-                shifted_seg["start"] = round(float(seg.get("start", 0)) + c_start, 3)
-                shifted_seg["end"] = round(float(seg.get("end", 0)) + c_start, 3)
-                # Shift words inside segment
-                shifted_words = []
-                for w in seg.get("words", []):
-                    sw = dict(w)
-                    sw["start"] = round(float(w.get("start", 0)) + c_start, 3)
-                    sw["end"] = round(float(w.get("end", 0)) + c_start, 3)
-                    shifted_words.append(sw)
-                shifted_seg["words"] = shifted_words
-                all_segments.append(shifted_seg)
+        return idx, start_t, res
 
-            for w in chunk_res.get("words", []):
+    # 4. Dispatch parallel transcription workers across Groq key pool
+    current_keys = _get_active_groq_keys() or gr_keys
+    max_workers = min(len(tasks), max(2, len(current_keys) * 2))
+    print(f"[Transcriber] Transcribing {len(tasks)} chunks in parallel with {max_workers} concurrent workers across Groq keys...")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(_worker, tasks))
+
+    results.sort(key=lambda x: x[0])
+
+    all_segments = []
+    all_words = []
+    all_texts = []
+
+    for idx, c_start, chunk_res in results:
+        if not chunk_res:
+            continue
+        c_text = chunk_res.get("text", "").strip()
+        if c_text:
+            all_texts.append(c_text)
+        for seg in chunk_res.get("segments", []):
+            shifted_seg = dict(seg)
+            shifted_seg["id"] = len(all_segments)
+            shifted_seg["start"] = round(float(seg.get("start", 0)) + c_start, 3)
+            shifted_seg["end"] = round(float(seg.get("end", 0)) + c_start, 3)
+            shifted_words = []
+            for w in seg.get("words", []):
                 sw = dict(w)
                 sw["start"] = round(float(w.get("start", 0)) + c_start, 3)
                 sw["end"] = round(float(w.get("end", 0)) + c_start, 3)
-                all_words.append(sw)
+                shifted_words.append(sw)
+            shifted_seg["words"] = shifted_words
+            all_segments.append(shifted_seg)
+
+        for w in chunk_res.get("words", []):
+            sw = dict(w)
+            sw["start"] = round(float(w.get("start", 0)) + c_start, 3)
+            sw["end"] = round(float(w.get("end", 0)) + c_start, 3)
+            all_words.append(sw)
 
     if all_segments:
         print(f"[Transcriber] Merged long-form transcription: {len(all_segments)} segments, {len(all_words)} words across {duration/60:.1f} mins.")

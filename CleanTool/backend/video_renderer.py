@@ -870,50 +870,46 @@ def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_
 
     batch_outputs = []
     total = len(valid_clips)
-    last_picked = None
-
+    batches = []
+    b_idx = 0
     for batch_start in range(0, total, batch_size):
         batch_end = min(batch_start + batch_size, total)
         batch_segs = seg_files[batch_start:batch_end]
         batch_clips = valid_clips[batch_start:batch_end]
+        batches.append((b_idx, batch_start, batch_end, batch_segs, batch_clips))
+        b_idx += 1
 
-        if len(batch_segs) == 1:
-            batch_outputs.append(batch_segs[0])
-            continue
+    def _render_one_batch(item):
+        idx, b_start, b_end, b_segs, b_clips = item
+        if len(b_segs) == 1:
+            return idx, b_segs[0]
 
-        batch_out = seg_dir / f"batch_{batch_start:04d}.mp4"
-
+        b_out = seg_dir / f"batch_{b_start:04d}.mp4"
         xfade_cmd = [ffmpeg_exe, "-y"]
-        for seg in batch_segs:
+        for seg in b_segs:
             xfade_cmd.extend(["-i", str(seg)])
 
         filter_chains = []
         cum_offset = 0.0
-        for i in range(len(batch_clips) - 1):
-            dur_i = batch_clips[i][2]
+        last_picked_local = None
+        for i in range(len(b_clips) - 1):
+            dur_i = b_clips[i][2]
             cum_offset += dur_i
-
-            # Safe adaptive transition duration for batches: center transition at boundary
             eff_trans = min(trans_dur, max(0.08, dur_i * 0.35))
             trans_offset = max(0.01, round(cum_offset - (eff_trans / 2.0), 3))
-
-            boundary_idx = batch_start + i
-            trans_type = _pick_transition(boundary_idx, mode=transition_mode, fallback=transition, last_picked=last_picked)
-            last_picked = trans_type
-
-            print(f"[Renderer] Batch scene boundary {boundary_idx} -> {boundary_idx+1}: transition '{trans_type}' (mode: {transition_mode}, offset: {trans_offset:.3f}s, duration: {eff_trans:.3f}s)")
+            boundary_idx = b_start + i
+            trans_type = _pick_transition(boundary_idx, mode=transition_mode, fallback=transition, last_picked=last_picked_local)
+            last_picked_local = trans_type
 
             in_label = "[0:v]" if i == 0 else f"[v{i}]"
             next_label = f"[{i+1}:v]"
             out_label = f"[v{i+1}]"
-
             filter_chains.append(
                 f"{in_label}{next_label}xfade=transition={trans_type}:duration={eff_trans:.3f}:offset={trans_offset:.3f}{out_label}"
             )
 
         final_filter = ";".join(filter_chains)
-        last_out = f"[v{len(batch_clips)-1}]"
-
+        last_out = f"[v{len(b_clips)-1}]"
         xfade_cmd.extend([
             "-filter_complex", final_filter,
             "-map", last_out,
@@ -921,18 +917,18 @@ def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_
             *encoder_args,
             "-an",
             "-dn",
-            str(batch_out)
+            str(b_out)
         ])
 
         try:
             subprocess.run(xfade_cmd, capture_output=True, check=True)
-            batch_outputs.append(batch_out)
-            print(f"[Renderer] Batch {batch_start}-{batch_end} rendered with xfade transitions")
-        except subprocess.CalledProcessError as e:
+            print(f"[Renderer] Batch {b_start}-{b_end} rendered with xfade transitions")
+            return idx, b_out
+        except subprocess.CalledProcessError:
             if encoder != "libx264":
                 print(f"[Renderer] Batch xfade with {encoder} failed, retrying with CPU libx264...")
                 fallback_cmd = [ffmpeg_exe, "-y"]
-                for seg in batch_segs:
+                for seg in b_segs:
                     fallback_cmd.extend(["-i", str(seg)])
                 fallback_cmd.extend([
                     "-filter_complex", final_filter,
@@ -944,30 +940,28 @@ def _render_xfade_batches(ffmpeg_exe, seg_files, valid_clips, transition, trans_
                     "-threads", "0",
                     "-an",
                     "-dn",
-                    str(batch_out)
+                    str(b_out)
                 ])
                 try:
                     subprocess.run(fallback_cmd, capture_output=True, check=True)
-                    batch_outputs.append(batch_out)
-                    continue
+                    return idx, b_out
                 except Exception:
                     pass
 
-            print(f"[Renderer] Batch xfade failed, falling back to concat for batch {batch_start}-{batch_end}")
-            # Fallback: concat without transitions for this batch
-            batch_list = seg_dir / f"batch_list_{batch_start}.txt"
-            with open(batch_list, "w", encoding="utf-8") as bf:
-                for seg in batch_segs:
-                    escaped = str(seg).replace("\\", "/")
-                    bf.write(f"file '{escaped}'\n")
-            cat_cmd = [
-                ffmpeg_exe, "-y",
-                "-f", "concat", "-safe", "0",
-                "-i", str(batch_list),
-                "-c", "copy",
-                str(batch_out)
-            ]
-            subprocess.run(cat_cmd, capture_output=True, check=True)
-            batch_outputs.append(batch_out)
+            print(f"[Renderer] Batch xfade failed, falling back to concat for batch {b_start}-{b_end}")
+            b_list = seg_dir / f"fallback_{b_start:04d}.txt"
+            with open(b_list, "w", encoding="utf-8") as blf:
+                for s in b_segs:
+                    blf.write(f"file '{str(s).replace(chr(92), '/')}'\n")
+            fb_cmd = [ffmpeg_exe, "-y", "-f", "concat", "-safe", "0", "-i", str(b_list), "-c", "copy", "-an", "-dn", str(b_out)]
+            subprocess.run(fb_cmd, capture_output=True, check=True)
+            return idx, b_out
 
-    return batch_outputs
+    # Render batches concurrently (bounded to 2 workers to balance hardware encoder throughput and RAM)
+    max_batch_workers = min(len(batches), 2)
+    rendered_pairs = []
+    with ThreadPoolExecutor(max_workers=max_batch_workers) as executor:
+        rendered_pairs = list(executor.map(_render_one_batch, batches))
+
+    rendered_pairs.sort(key=lambda x: x[0])
+    return [p[1] for p in rendered_pairs]
