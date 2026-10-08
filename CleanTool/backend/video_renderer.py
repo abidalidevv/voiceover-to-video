@@ -571,11 +571,18 @@ def render_final_video(
             video_map_label = "0:v:0"
 
     # 2. Audio Filter: Sound Stings (SFX) with adelay + Voiceover (100%) + BGM (ducked)
+    # On long videos (e.g. 1-hour with 800+ scenes), space SFX naturally and cap to 30 stings
+    # to prevent WinError 206 (command-line length overflow) and audio clutter.
     transition_timestamps = []
     curr_t = 0.0
+    last_sfx_t = -999.0
     for i in range(len(valid_clips) - 1):
         curr_t += float(valid_clips[i][2])
-        transition_timestamps.append(round(curr_t, 2))
+        if (curr_t - last_sfx_t) >= 12.0:
+            transition_timestamps.append(round(curr_t, 2))
+            last_sfx_t = curr_t
+            if len(transition_timestamps) >= 30:
+                break
 
     if has_sfx and transition_timestamps and sfx_in_idx is not None:
         k_sfx = len(transition_timestamps)
