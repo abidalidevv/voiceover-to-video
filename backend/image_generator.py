@@ -154,114 +154,110 @@ def generate_scene_image(
 
     image_bytes = None
 
-    # ── Priority 1: Gemini 2.0 Flash Experimental (free, supports image output) ──
+    # ── Priority 1: Pollinations Turbo (100% Free, No Key Required, 2-4s Generation) ──
+    neg_encoded = requests.utils.quote(NEGATIVE_PROMPT)
+    prompt_encoded = requests.utils.quote(enriched)
+
+    for model, timeout_s in [("turbo", 12), ("flux", 15)]:
+        if image_bytes:
+            break
+        try:
+            print(f"[ImageGenerator] Generating {w}x{h} via Pollinations/{model} for Scene #{scene_id+1}: '{enriched[:50]}...'")
+            poll_url = (
+                f"https://image.pollinations.ai/prompt/{prompt_encoded}"
+                f"?width={w}&height={h}"
+                f"&model={model}"
+                f"&nologo=true"
+                f"&enhance=true"
+                f"&safe=true"
+                f"&negative={neg_encoded}"
+                f"&seed={abs(hash(enriched)) % 99999}"
+            )
+            r = requests.get(poll_url, timeout=timeout_s)
+            if r.status_code == 200 and len(r.content) > 5000:
+                image_bytes = r.content
+                print(f"[ImageGenerator] [OK] Pollinations/{model} successfully generated Scene #{scene_id+1}")
+                break
+        except Exception as e:
+            print(f"[ImageGenerator] Pollinations/{model} notice: {e}")
+
+    # ── Priority 2: Google Gemini / Imagen (Quick 4s safe probe if key configured) ──
     if gemini_keys and not image_bytes:
         full_prompt = (
             f"Generate a photorealistic Ultra HD {aspect_tag} cinematic photograph of: {enriched}. "
             f"No text, no watermarks, no captions. Professional photography only."
         )
-        for g_key in gemini_keys:
-            if not g_key or image_bytes:
-                break
-            for model_id in ["gemini-2.0-flash-exp", "gemini-2.0-flash-preview-image-generation"]:
-                try:
-                    url = (
-                        f"https://generativelanguage.googleapis.com/v1beta/models/"
-                        f"{model_id}:generateContent?key={g_key}"
-                    )
-                    payload = {
-                        "contents": [{
-                            "parts": [{"text": full_prompt}]
-                        }],
-                        "generationConfig": {
-                            "responseModalities": ["IMAGE", "TEXT"],
-                        }
-                    }
-                    res = requests.post(url, json=payload, timeout=15)
-                    if res.status_code == 200:
-                        data = res.json()
-                        candidates = data.get("candidates", [])
-                        for cand in candidates:
-                            parts = cand.get("content", {}).get("parts", [])
-                            for p in parts:
-                                if "inlineData" in p:
-                                    raw = p["inlineData"].get("data", "")
-                                    if raw:
-                                        image_bytes = base64.b64decode(raw)
-                                        print(f"[ImageGenerator] ✅ Gemini {model_id} generated Scene #{scene_id+1}")
-                                        break
-                            if image_bytes:
-                                break
-                    elif res.status_code in (400, 404):
-                        # Model not available, skip silently
-                        break
-                    # 429/503 — quota/overload, skip
-                except Exception:
-                    pass
-                if image_bytes:
-                    break
-
-    # ── Priority 2: Google Imagen 3.0 (works if account has access) ──
-    if gemini_keys and not image_bytes:
-        for g_key in gemini_keys:
+        for g_key in gemini_keys[:1]:  # Test first key with fast 4s timeout
             if not g_key or image_bytes:
                 break
             try:
-                url = (
-                    f"https://generativelanguage.googleapis.com/v1beta/models/"
-                    f"imagen-3.0-generate-002:predict?key={g_key}"
-                )
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key={g_key}"
                 payload = {
-                    "instances": [{"prompt": enriched}],
-                    "parameters": {
-                        "aspectRatio": "9:16" if is_vertical else "16:9",
-                        "sampleCount": 1,
-                        "negativePrompt": NEGATIVE_PROMPT
-                    }
+                    "contents": [{"parts": [{"text": full_prompt}]}],
+                    "generationConfig": {"responseModalities": ["IMAGE", "TEXT"]}
                 }
-                res = requests.post(url, json=payload, timeout=20)
+                res = requests.post(url, json=payload, timeout=4)
                 if res.status_code == 200:
-                    preds = res.json().get("predictions", [])
-                    if preds and "bytesBase64Encoded" in preds[0]:
-                        image_bytes = base64.b64decode(preds[0]["bytesBase64Encoded"])
-                        print(f"[ImageGenerator] ✅ Google Imagen-3 generated Scene #{scene_id+1}")
+                    data = res.json()
+                    for cand in data.get("candidates", []):
+                        for p_item in cand.get("content", {}).get("parts", []):
+                            if "inlineData" in p_item and p_item["inlineData"].get("data"):
+                                image_bytes = base64.b64decode(p_item["inlineData"]["data"])
+                                print(f"[ImageGenerator] [OK] Gemini generated Scene #{scene_id+1}")
+                                break
+                        if image_bytes:
+                            break
             except Exception:
                 pass
 
-    # ── Priority 3 & 4: Pollinations (free, no API key, best quality free model) ──
+    # ── Priority 3: Pixabay & Pexels 4K Stock Photo Fallback (0.4s Instant & High-Res) ──
     if not image_bytes:
-        neg_encoded = requests.utils.quote(NEGATIVE_PROMPT)
-        prompt_encoded = requests.utils.quote(enriched)
+        search_query = tags[0] if tags and len(tags) > 0 else (prompt[:40] if prompt else "cinematic nature")
+        clean_q = re.sub(r'[^a-zA-Z0-9\s]', ' ', search_query).strip()
 
-        for model, timeout_s in [("flux", 30), ("turbo", 20)]:
+        # Try Pixabay Photos
+        pb_key = settings.get("pixabay_api_key", "").strip()
+        if pb_key and not image_bytes:
             try:
-                print(
-                    f"[ImageGenerator] Generating {w}x{h} via Pollinations/{model} "
-                    f"Scene #{scene_id+1}: '{enriched[:50]}...'"
-                )
-                poll_url = (
-                    f"https://image.pollinations.ai/prompt/{prompt_encoded}"
-                    f"?width={w}&height={h}"
-                    f"&model={model}"
-                    f"&nologo=true"
-                    f"&enhance=true"
-                    f"&safe=true"
-                    f"&negative={neg_encoded}"
-                    f"&seed={abs(hash(enriched)) % 99999}"
-                )
-                r = requests.get(poll_url, timeout=timeout_s)
-                if r.status_code == 200 and len(r.content) > 5000:
-                    image_bytes = r.content
-                    print(f"[ImageGenerator] ✅ Pollinations/{model} success Scene #{scene_id+1}")
-                    break
+                orient = "vertical" if is_vertical else "horizontal"
+                pb_url = f"https://pixabay.com/api/?key={pb_key}&q={requests.utils.quote(clean_q)}&image_type=photo&orientation={orient}&per_page=3"
+                pb_res = requests.get(pb_url, timeout=4)
+                if pb_res.status_code == 200:
+                    hits = pb_res.json().get("hits", [])
+                    if hits:
+                        img_url = hits[0].get("largeImageURL") or hits[0].get("webformatURL")
+                        if img_url:
+                            img_r = requests.get(img_url, timeout=6)
+                            if img_r.status_code == 200 and len(img_r.content) > 5000:
+                                image_bytes = img_r.content
+                                print(f"[ImageGenerator] [OK] Pixabay 4K Stock Photo retrieved for Scene #{scene_id+1}")
             except Exception as e:
-                print(f"[ImageGenerator] Pollinations/{model} notice: {e}")
+                print(f"[ImageGenerator] Pixabay photo fallback notice: {e}")
 
-    # ── Priority 5: Dark branded canvas placeholder (never crashes render) ──
+        # Try Pexels Photos
+        px_key = settings.get("pexels_api_key", "").strip()
+        if px_key and not image_bytes:
+            try:
+                px_orient = "portrait" if is_vertical else "landscape"
+                px_url = f"https://api.pexels.com/v1/search?query={requests.utils.quote(clean_q)}&orientation={px_orient}&per_page=3"
+                px_res = requests.get(px_url, headers={"Authorization": px_key}, timeout=4)
+                if px_res.status_code == 200:
+                    photos = px_res.json().get("photos", [])
+                    if photos:
+                        src = photos[0].get("src", {})
+                        p_img_url = src.get("large2x") or src.get("large") or src.get("original")
+                        if p_img_url:
+                            img_r = requests.get(p_img_url, timeout=6)
+                            if img_r.status_code == 200 and len(img_r.content) > 5000:
+                                image_bytes = img_r.content
+                                print(f"[ImageGenerator] [OK] Pexels 4K Stock Photo retrieved for Scene #{scene_id+1}")
+            except Exception as e:
+                print(f"[ImageGenerator] Pexels photo fallback notice: {e}")
+
+    # ── Priority 4: Dark branded canvas placeholder (last resort — never crashes) ──
     if not image_bytes:
-        print(f"[ImageGenerator] ⚠️ All image APIs failed for Scene #{scene_id+1} — using placeholder")
+        print(f"[ImageGenerator] [Notice] All online image sources timed out for Scene #{scene_id+1} — creating canvas")
         img = Image.new("RGB", (w, h), color=(12, 18, 32))
-        # Add subtle gradient feel
         from PIL import ImageDraw
         draw = ImageDraw.Draw(img)
         for i in range(0, h, 4):
@@ -278,7 +274,6 @@ def generate_scene_image(
         with Image.open(out_path) as test_img:
             test_img.verify()
     except Exception:
-        # Corrupt data — save clean placeholder
         img = Image.new("RGB", (w, h), color=(12, 18, 32))
         img.save(out_path, format="JPEG", quality=95)
 
