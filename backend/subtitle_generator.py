@@ -169,7 +169,7 @@ PRESET_STYLES = {
         "shadow_dist": 2,
         "bold": 1,
         "uppercase": False,
-        "animation": "active_word_highlight",
+        "animation": "word_box",
         "alignment": 2,
         "margin_v": 65
     },
@@ -395,6 +395,7 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Default,{font_family},{ass_font_size},{primary_c},&H000000FF,{outline_c},{shadow_c},{bold},0,0,0,100,100,{letter_spacing * 2.0:.1f},0,1,{ass_outline_w:.1f},{ass_shadow_d:.1f},{align},50,50,{ass_margin_v},1
+Style: BoxHighlight,{font_family},{ass_font_size},{highlight_c},&H000000FF,{highlight_c},{highlight_c},{bold},0,0,0,100,100,{letter_spacing * 2.0:.1f},0,3,{ass_outline_w + 6.0:.1f},0.0,{align},50,50,{ass_margin_v},1
 Style: Callout,{c_font},{c_size},{c_primary},&H000000FF,{c_outline},{c_back},1,0,0,0,100,100,1.2,0,{c_border_style},{c_outline_w:.1f},0,8,60,60,{c_margin_v},1
 
 [Events]
@@ -466,36 +467,67 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 else:
                     t_end_val = float(active_word["end"])
 
-                # Build styled line
-                line_parts = []
-                for idx, w in enumerate(chunk):
-                    raw_word = str(w.get("word", "")).strip().replace('{', '(').replace('}', ')')
-                    if uppercase:
-                        raw_word = raw_word.upper()
+                enable_anim = bool((custom_options or {}).get("enable_animation", True))
+                anim_style = str((custom_options or {}).get("animation", preset.get("animation", "none"))).lower().strip()
 
-                    if idx == active_idx:
-                        # Active word highlighted with accent color & kinetic animation (Default OFF unless explicitly enabled)
-                        enable_anim = bool((custom_options or {}).get("enable_animation", False))
-                        anim_style = str((custom_options or {}).get("animation", "none")).lower().strip()
-                        if not enable_anim or anim_style == "none":
-                            line_parts.append(f"{{\\c{highlight_c}&}}{raw_word}{{\\c{primary_c}&}}")
-                        elif anim_style == "word_box":
-                            line_parts.append(f"{{\\c&H00000000&\\3c{highlight_c}&\\bord{ass_outline_w + 3:.1f}}}{raw_word}{{\\c{primary_c}&\\3c{outline_c}&\\bord{ass_outline_w:.1f}}}")
-                        elif anim_style == "word_glow":
-                            line_parts.append(f"{{\\c{highlight_c}&\\4c{highlight_c}&\\shad{ass_shadow_d + 4:.1f}}}{raw_word}{{\\c{primary_c}&\\4c{shadow_c}&\\shad{ass_shadow_d:.1f}}}")
+                if anim_style == "word_box":
+                    # Two-Layer CapCut Yellow Pill Box:
+                    # 1. Background Box Layer (Style: BoxHighlight with BorderStyle=3):
+                    box_parts = []
+                    for idx, w in enumerate(chunk):
+                        raw_w = str(w.get("word", "")).strip().replace('{', '(').replace('}', ')')
+                        if uppercase:
+                            raw_w = raw_w.upper()
+                        if idx == active_idx:
+                            box_parts.append(f"{{\\alpha&H00&}}{raw_w}")
                         else:
-                            # CapCut kinetic pop scale + accent highlight
-                            line_parts.append(f"{{\\c{highlight_c}&\\fscx108\\fscy108\\b1}}{raw_word}{{\\c{primary_c}&\\fscx100\\fscy100\\b{bold}}}")
-                    else:
-                        line_parts.append(raw_word)
+                            box_parts.append(f"{{\\alpha&HFF&}}{raw_w}")
+                    box_text = word_separator.join(box_parts)
 
-                dialogue_text = word_separator.join(line_parts)
-                raw_cues.append({
-                    "start": t_start_val,
-                    "end": t_end_val,
-                    "text": dialogue_text,
-                    "is_chunk_boundary": is_last_word_in_chunk
-                })
+                    # 2. Foreground Text Layer (Style: Default with black text inside box, primary text outside):
+                    text_parts = []
+                    for idx, w in enumerate(chunk):
+                        raw_w = str(w.get("word", "")).strip().replace('{', '(').replace('}', ')')
+                        if uppercase:
+                            raw_w = raw_w.upper()
+                        if idx == active_idx:
+                            text_parts.append(f"{{\\c&H00000000&\\3c&H00000000&\\bord0}}{raw_w}{{\\c{primary_c}&\\3c{outline_c}&\\bord{ass_outline_w:.1f}}}")
+                        else:
+                            text_parts.append(raw_w)
+                    dialogue_text = word_separator.join(text_parts)
+
+                    raw_cues.append({
+                        "start": t_start_val,
+                        "end": t_end_val,
+                        "text": dialogue_text,
+                        "box_text": box_text,
+                        "is_chunk_boundary": is_last_word_in_chunk
+                    })
+                else:
+                    line_parts = []
+                    for idx, w in enumerate(chunk):
+                        raw_word = str(w.get("word", "")).strip().replace('{', '(').replace('}', ')')
+                        if uppercase:
+                            raw_word = raw_word.upper()
+
+                        if idx == active_idx:
+                            if not enable_anim or anim_style == "none":
+                                line_parts.append(f"{{\\c{highlight_c}&}}{raw_word}{{\\c{primary_c}&}}")
+                            elif anim_style == "word_glow":
+                                line_parts.append(f"{{\\c{highlight_c}&\\4c{highlight_c}&\\shad{ass_shadow_d + 4:.1f}}}{raw_word}{{\\c{primary_c}&\\4c{shadow_c}&\\shad{ass_shadow_d:.1f}}}")
+                            else:
+                                # CapCut kinetic pop scale + accent highlight
+                                line_parts.append(f"{{\\c{highlight_c}&\\fscx108\\fscy108\\b1}}{raw_word}{{\\c{primary_c}&\\fscx100\\fscy100\\b{bold}}}")
+                        else:
+                            line_parts.append(raw_word)
+
+                    dialogue_text = word_separator.join(line_parts)
+                    raw_cues.append({
+                        "start": t_start_val,
+                        "end": t_end_val,
+                        "text": dialogue_text,
+                        "is_chunk_boundary": is_last_word_in_chunk
+                    })
 
     # Sort all cues strictly by start time
     raw_cues.sort(key=lambda c: (c["start"], c["end"]))
@@ -546,7 +578,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         w_start = format_ass_time(c_start)
         w_end = format_ass_time(c_end)
-        dialogue_lines.append(f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{raw_cues[i]['text']}")
+        if raw_cues[i].get("box_text"):
+            dialogue_lines.append(f"Dialogue: 0,{w_start},{w_end},BoxHighlight,,0,0,0,,{raw_cues[i]['box_text']}")
+            dialogue_lines.append(f"Dialogue: 1,{w_start},{w_end},Default,,0,0,0,,{raw_cues[i]['text']}")
+        else:
+            dialogue_lines.append(f"Dialogue: 0,{w_start},{w_end},Default,,0,0,0,,{raw_cues[i]['text']}")
 
     content = header + "\n".join(dialogue_lines) + "\n"
     with open(output_path, "w", encoding="utf-8") as f:

@@ -2472,7 +2472,10 @@ async function startExportRender() {
   const previewPrefs = (typeof getPreviewPanelPreferences === 'function') ? getPreviewPanelPreferences() : DEFAULT_PREVIEW_PANEL_PREFS;
 
   const captionsEnabled = previewPrefs.show_captions && (document.getElementById('enable-captions-toggle')?.checked ?? true);
-  const animationEnabled = captionsEnabled && previewPrefs.show_animation && (document.getElementById('enable-animation-toggle')?.checked ?? false);
+  const currentEngineAnim = (typeof captionEngine !== 'undefined' && captionEngine.style) ? captionEngine.style.animation : null;
+  const selectAnim = document.getElementById('animation-style-select')?.value || 'word_bounce';
+  const effectiveAnim = (currentEngineAnim && currentEngineAnim !== 'none') ? currentEngineAnim : selectAnim;
+  const animationEnabled = captionsEnabled && (effectiveAnim !== 'none');
   const bgmEnabled = previewPrefs.show_bgm && (document.getElementById('enable-bgm-toggle')?.checked ?? true);
   const sfxEnabled = previewPrefs.show_sfx && (document.getElementById('enable-sfx-toggle')?.checked ?? true);
   const polishEnabled = previewPrefs.show_polish && (document.getElementById('enable-polish-toggle')?.checked ?? true);
@@ -2491,7 +2494,7 @@ async function startExportRender() {
     uppercase: document.getElementById('uppercase-checkbox').checked,
     enable_captions: captionsEnabled,
     enable_animation: animationEnabled,
-    animation: animationEnabled ? (document.getElementById('animation-style-select')?.value || 'word_bounce') : 'none',
+    animation: animationEnabled ? effectiveAnim : 'none',
     enable_bgm: bgmEnabled,
     bgm_track: bgmEnabled ? (document.getElementById('bgm-track-select')?.value || 'cinematic_ambient') : 'none',
     bgm_volume: bgmEnabled ? ((parseInt(document.getElementById('bgm-volume-slider')?.value || '10', 10)) / 100.0) : 0.0,
